@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -326,8 +325,8 @@ export default function NovoPedidoPage() {
             )}
 
             <p className="text-[12px] leading-relaxed text-muted-2">
-              Nome e logo entram como camada por cima da imagem, não são gerados pela IA. Se sair um
-              nome errado dá para corrigir sem gastar outra geração.
+              O texto vem do modelo, dentro da arte — confira o nome antes de salvar. A logo da
+              agência é a única camada aplicada por cima.
             </p>
 
             <Navegacao
@@ -372,19 +371,22 @@ export default function NovoPedidoPage() {
                 />
               )}
 
-              {!gerando && !resultado && tipo && (
-                <Image
-                  src={`/mock/ref-${tipo}-${formato === "feed_4x5" ? "feed" : "story"}.png`}
-                  alt="Referência curada usada nesse tipo de arte"
-                  fill
-                  sizes="340px"
-                  className="object-cover opacity-25"
-                />
+              {/*
+                A referência NAO aparece aqui. Ela é o acervo curado da agência —
+                o cliente escolhe a categoria, não o estilo, e mostrar a arte que
+                serviu de base entregaria de graça o que diferencia o trabalho.
+              */}
+              {!gerando && !resultado && tipo && meta && (
+                <div className="grid place-items-center gap-3 px-8 text-center">
+                  <span className="font-mono text-[22px] text-accent">{meta.numero}</span>
+                  <p className="text-[15px] font-medium">{meta.titulo}</p>
+                  <p className="text-[12px] leading-relaxed text-muted-2">{meta.descricao}</p>
+                </div>
               )}
 
               {!gerando && !resultado && !tipo && (
                 <p className="px-8 text-center text-[13px] text-muted-2">
-                  Escolha o tipo do post para ver a referência que vai guiar a arte
+                  Escolha o tipo do post para começar
                 </p>
               )}
             </div>
