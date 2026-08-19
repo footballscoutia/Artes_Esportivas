@@ -6,6 +6,7 @@ import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
 import { produzirArte, SemReferencia } from "./gerar";
+import { BALDE, baixar } from "./storage";
 import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 
 /**
@@ -120,14 +121,30 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
   const sb = await criarClienteServidor();
   const { data: pedido } = await sb
     .from("pedidos")
-    .select("tipo, formato, nome_jogador, clube, frase, adversario, data_jogo, hora_jogo, campeonato, estadio")
+    .select(
+      "tipo, formato, nome_jogador, clube, frase, foto_jogador_url, adversario, data_jogo, hora_jogo, campeonato, estadio",
+    )
     .eq("id", pedidoId)
     .maybeSingle();
 
   if (!pedido) return falha("Pedido não encontrado.");
 
   try {
+    /**
+     * A foto do atleta precisa voltar junto. Sem ela o modelo inventa um jogador
+     * generico — e uma arte com o rosto errado no perfil da agencia e pior que
+     * arte nenhuma. Falhar em baixar nao aborta: gerar sem foto ainda e util
+     * para conferir estilo, e o erro fica no log.
+     */
+    const foto = pedido.foto_jogador_url
+      ? await baixar(BALDE.fotos, pedido.foto_jogador_url).catch((e) => {
+          console.error("[gerarOutra] não recuperei a foto do atleta:", e);
+          return null;
+        })
+      : null;
+
     const arte = await produzirArte({
+      foto,
       tipo: pedido.tipo as Tipo,
       formato: pedido.formato as Formato,
       nome: pedido.nome_jogador,

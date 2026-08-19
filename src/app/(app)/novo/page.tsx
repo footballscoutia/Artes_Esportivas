@@ -68,8 +68,13 @@ export default function NovoPedidoPage() {
   const meta = tipo ? TIPO_META[tipo] : null;
   // matchday sem adversario e data faria o modelo inventar a partida
   const jogoOk = !meta?.exigeJogo || Boolean(jogo.adversario.trim() && jogo.data_jogo);
+  /**
+   * A foto e obrigatoria. O produto inteiro e "sobe a foto do atleta e recebe o
+   * post" — sem ela o modelo inventa um jogador generico, e arte com rosto
+   * errado no perfil da agencia e pior que arte nenhuma.
+   */
   const podeGerar = Boolean(
-    tipo && nome.trim().length > 1 && (!meta?.exigeFrase || frase.trim()) && jogoOk,
+    tipo && foto && nome.trim().length > 1 && (!meta?.exigeFrase || frase.trim()) && jogoOk,
   );
 
   useEffect(() => {
@@ -235,7 +240,9 @@ export default function NovoPedidoPage() {
             </div>
 
             <div>
-              <p className="mb-3 text-[13px] font-medium">Foto do jogador</p>
+              <p className="mb-3 text-[13px] font-medium">
+                Foto do jogador <span className="text-muted-2">— obrigatória</span>
+              </p>
               <Uploader arquivo={foto} aoEscolher={setFoto} />
             </div>
 
@@ -328,6 +335,12 @@ export default function NovoPedidoPage() {
               O texto vem do modelo, dentro da arte — confira o nome antes de salvar. A logo da
               agência é a única camada aplicada por cima.
             </p>
+
+            {!foto && (
+              <p className="rounded-field border border-warn/40 bg-warn/10 p-3 text-[12px]">
+                Falta a foto do atleta. Volte ao passo 2 — sem ela o modelo inventa um jogador.
+              </p>
+            )}
 
             <Navegacao
               voltar={() => setPasso(1)}
