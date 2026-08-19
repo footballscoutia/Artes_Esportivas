@@ -4,7 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { pegarProvider, providerAtivo, GenError } from "@/lib/ai";
 import { compor } from "@/lib/compose";
-import { buscarReferencia } from "@/lib/dados";
+import { buscarReferencia, usuarioAtual } from "@/lib/dados";
 import { FORMATO_META, TIPO_META, TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -22,6 +22,26 @@ const Corpo = z.object({
 const FOLGA = 1.18;
 
 export async function POST(req: Request) {
+  /**
+   * Esta rota fica FORA do matcher do proxy — ela responde a fetch, e um 307
+   * para /login viraria HTML no lugar do JSON que a tela espera. O preco disso
+   * e que a checagem de sessao tem que morar aqui dentro.
+   *
+   * Sem ela, a rota so nao gerava arte para estranho por efeito colateral: a
+   * RLS escondia as referencias e a busca voltava nula, produzindo um 409 que
+   * dizia "cadastre em Referencias" para quem, na verdade, nem estava logado.
+   * Protecao por acidente, e mentirosa. Afrouxar a policy de `referencias` um
+   * dia abriria um endpoint de geracao de imagem para a internet inteira —
+   * com IMAGE_PROVIDER=gemini, isso e a fatura da agencia.
+   */
+  const usuario = await usuarioAtual();
+  if (!usuario) {
+    return NextResponse.json(
+      { erro: "Sessão expirada. Entre de novo para gerar arte." },
+      { status: 401 },
+    );
+  }
+
   const form = await req.formData();
 
   const parsed = Corpo.safeParse({
