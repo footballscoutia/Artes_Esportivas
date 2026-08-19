@@ -82,21 +82,32 @@ Para entrar com Flux Kontext Max ou Seedream 5.0 no comparativo: criar
 `src/lib/ai/flux.ts` exportando um `ImageGenProvider`, adicionar um `case` em
 `src/lib/ai/index.ts` e mudar `IMAGE_PROVIDER` no `.env.local`. Nenhuma tela muda.
 
-## Composição de camadas
+## Quem desenha o quê
 
-`src/lib/compose.ts` monta, nesta ordem:
+O modelo desenha a arte inteira, **texto incluso**. Nome, etiqueta, clube e frase
+entram pelo prompt-mãe, através dos marcadores `{{nome}}`, `{{clube}}`,
+`{{frase}}` e `{{rotulo}}` — escrevê-los no prompt é o que dá ao curador
+controle sobre *como* o nome entra na cena. Sem nenhum marcador, os textos vão
+num bloco no fim, para uma referência antiga não sair sem nome.
+
+`src/lib/compose.ts` faz só o acabamento:
 
 ```
-fundo gerado pela IA  →  nome do jogador  →  recorte do jogador  →  logo da agência
+arte gerada (com texto)  →  recorte do jogador  →  logo da agência
 ```
 
-Logo e nome nunca são gerados pela IA: ela distorce marca e erra letra de nome, e
-o custo do erro é alto. Como camada saem idênticos sempre, e um nome errado se
-corrige sem gastar outra geração.
+**A logo continua sendo camada de código**, por um motivo diferente do texto: a
+marca da agência tem forma exata e o modelo não a conhece — mesmo com
+referência, ele aproxima. Um nome errado se corrige gerando outra; escudo torto
+publicado no perfil da agência é erro de outra categoria. Por isso o prompt pede
+o canto inferior direito limpo.
 
 O modelo recebe um pedido 18% maior que o formato final; o corte para 1080×1350
-ou 1080×1920 acontece no código, que também reserva a faixa onde a logo entra —
-sem depender de um prompt pedindo "deixe o canto vazio".
+ou 1080×1920 acontece no código.
+
+**Nome errado custa uma geração.** Se acontecer com frequência num tipo, o
+problema é o prompt-mãe, não a IA — o histórico de recusas em `/pedido/[id]`
+existe para tornar isso visível.
 
 ## Estado atual
 
@@ -118,6 +129,5 @@ precisa de conta no Supabase.
 ## Substituir os placeholders
 
 - `public/brand/logo.png` — logo real da agência (PNG com transparência)
-- `src/lib/compose.ts` — trocar o stack de fonte pela fonte da marca
 - `public/mock/` — pasta inteira morre quando as artes vierem do Supabase; o
   script que a gera é `scripts/gerar-mocks.mjs`

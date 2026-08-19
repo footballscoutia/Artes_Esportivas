@@ -17,12 +17,12 @@ import {
 } from "lucide-react";
 import { Button, BotaoIcone } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
-import { Campo, Input, Textarea } from "@/components/ui/Field";
+import { Campo, Textarea } from "@/components/ui/Field";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Orb } from "@/components/art/Orb";
 import { FORMATO_META, TIPO_META, type Geracao, type Pedido } from "@/lib/types";
 import { cn, formatarData, tempoRelativo } from "@/lib/utils";
-import { aprovarPedido, gerarOutra, recusarGeracao, regravarCamadas } from "@/lib/acoes";
+import { aprovarPedido, gerarOutra, recusarGeracao } from "@/lib/acoes";
 
 type Aba = "detalhes" | "camadas" | "historico";
 
@@ -55,8 +55,6 @@ export function DetalhePedido({
   const [recusando, setRecusando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [gerando, setGerando] = useState(false);
-  const [nome, setNome] = useState(pedido.nome_jogador);
-  const [frase, setFrase] = useState(pedido.frase ?? "");
   const [aviso, setAviso] = useState<string | null>(null);
 
   /** Envolve toda acao: limpa o aviso, mostra o erro se vier, e recarrega os dados. */
@@ -221,11 +219,12 @@ export function DetalhePedido({
             {aba === "camadas" && (
               <div className="space-y-4">
                 <p className="text-[12px] leading-relaxed text-muted">
-                  Nome e logo são camadas por cima do fundo gerado. Corrigir um texto aqui
-                  regrava só as camadas — não gasta outra geração.
+                  O texto vem do modelo, dentro da arte. Se o nome sair errado, o caminho é
+                  gerar outra — e vale ajustar o prompt-mãe em Referências, porque o erro
+                  tende a se repetir.
                 </p>
                 <ol className="space-y-1.5 text-[12px]">
-                  {["Fundo gerado pela IA", "Nome do jogador", "Recorte do jogador", "Logo da agência"].map(
+                  {["Arte gerada pela IA, texto incluso", "Recorte do jogador", "Logo da agência"].map(
                     (c, i) => (
                       <li
                         key={c}
@@ -242,29 +241,6 @@ export function DetalhePedido({
                     ),
                   )}
                 </ol>
-                <Campo rotulo="Nome do jogador">
-                  <Input value={nome} onChange={(e) => setNome(e.target.value)} />
-                </Campo>
-                {pedido.tipo === "frase" && (
-                  <Campo rotulo="Frase">
-                    <Textarea value={frase} onChange={(e) => setFrase(e.target.value)} />
-                  </Campo>
-                )}
-                <Button
-                  variante="sutil"
-                  className="w-full"
-                  disabled={pendente || !selecionada}
-                  onClick={() =>
-                    selecionada &&
-                    executar(
-                      () => regravarCamadas(pedido.id, selecionada.id, nome, frase || null),
-                      "Camadas regravadas sobre o mesmo fundo — nenhuma geração gasta.",
-                    )
-                  }
-                >
-                  <Layers size={15} />
-                  {pendente ? "Regravando…" : "Regravar camadas"}
-                </Button>
               </div>
             )}
 

@@ -32,6 +32,52 @@ export type ArteProduzida = {
 
 export class SemReferencia extends Error {}
 
+type Textos = { nome: string; clube?: string | null; frase?: string | null; rotulo: string };
+
+/**
+ * Injeta os textos no prompt-mae.
+ *
+ * O curador escreve `{{nome}}`, `{{clube}}`, `{{frase}}` e `{{rotulo}}` onde
+ * quiser dentro do prompt — assim ele controla como o nome entra na cena, que e
+ * metade do resultado. Se o prompt nao tiver marcador nenhum, os textos vao num
+ * bloco no fim, para uma referencia antiga nao sair sem nome.
+ *
+ * O nome vai entre aspas e soletrado. Modelo de imagem erra letra de nome
+ * proprio, e "Famalicao" no lugar de "Famalicão" e o tipo de erro que so aparece
+ * depois de publicado.
+ */
+export function montarPrompt(promptMae: string, t: Textos): string {
+  const valores: Record<string, string> = {
+    nome: t.nome.trim(),
+    clube: t.clube?.trim() ?? "",
+    frase: t.frase?.trim() ?? "",
+    rotulo: t.rotulo,
+  };
+
+  const temMarcador = /\{\{\s*(nome|clube|frase|rotulo)\s*\}\}/.test(promptMae);
+
+  const comValores = promptMae.replace(
+    /\{\{\s*(nome|clube|frase|rotulo)\s*\}\}/g,
+    (_, chave: string) => valores[chave] ?? "",
+  );
+
+  if (temMarcador) return comValores;
+
+  const linhas = [
+    `Escreva na arte, exatamente como está entre aspas, sem alterar acentuação:`,
+    `- Nome do atleta: "${valores.nome}" — em destaque, tipografia pesada.`,
+    `- Etiqueta: "${valores.rotulo}" — menor, acima do nome.`,
+  ];
+  if (valores.clube) linhas.push(`- Clube: "${valores.clube}" — discreto.`);
+  if (valores.frase) linhas.push(`- Frase do atleta: "${valores.frase}" — em itálico.`);
+  linhas.push(
+    `Nenhum outro texto na imagem. Não inventar palavras, números nem escudos de clube.`,
+    `Deixar o canto inferior direito limpo: a logo da agência entra ali por cima.`,
+  );
+
+  return `${comValores}\n\n${linhas.join("\n")}`;
+}
+
 export async function produzirArte({
   tipo,
   formato,
@@ -72,25 +118,23 @@ export async function produzirArte({
   const gerado = await provider.gerar({
     referencia: refBuffer,
     foto: foto ?? null,
-    prompt: referencia.prompt_mae,
+    prompt: montarPrompt(referencia.prompt_mae, {
+      nome,
+      clube,
+      frase,
+      rotulo: TIPO_META[tipo].rotulo,
+    }),
     largura: Math.round(alvo.w * FOLGA),
     altura: Math.round(alvo.h * FOLGA),
   });
 
-  // camadas de codigo por cima do que a IA devolveu
-  const final = await compor({
-    fundo: gerado.imagem,
-    nome,
-    clube,
-    frase,
-    rotulo: TIPO_META[tipo].rotulo,
-    formato,
-  });
+  // corte para o formato final e a logo por cima
+  const final = await compor({ fundo: gerado.imagem, formato });
 
   /**
-   * Guarda o fundo cru junto com a arte composta. E o fundo separado que
-   * permite corrigir um nome errado sem gastar outra geracao — na arte final o
-   * texto ja esta queimado no pixel.
+   * Guarda tambem o que o modelo devolveu sem corte e sem logo. Serve para
+   * conferir depois se um problema veio do modelo ou do acabamento — e e o
+   * unico jeito de reaproveitar a arte se a logo mudar de lugar.
    */
   const [arte_path, fundo_path] = await Promise.all([
     subir(BALDE.geracoes, final),

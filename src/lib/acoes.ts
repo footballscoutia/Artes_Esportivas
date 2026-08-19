@@ -5,10 +5,8 @@ import { z } from "zod";
 import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
-import { compor } from "./compose";
-import { BALDE, baixar, subir } from "./storage";
 import { produzirArte, SemReferencia } from "./gerar";
-import { FORMATOS, TIPOS, TIPO_META, type Formato, type Tipo } from "./types";
+import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 
 /**
  * Escrita. Tudo que muda o banco passa por aqui.
@@ -150,63 +148,6 @@ export async function recusarGeracao(
 
   revalidatePath(`/pedido/${pedidoId}`);
   return { ok: true, dados: undefined };
-}
-
-/**
- * Recompoe nome, frase e logo sobre o MESMO fundo, sem chamar o modelo.
- *
- * E a promessa do README posta em pratica: nome errado nao custa outra geracao.
- * So funciona porque `fundo_url` guarda o que o modelo devolveu antes das
- * camadas — na arte final o texto ja esta queimado no pixel.
- */
-export async function regravarCamadas(
-  pedidoId: string,
-  geracaoId: string,
-  nome: string,
-  frase: string | null,
-): Promise<Resultado> {
-  if (nome.trim().length < 2) return falha("O nome do jogador está curto demais.");
-
-  const usuario = await usuarioAtual();
-  if (!usuario) return falha("Sessão expirada. Entre de novo.");
-
-  const sb = await criarClienteServidor();
-  const [{ data: pedido }, { data: geracao }] = await Promise.all([
-    sb.from("pedidos").select("tipo, formato, clube").eq("id", pedidoId).maybeSingle(),
-    sb.from("geracoes").select("fundo_url").eq("id", geracaoId).maybeSingle(),
-  ]);
-
-  if (!pedido) return falha("Pedido não encontrado.");
-  if (!geracao?.fundo_url) {
-    return falha("Esta geração é anterior ao guardado do fundo — só dá para gerar outra.");
-  }
-
-  try {
-    const fundo = await baixar(BALDE.geracoes, geracao.fundo_url);
-    const arte = await compor({
-      fundo,
-      nome: nome.trim(),
-      clube: pedido.clube,
-      frase: frase?.trim() || null,
-      rotulo: TIPO_META[pedido.tipo as Tipo].rotulo,
-      formato: pedido.formato as Formato,
-    });
-
-    const caminho = await subir(BALDE.geracoes, arte);
-
-    await criarClienteAdmin().from("geracoes").update({ imagem_url: caminho }).eq("id", geracaoId);
-    await sb
-      .from("pedidos")
-      .update({ nome_jogador: nome.trim(), frase: frase?.trim() || null })
-      .eq("id", pedidoId);
-
-    revalidatePath(`/pedido/${pedidoId}`);
-    revalidatePath("/fila");
-    return { ok: true, dados: undefined };
-  } catch (e) {
-    console.error("[regravarCamadas]", e);
-    return falha("Não consegui regravar as camadas.");
-  }
 }
 
 /**
