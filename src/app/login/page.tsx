@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -11,9 +12,24 @@ import { criarClienteNavegador } from "@/lib/supabase/client";
 const CONFIGURADO = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
 export default function LoginPage() {
+  // useSearchParams precisa de fronteira de Suspense para a pagina seguir estatica
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
+  );
+}
+
+function Login() {
+  const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [estado, setEstado] = useState<"parado" | "enviando" | "enviado">("parado");
-  const [erro, setErro] = useState<string | null>(null);
+  // erro vindo de /auth/callback (link expirado, ja usado) aparece de cara
+  const [erro, setErro] = useState<string | null>(params.get("erro"));
+
+  /** Para onde voltar depois de entrar — o proxy poe o destino original em `de`. */
+  const de = params.get("de");
+  const destino = de?.startsWith("/") && !de.startsWith("//") ? de : "/fila";
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
@@ -27,9 +43,14 @@ export default function LoginPage() {
     }
 
     setEstado("enviando");
+    const volta = new URL("/auth/callback", location.origin);
+    volta.searchParams.set("next", destino);
+
     const { error } = await criarClienteNavegador().auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${location.origin}/fila` },
+      // tem que ser a rota que troca o codigo por sessao, nao uma tela:
+      // apontar direto para /fila deixa o usuario deslogado sem dizer nada
+      options: { emailRedirectTo: volta.toString() },
     });
 
     if (error) {

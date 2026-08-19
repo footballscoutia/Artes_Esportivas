@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:tabelas": "node scripts/sql.mjs --tabelas",
+    "db:schema": "node scripts/sql.mjs sql/001_schema.sql",
+    "db:sql": "node scripts/sql.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",

@@ -15,7 +15,7 @@ export async function criarClienteServidor() {
           try {
             lista.forEach(({ name, value, options }) => jar.set(name, value, options));
           } catch {
-            // chamado de dentro de um Server Component: o middleware ja renova a sessao
+            // chamado de dentro de um Server Component: o proxy (src/proxy.ts) ja renova a sessao
           }
         },
       },
