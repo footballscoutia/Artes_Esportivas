@@ -42,7 +42,13 @@ export function DetalhePedido({
   const [pendente, comTransicao] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>("detalhes");
-  const [selecionada, setSelecionada] = useState<Geracao | null>(geracoes[0] ?? null);
+  /**
+   * Guarda o ID, nao o objeto. Guardando o objeto, um router.refresh() troca as
+   * props mas o estado continua apontando para a geracao velha — foi o que fez
+   * "regravar camadas" mudar o titulo e nao mudar a imagem.
+   */
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
+  const selecionada = geracoes.find((g) => g.id === selecionadaId) ?? geracoes[0] ?? null;
   // o status vem do servidor a cada refresh; guardar copia local so criaria
   // divergencia entre o que a tela mostra e o que o banco tem
   const status = pedido.status;
@@ -267,7 +273,7 @@ export function DetalhePedido({
                 {geracoes.map((g, i) => (
                   <li key={g.id}>
                     <button
-                      onClick={() => setSelecionada(g)}
+                      onClick={() => setSelecionadaId(g.id)}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-field border p-2.5 text-left transition-colors",
                         selecionada?.id === g.id
