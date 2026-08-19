@@ -107,8 +107,12 @@ export type Pedido = {
   referencia_id: string | null;
   referencia_versao: number | null;
   status: Status;
+  /** uuid de quem criou — no banco e FK para perfis, nao o nome. */
   criado_por: string;
   aprovado_por: string | null;
+  /** Nome resolvido pelo join com perfis. E o que a tela mostra. */
+  criado_por_nome: string;
+  aprovado_por_nome: string | null;
   criado_em: string;
 };
 
@@ -120,5 +124,16 @@ export type Geracao = {
   motivo_recusa: string | null;
   custo_usd: number;
   modelo: string;
+  /** qual adapter respondeu — "mock", "gemini". Serve para comparar modelos. */
+  provider?: string;
+  duracao_ms?: number | null;
   criado_em: string;
+};
+
+/** Quem esta usando o sistema. Sai do join de auth.users com perfis. */
+export type Usuario = {
+  id: string;
+  nome: string;
+  email: string;
+  papel: Papel;
 };

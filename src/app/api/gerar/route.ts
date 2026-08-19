@@ -4,7 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { pegarProvider, providerAtivo, GenError } from "@/lib/ai";
 import { compor } from "@/lib/compose";
-import { buscarReferencia } from "@/lib/mock";
+import { buscarReferencia } from "@/lib/dados";
 import { FORMATO_META, TIPO_META, TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const { tipo, formato, nome, clube, frase } = parsed.data;
   const alvo = FORMATO_META[formato as Formato];
 
-  const referencia = buscarReferencia(tipo as Tipo, formato as Formato);
+  const referencia = await buscarReferencia(tipo as Tipo, formato as Formato);
   if (!referencia || !referencia.ativa) {
     return NextResponse.json(
       { erro: `Não há referência ativa para ${tipo} em ${formato}. Cadastre em Referências.` },

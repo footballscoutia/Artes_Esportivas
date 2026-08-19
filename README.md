@@ -36,6 +36,33 @@ O esquema do banco está em [`sql/001_schema.sql`](sql/001_schema.sql) — rodar
 inteiro no SQL Editor do projeto novo. Ele cria tabelas, enums, RLS, os três
 buckets de storage e o gatilho que cria o perfil quando alguém entra.
 
+**Rodar uma vez só.** Os `create type` e `create policy` não têm guarda de
+idempotência: a segunda execução falha no meio e deixa o schema pela metade.
+
+## Rodar SQL sem abrir o dashboard
+
+Opcional. Preencha `SUPABASE_ACCESS_TOKEN` no `.env.local` (Dashboard → Account
+→ Access Tokens, prefixo `sbp_`) e:
+
+```bash
+npm run db:tabelas                    # o que existe hoje em public
+npm run db:schema                     # aplica sql/001_schema.sql
+npm run db:sql -- -e "select now()"   # consulta solta
+npm run db:sql -- caminho/outro.sql   # qualquer arquivo
+```
+
+O ref do projeto sai da `NEXT_PUBLIC_SUPABASE_URL` — não se configura duas vezes.
+
+Esse token **não é deste projeto**: a documentação do Supabase é literal em
+dizer que ele carrega os mesmos privilégios da sua conta de usuário, ou seja,
+todo projeto de toda organização que você acessa. Por isso ele nunca recebe
+prefixo `NEXT_PUBLIC_`, nenhum arquivo em `src/` o lê, e vale revogar quando
+terminar. Para não gravá-lo em disco, dá para passar só na chamada:
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_... npm run db:tabelas
+```
+
 ## Telas
 
 | Rota | O que é |
@@ -73,13 +100,20 @@ sem depender de um prompt pedindo "deixe o canto vazio".
 
 ## Estado atual
 
-Interface completa rodando com dados de mentira (`src/lib/mock.ts`) e provider
-`mock`. O caminho real já está escrito e desligado: adapter do Gemini, esquema
-SQL, clientes do Supabase e login por link.
+**Leitura vem do Supabase.** Todas as telas passam por `src/lib/dados.ts`, que
+consulta o banco com o cliente de sessão — a RLS decide o que cada papel vê, e
+não há filtro de permissão escrito em TypeScript que possa ser esquecido.
 
-Falta, quando as chaves chegarem: trocar as leituras de `mock.ts` por consultas
-ao Supabase, gravar as gerações (inclusive as recusadas, com motivo) e subir os
-arquivos para o storage.
+Sem chave no `.env.local`, `dados.ts` cai no `src/lib/mock.ts` e o projeto
+continua rodando com dados de mentira. Quem clona para mexer no visual não
+precisa de conta no Supabase.
+
+**Falta a escrita.** Nada ainda grava no banco:
+
+- `/novo` gera a arte, mas "Enviar para aprovação" só navega para a fila
+- `/pedido/[id]` — aprovar, recusar e "gerar outra" ainda são `setTimeout`
+- `/admin/referencias` — salvar o prompt-mãe não persiste
+- as imagens voltam embutidas em base64; ainda não sobem para o Storage
 
 ## Substituir os placeholders
 

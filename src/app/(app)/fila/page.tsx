@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Inbox } from "lucide-react";
-import { listarPedidos, geracoesDoPedido } from "@/lib/mock";
+import { listarPedidos, capasDosPedidos } from "@/lib/dados";
 import { STATUS, STATUS_META, type Status } from "@/lib/types";
 import { ArtCard } from "@/components/art/ArtCard";
 import { TituloSecao } from "@/components/ui/Card";
@@ -15,9 +15,12 @@ export default async function FilaPage({
   const { f } = await searchParams;
   const filtro = STATUS.includes(f as Status) ? (f as Status) : null;
 
-  const pedidos = listarPedidos();
+  const pedidos = await listarPedidos();
   const visiveis = filtro ? pedidos.filter((p) => p.status === filtro) : pedidos;
   const emRevisao = pedidos.filter((p) => p.status === "em_revisao").length;
+
+  // uma consulta so para as capas, em vez de uma por card
+  const capas = await capasDosPedidos(visiveis.map((p) => p.id));
 
   return (
     <div className="mx-auto max-w-[1400px] animate-fade-up">
@@ -59,7 +62,7 @@ export default async function FilaPage({
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visiveis.map((p) => (
-            <ArtCard key={p.id} pedido={p} imagem={geracoesDoPedido(p.id)[0]?.imagem_url ?? null} />
+            <ArtCard key={p.id} pedido={p} imagem={capas[p.id] ?? null} />
           ))}
         </div>
       )}

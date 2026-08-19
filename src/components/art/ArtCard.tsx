@@ -46,7 +46,7 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
         </div>
         <p className="mt-1.5 truncate text-[15px] font-medium">{pedido.nome_jogador}</p>
         <p className="mt-0.5 truncate text-[12px] text-muted">
-          {pedido.clube ?? "—"} · {pedido.criado_por} · {tempoRelativo(pedido.criado_em)}
+          {pedido.clube ?? "—"} · {pedido.criado_por_nome} · {tempoRelativo(pedido.criado_em)}
         </p>
       </div>
     </Link>

@@ -1,14 +1,17 @@
 import { notFound } from "next/navigation";
-import { buscarPedido, geracoesDoPedido, buscarReferencia } from "@/lib/mock";
+import { buscarPedido, geracoesDoPedido, buscarReferencia } from "@/lib/dados";
 import { DetalhePedido } from "@/components/app/DetalhePedido";
 
 export default async function PedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const pedido = buscarPedido(id);
+  const pedido = await buscarPedido(id);
   if (!pedido) notFound();
 
-  const geracoes = geracoesDoPedido(id);
-  const referencia = buscarReferencia(pedido.tipo, pedido.formato);
+  // independentes entre si — nao ha motivo para esperar uma antes da outra
+  const [geracoes, referencia] = await Promise.all([
+    geracoesDoPedido(id),
+    buscarReferencia(pedido.tipo, pedido.formato),
+  ]);
 
   return (
     <DetalhePedido

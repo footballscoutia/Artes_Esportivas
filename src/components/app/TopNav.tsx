@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { LayoutGrid, Sparkles, Images, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BotaoLink } from "@/components/ui/Button";
-import { USUARIO_ATUAL } from "@/lib/mock";
+import type { Usuario } from "@/lib/types";
 
 const SECOES = [
   { href: "/fila", rotulo: "Fila", icone: LayoutGrid },
@@ -13,7 +13,7 @@ const SECOES = [
   { href: "/admin/referencias", rotulo: "Referências", icone: Images },
 ];
 
-export function TopNav() {
+export function TopNav({ usuario }: { usuario: Usuario | null }) {
   const path = usePathname();
 
   return (
@@ -56,11 +56,23 @@ export function TopNav() {
         </BotaoLink>
         <div
           className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold"
-          title={`${USUARIO_ATUAL.email} · pode aprovar`}
+          title={
+            usuario
+              ? `${usuario.email} · ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"}`
+              : "Sem sessão"
+          }
         >
-          VC
+          {iniciais(usuario?.nome)}
         </div>
       </div>
     </header>
   );
+}
+
+/** Duas letras para o avatar. Sem nome, cai num tracinho em vez de string vazia. */
+function iniciais(nome?: string) {
+  const partes = (nome ?? "").trim().split(/s+/).filter(Boolean);
+  if (partes.length === 0) return "—";
+  const letras = partes.length === 1 ? partes[0].slice(0, 2) : partes[0][0] + partes[1][0];
+  return letras.toUpperCase();
 }

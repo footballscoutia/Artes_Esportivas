@@ -126,7 +126,7 @@ export function DetalhePedido({
               <StatusPill status={status} />
             </div>
             <p className="mt-2 text-[12px] text-muted">
-              Enviado por {pedido.criado_por} · {formatarData(pedido.criado_em)}
+              Enviado por {pedido.criado_por_nome} · {formatarData(pedido.criado_em)}
             </p>
           </header>
 
