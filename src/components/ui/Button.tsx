@@ -4,13 +4,17 @@ import { cn } from "@/lib/utils";
 type Variante = "primario" | "sutil" | "contorno" | "fantasma" | "perigo";
 type Tamanho = "sm" | "md" | "lg";
 
+/**
+ * O primario era gradiente com halo colorido embaixo. Halo sem deslocamento e
+ * decoracao, nao profundidade — e gradiente de marca era metade da "cara de
+ * IA". Agora e acento chapado, e a resposta ao toque vem do deslocamento.
+ */
 const VARIANTE: Record<Variante, string> = {
-  primario:
-    "accent-grad text-white shadow-[0_10px_30px_-12px_rgba(255,45,111,.8)] hover:brightness-110",
+  primario: "bg-accent text-[var(--color-accent-texto)] hover:bg-[var(--color-accent-forte)]",
   sutil: "bg-surface-2 text-text hover:bg-surface-3 border border-line",
   contorno: "border border-line-2 text-text hover:bg-surface-2",
   fantasma: "text-muted hover:text-text hover:bg-surface-2",
-  perigo: "border border-accent/40 text-accent hover:bg-accent/10",
+  perigo: "border border-erro/40 text-erro hover:bg-erro/10",
 };
 
 const TAMANHO: Record<Tamanho, string> = {
@@ -29,7 +33,8 @@ type Base = {
 function classes({ variante = "primario", tamanho = "md", className }: Base) {
   return cn(
     "inline-flex items-center justify-center rounded-full font-medium",
-    "transition-all duration-200 active:scale-[.98] disabled:opacity-40 disabled:pointer-events-none",
+    // 180ms: usuario esta em fluxo, nao quer esperar coreografia
+    "transition-colors duration-[180ms] active:translate-y-px disabled:opacity-40 disabled:pointer-events-none",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
     VARIANTE[variante],
     TAMANHO[tamanho],
@@ -83,11 +88,12 @@ export function BotaoIcone({
       title={titulo}
       aria-label={titulo}
       className={cn(
-        "grid size-11 place-items-center rounded-full border transition-all duration-200",
-        "active:scale-95 disabled:opacity-40 disabled:pointer-events-none",
+        "grid size-10 place-items-center rounded-full border transition-colors duration-[180ms]",
+        "active:translate-y-px disabled:opacity-40 disabled:pointer-events-none",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         ativo
-          ? "accent-grad border-transparent text-white shadow-[0_8px_24px_-10px_rgba(255,45,111,.9)]"
-          : "border-line bg-surface-2/60 text-muted hover:text-text hover:border-line-2",
+          ? "border-transparent bg-accent text-[var(--color-accent-texto)]"
+          : "border-line bg-surface-2 text-muted hover:text-text hover:border-line-2",
         className,
       )}
       {...props}

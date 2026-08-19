@@ -37,17 +37,20 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
       </div>
 
       <div className="p-4">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[11px] text-accent">{tipo.numero}</span>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{tipo.titulo}</span>
-        </div>
-        <p className="mt-1.5 truncate text-[15px] font-medium">{pedido.nome_jogador}</p>
-        <p className="mt-0.5 truncate text-[12px] text-muted">
+        {/*
+          Sem eyebrow acima do nome: o rotulo de categoria repetia o que a arte
+          ja mostra. O que o usuario procura na biblioteca e o jogador, e
+          depois o contexto — entao e essa a ordem.
+        */}
+        <p className="truncate text-[15px] font-medium">{pedido.nome_jogador}</p>
+        <p className="mt-1 truncate text-[12px] text-muted">
           {pedido.tipo === "matchday" && pedido.adversario
-            ? `vs ${pedido.adversario}`
-            : (pedido.clube ?? "—")}{" "}
-          · {tempoRelativo(pedido.criado_em)}
+            ? `${tipo.titulo} contra ${pedido.adversario}`
+            : pedido.clube
+              ? `${tipo.titulo}, ${pedido.clube}`
+              : tipo.titulo}
         </p>
+        <p className="mt-0.5 truncate text-[12px] text-muted-2">{tempoRelativo(pedido.criado_em)}</p>
       </div>
     </Link>
   );

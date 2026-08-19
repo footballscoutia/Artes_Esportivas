@@ -1,11 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Sparkles, Images, Plus } from "lucide-react";
+import { LayoutGrid, Sparkles, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BotaoLink } from "@/components/ui/Button";
 import type { Usuario } from "@/lib/types";
+import { Tema } from "@/components/app/Tema";
 
 const SECOES = [
   { href: "/biblioteca", rotulo: "Biblioteca", icone: LayoutGrid },
@@ -18,14 +19,21 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 backdrop-blur-xl lg:px-6">
-      <Link href="/biblioteca" className="flex shrink-0 items-center gap-2.5">
-        <span className="accent-grad grid size-9 place-items-center rounded-[12px] text-[13px] font-bold text-white">
-          MB
-        </span>
-        <span className="hidden leading-tight sm:block">
-          <span className="block text-[13px] font-semibold tracking-tight">Estúdio de Artes</span>
-          <span className="block text-[11px] text-muted">Marcio Bittencourt Sports</span>
-        </span>
+      <Link
+        href="/biblioteca"
+        className="flex shrink-0 items-center gap-3"
+        title="Estúdio de Artes — Marcio Bittencourt Sports"
+      >
+        {/* a marca real da agência, no lugar do quadrado em gradiente */}
+        <Image
+          src="/brand/logo.png"
+          alt="Marcio Bittencourt Sports"
+          width={410}
+          height={161}
+          priority
+          className="h-8 w-auto"
+        />
+        <span className="sr-only">Estúdio de Artes</span>
       </Link>
 
       <nav className="surface mx-auto flex items-center gap-1 rounded-full p-1.5">
@@ -50,15 +58,12 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
       </nav>
 
       <div className="flex shrink-0 items-center gap-3">
-        <BotaoLink href="/novo" tamanho="sm" className="hidden sm:inline-flex">
-          <Plus size={15} strokeWidth={2.2} />
-          Gerar arte
-        </BotaoLink>
+        <Tema />
         <div
           className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold"
           title={
             usuario
-              ? `${usuario.email} · ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"}`
+              ? `${usuario.email}, ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"}`
               : "Sem sessão"
           }
         >

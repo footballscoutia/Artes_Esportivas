@@ -30,7 +30,7 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
   }
 
   return (
-    <div className="mx-auto flex max-w-[1400px] animate-fade-up gap-4">
+    <div className="mx-auto flex max-w-[1400px] gap-4">
       <div className="min-w-0 flex-1">
         <TituloSecao
           titulo="Referências"
@@ -49,7 +49,6 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
             return (
               <Card key={t} className="p-4 sm:p-5">
                 <div className="mb-4 flex items-baseline gap-3">
-                  <span className="font-mono text-[13px] text-accent">{meta.numero}</span>
                   <h3 className="text-[15px] font-medium tracking-tight">{meta.titulo}</h3>
                   <span className="truncate text-[12px] text-muted">{meta.descricao}</span>
                 </div>
@@ -88,14 +87,14 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
                           <span className="block text-[14px] font-medium">
                             {FORMATO_META[f].titulo}
                           </span>
-                          <span className="block font-mono text-[11px] text-muted-2">
+                          <span className="block text-[11px] tabular-nums text-muted-2">
                             {FORMATO_META[f].w}×{FORMATO_META[f].h}
                           </span>
                           <span className="mt-1.5 flex items-center gap-1.5 text-[11px]">
                             {r.ativa ? (
                               <>
                                 <CircleCheck size={12} className="text-ok" />
-                                <span className="text-muted">ativa · v{r.versao}</span>
+                                <span className="text-muted">ativa, v{r.versao}</span>
                               </>
                             ) : (
                               <>
@@ -122,7 +121,7 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
         subtitulo={
           aberta ? (
             <span>
-              {FORMATO_META[aberta.formato].titulo} · versão {aberta.versao} · atualizada em{" "}
+              {FORMATO_META[aberta.formato].titulo}, versão {aberta.versao}, atualizada em{" "}
               {formatarData(aberta.atualizado_em)}
             </span>
           ) : null
@@ -159,7 +158,7 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
             )}
             {salvo !== null && (
               <p className="text-center text-[11px] text-ok">
-                Nova versão registrada — as artes antigas continuam apontando para a v{salvo}
+                Nova versão registrada. As artes antigas continuam apontando para a v{salvo}
               </p>
             )}
           </div>

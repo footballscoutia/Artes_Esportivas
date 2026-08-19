@@ -76,7 +76,7 @@ export function Uploader({
           </span>
           <span className="text-sm font-medium">Arraste a foto do jogador ou clique para escolher</span>
           <span className="text-[12px] text-muted">
-            JPG ou PNG, de preferência o atleta inteiro e nítido — quanto melhor a
+            JPG ou PNG, de preferência o atleta inteiro e nítido. Quanto melhor a
             foto, menos erro de rosto e de mão na arte
           </span>
         </button>

@@ -50,7 +50,8 @@ export function Orb({ tamanho = 220, className }: { tamanho?: number; className?
           className="absolute inset-0"
           style={{
             background:
-              "conic-gradient(from 0deg, #7B3BFF, #FF2D6F 30%, #FF8AC4 45%, #9E7BFF 65%, #4A2AD6 85%, #7B3BFF)",
+              // tons do acento, nao do magenta que veio da referencia de IA
+              "conic-gradient(from 0deg, #7A4A18, #C8813C 30%, #E7B476 45%, #A9662A 65%, #5E3610 85%, #7A4A18)",
             animation: "spin-slow 6s linear infinite",
             filter: "blur(6px)",
           }}
@@ -77,7 +78,7 @@ export function OrbMini({ tamanho = 18 }: { tamanho?: number }) {
         width: tamanho,
         height: tamanho,
         background:
-          "conic-gradient(from 0deg, #7B3BFF, #FF2D6F 35%, #FF8AC4 50%, #7B3BFF)",
+          "conic-gradient(from 0deg, #7A4A18, #C8813C 35%, #E7B476 50%, #7A4A18)",
         boxShadow: "0 0 12px -2px rgba(255,45,111,.9)",
         animation: "spin-slow 3s linear infinite",
       }}

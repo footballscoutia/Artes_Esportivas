@@ -30,8 +30,8 @@ export function Stepper({
             >
               <span
                 className={cn(
-                  "grid size-6 place-items-center rounded-full font-mono text-[11px]",
-                  ativo && "accent-grad text-white",
+                  "grid size-6 place-items-center rounded-full text-[11px] tabular-nums",
+                  ativo && "bg-accent text-[var(--color-accent-texto)]",
                   feito && "bg-surface-3 text-muted",
                   !ativo && !feito && "bg-surface-2 text-muted-2",
                 )}

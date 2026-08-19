@@ -1,32 +1,82 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #080b12;
-  --color-bg-2: #0b101a;
-  --color-surface: #111725;
-  --color-surface-2: #1a2133;
-  --color-surface-3: #222b40;
-  --color-line: rgba(255, 255, 255, 0.07);
-  --color-line-2: rgba(255, 255, 255, 0.14);
-  --color-text: #f4f6fb;
-  --color-muted: #8a93a8;
-  --color-muted-2: #5d6679;
-  --color-accent: #ff2d6f;
-  --color-accent-2: #7b3bff;
-  --color-ok: #2fd08a;
-  --color-warn: #ffb020;
+  /* Fundo e superficies: neutro de verdade. O azul-arroxeado saiu junto com o
+     gradiente de marca — ele era metade da "cara de IA". */
+  --color-bg: #101113;
+  --color-bg-2: #141517;
+  --color-surface: #17181b;
+  --color-surface-2: #1e2023;
+  --color-surface-3: #262a2e;
+  --color-line: rgba(255, 255, 255, 0.09);
+  --color-line-2: rgba(255, 255, 255, 0.16);
+  --color-text: #e8e8ea;
+  --color-muted: #8a8c93;
+  --color-muted-2: #63656b;
 
-  --radius-field: 16px;
-  --radius-card: 24px;
-  --radius-panel: 28px;
+  /* UM acento, 55% de saturacao, so em acao primaria, selecao e estado.
+     Ambar porque quase todo clube e vermelho, azul ou verde: assim a interface
+     nunca disputa atencao com a arte que ela produz. */
+  --color-accent: #c8813c;
+  --color-accent-forte: #d99b5c;
+  --color-accent-texto: #14100a;
+
+  /* Semanticas, separadas do acento — nao contam como cor de marca. */
+  --color-ok: #4a9d72;
+  --color-warn: #c9963f;
+  --color-erro: #c9584f;
+
+  /* Raio: card entre 12 e 16. Pilula fica para controle pequeno. */
+  --radius-field: 10px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+/**
+ * Tema claro.
+ *
+ * O escuro e o padrao, e vive no @theme acima. Aqui so os tokens mudam de
+ * valor — nenhum componente sabe que existe tema, todos leem as mesmas
+ * variaveis. Trocar o tema nunca deveria exigir mexer num componente.
+ *
+ * Nao seguimos `prefers-color-scheme`: a escolha e do usuario e fica gravada,
+ * porque avaliar arte no escuro ou no claro e preferencia de trabalho, nao do
+ * sistema operacional.
+ */
+:root[data-tema="claro"] {
+  --color-bg: #f4f3f0;
+  --color-bg-2: #eae8e3;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0eee9;
+  --color-surface-3: #e2dfd8;
+  --color-line: rgba(20, 21, 24, 0.12);
+  --color-line-2: rgba(20, 21, 24, 0.22);
+  --color-text: #17181a;
+  --color-muted: #63656b;
+  --color-muted-2: #8e9096;
+
+  /* acento escurece no claro para manter contraste sobre papel */
+  --color-accent: #a9662a;
+  --color-accent-forte: #8f5522;
+  --color-accent-texto: #ffffff;
+
+  --color-ok: #2f7a55;
+  --color-warn: #966c1f;
+  --color-erro: #a63f37;
 }
 
 @layer base {
   * {
     border-color: var(--color-line);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+  html[data-tema="claro"] {
+    color-scheme: light;
   }
 
   html,
@@ -41,21 +91,8 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* halo difuso do fundo — o "glow como hierarquia" da referencia AIAF */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: -20% -10% auto -10%;
-    height: 70vh;
-    background:
-      radial-gradient(60% 60% at 20% 0%, rgba(123, 59, 255, 0.16), transparent 70%),
-      radial-gradient(50% 50% at 85% 10%, rgba(255, 45, 111, 0.12), transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
   ::selection {
-    background: rgba(255, 45, 111, 0.3);
+    background: color-mix(in srgb, var(--color-accent) 32%, transparent);
   }
 
   ::-webkit-scrollbar {
@@ -76,28 +113,36 @@
 @layer components {
   .display {
     font-weight: 600;
-    letter-spacing: -0.04em;
-    line-height: 0.98;
+    letter-spacing: -0.025em;
+    line-height: 1.02;
   }
 
+  /* Elevacao declarada uma vez: borda. Somar borda, desfoque e sombra e o
+     "ghost card" — tres sinais de profundidade competindo pelo mesmo trabalho. */
   .surface {
-    background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    background: var(--color-surface);
     border: 1px solid var(--color-line);
-    backdrop-filter: blur(12px);
   }
 
-  .accent-grad {
-    background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
+  /* Sem gradiente de marca e sem texto em gradiente: enfase vem de peso e
+     tamanho. O acento e chapado e aparece so onde significa acao. */
+  .acento-solido {
+    background: var(--color-accent);
+    color: var(--color-accent-texto);
   }
 
-  .accent-text {
-    background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* O alternador de tema mostra o icone do tema oposto. Quem decide qual e o
+     CSS, que ja conhece o estado pela raiz — nao o React. */
+  .so-claro {
+    display: none;
+  }
+  :root[data-tema="claro"] .so-claro {
+    display: block;
+  }
+  :root[data-tema="claro"] .so-escuro {
+    display: none;
   }
 
-  /* moldura dos cards numerados: acende em gradiente no hover */
   .lift {
     transition:
       transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -106,7 +151,11 @@
       background 0.35s;
   }
   .lift:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
+  }
+  /* feedback fisico de aperto, o par do lift */
+  .lift:active {
+    transform: translateY(0);
   }
 }
 
@@ -159,8 +208,19 @@
   }
 }
 
+/* Sem sequencia de entrada por pagina: produto carrega dentro da tarefa, e o
+   usuario nao quer assistir ao carregamento. Fica so como utilitario para o
+   resultado da geracao, que e mudanca de estado de verdade. */
 .animate-fade-up {
-  animation: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .lift {
+    animation: none;
+    transition: none;
+  }
 }
 
 .skeleton {

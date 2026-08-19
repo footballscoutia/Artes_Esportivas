@@ -71,7 +71,7 @@ export function DetalhePedido({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setErro("Não consegui baixar. O link da imagem pode ter expirado — recarregue a página.");
+      setErro("Não consegui baixar. O link da imagem pode ter expirado. Recarregue a página.");
     } finally {
       setBaixando(false);
     }
@@ -92,7 +92,7 @@ export function DetalhePedido({
   }
 
   return (
-    <div className="mx-auto grid max-w-[1400px] animate-fade-up gap-4 lg:grid-cols-[1fr_400px]">
+    <div className="mx-auto grid max-w-[1400px] gap-4 lg:grid-cols-[1fr_400px]">
       <div className="min-w-0">
         <div className="mb-4 flex items-center gap-3">
           <Link
@@ -140,7 +140,7 @@ export function DetalhePedido({
           </div>
 
           <p className="mt-4 text-center text-[12px] text-muted-2">
-            {formato.w}×{formato.h} px · pronto para publicar
+            {formato.w}×{formato.h} px, pronto para publicar
           </p>
         </Card>
       </div>
@@ -151,17 +151,13 @@ export function DetalhePedido({
           <header className="border-b border-line p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-[12px] text-accent">{tipo.numero}</span>
-                  <span className="text-[11px] uppercase tracking-[0.14em] text-muted">
-                    {tipo.titulo}
-                  </span>
-                </div>
-                <h1 className="display mt-1 truncate text-[26px]">{pedido.nome_jogador}</h1>
+                {/* sem eyebrow: o titulo carrega o proprio peso */}
+                <h1 className="display truncate text-[26px]">{pedido.nome_jogador}</h1>
+                <p className="mt-1 text-[12px] text-muted">{tipo.titulo}</p>
               </div>
             </div>
             <p className="mt-2 text-[12px] text-muted">
-              Gerada por {pedido.criado_por_nome} · {formatarData(pedido.criado_em)}
+              Gerada por {pedido.criado_por_nome} em {formatarData(pedido.criado_em)}
             </p>
           </header>
 
@@ -223,7 +219,7 @@ export function DetalhePedido({
               <div className="space-y-4">
                 <p className="text-[12px] leading-relaxed text-muted">
                   O texto vem do modelo, dentro da arte. Se o nome sair errado, o caminho é
-                  gerar outra — e vale ajustar o prompt-mãe em Referências, porque o erro
+                  gerar outra, e vale ajustar o prompt-mãe em Referências, porque o erro
                   tende a se repetir.
                 </p>
                 <ol className="space-y-1.5 text-[12px]">
@@ -233,7 +229,7 @@ export function DetalhePedido({
                         key={c}
                         className="flex items-center gap-3 rounded-field border border-line bg-surface-2/40 px-3.5 py-2.5"
                       >
-                        <span className="font-mono text-[11px] text-muted-2">{i + 1}</span>
+                        <span className="text-[11px] tabular-nums text-muted-2">{i + 1}</span>
                         <span className={i === 0 ? "text-muted" : ""}>{c}</span>
                         {i === 0 && (
                           <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-2">
@@ -274,7 +270,7 @@ export function DetalhePedido({
                           {i === 0 ? "Geração atual" : `Geração ${geracoes.length - i}`}
                         </span>
                         <span className="block truncate text-[11px] text-muted">
-                          {g.motivo_recusa ? `Recusada — ${g.motivo_recusa}` : tempoRelativo(g.criado_em)}
+                          {g.motivo_recusa ? `Recusada: ${g.motivo_recusa}` : tempoRelativo(g.criado_em)}
                         </span>
                       </span>
                       {g.aprovada && <Check size={14} className="shrink-0 text-ok" />}

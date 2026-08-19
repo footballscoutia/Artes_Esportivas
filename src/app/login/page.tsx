@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Campo, Input } from "@/components/ui/Field";
-import { Orb } from "@/components/art/Orb";
+import Image from "next/image";
 import { criarClienteNavegador } from "@/lib/supabase/client";
 
 const CONFIGURADO = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -64,12 +64,21 @@ function Login() {
   return (
     <main className="relative z-10 grid min-h-dvh place-items-center px-6 py-16">
       <div className="w-full max-w-[400px]">
-        <div className="mb-8 grid place-items-center gap-6 text-center">
-          <Orb tamanho={120} />
-          <div>
-            <h1 className="display text-[28px]">Estúdio de Artes</h1>
-            <p className="mt-1.5 text-sm text-muted">Marcio Bittencourt Sports</p>
-          </div>
+        {/*
+          A marca real da agência no lugar do orb. O orb é o estado "gerando",
+          e usá-lo como identidade na entrada dizia que o produto é a IA. O
+          produto é a agência; a IA é a ferramenta.
+        */}
+        <div className="mb-9 grid place-items-center gap-5 text-center">
+          <Image
+            src="/brand/logo.png"
+            alt="Marcio Bittencourt Sports"
+            width={410}
+            height={161}
+            priority
+            className="h-14 w-auto"
+          />
+          <h1 className="display text-[22px]">Estúdio de Artes</h1>
         </div>
 
         <Card className="p-6">
@@ -107,7 +116,7 @@ function Login() {
               </Button>
 
               <p className="text-center text-[11px] leading-relaxed text-muted-2">
-                Uso interno da equipe de marketing. Sem cadastro aberto — o acesso é
+                Uso interno da equipe de marketing. Sem cadastro aberto: o acesso é
                 liberado pela agência.
               </p>
             </form>

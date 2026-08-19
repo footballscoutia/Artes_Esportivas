@@ -157,13 +157,13 @@ export default function NovoPedidoPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-[1400px] animate-fade-up gap-6 lg:grid-cols-[1fr_380px]">
+    <div className="mx-auto grid max-w-[1400px] gap-6 lg:grid-cols-[1fr_380px]">
       {/* coluna do formulário */}
       <div className="min-w-0">
         <div className="mb-6">
           <h1 className="display text-[34px]">Gerar arte</h1>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            Três perguntas. A referência e o prompt saem do banco, já testados — não há nada para
+            Três perguntas. A referência e o prompt saem do banco, já testados. Não há nada para
             escrever aqui.
           </p>
         </div>
@@ -171,7 +171,7 @@ export default function NovoPedidoPage() {
         <Stepper passos={["Tipo do post", "Formato e foto", "Textos"]} atual={passo} aoIr={setPasso} />
 
         {passo === 0 && (
-          <div className="grid animate-fade-up gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {TIPOS.map((t) => {
               const m = TIPO_META[t];
               const ativo = tipo === t;
@@ -186,12 +186,12 @@ export default function NovoPedidoPage() {
                   className={cn(
                     "lift group relative overflow-hidden rounded-card border p-5 text-left",
                     ativo
-                      ? "border-accent/50 bg-gradient-to-br from-accent/22 to-accent-2/12"
-                      : "border-line bg-surface/70 hover:border-line-2 hover:bg-gradient-to-br hover:from-accent/12 hover:to-accent-2/6",
+                      ? "border-accent bg-accent/10"
+                      : "border-line bg-surface hover:border-line-2 hover:bg-surface-2",
                   )}
                 >
-                  <span className="font-mono text-[15px] font-semibold text-accent">{m.numero}</span>
-                  <p className="mt-7 text-[17px] font-medium tracking-tight">{m.titulo}</p>
+                  {/* sem numero: a ordem das categorias nao carrega informacao */}
+                  <p className="text-[16px] font-medium tracking-tight">{m.titulo}</p>
                   <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{m.descricao}</p>
                 </button>
               );
@@ -200,7 +200,7 @@ export default function NovoPedidoPage() {
         )}
 
         {passo === 1 && (
-          <div className="animate-fade-up space-y-6">
+          <div className="space-y-6">
             <div>
               <p className="mb-3 text-[13px] font-medium">Onde essa arte vai ser publicada</p>
               <div className="grid grid-cols-2 gap-3">
@@ -215,7 +215,7 @@ export default function NovoPedidoPage() {
                       className={cn(
                         "lift flex items-center gap-4 rounded-card border p-4 text-left",
                         ativo
-                          ? "border-accent/50 bg-gradient-to-br from-accent/18 to-accent-2/10"
+                          ? "border-accent bg-accent/10"
                           : "border-line bg-surface/70 hover:border-line-2",
                       )}
                     >
@@ -229,7 +229,7 @@ export default function NovoPedidoPage() {
                       <span className="min-w-0">
                         <span className="block text-[15px] font-medium">{m.titulo}</span>
                         <span className="block text-[12px] text-muted">{m.descricao}</span>
-                        <span className="mt-1 block font-mono text-[11px] text-muted-2">
+                        <span className="mt-1 block text-[11px] tabular-nums text-muted-2">
                           {m.w}×{m.h}
                         </span>
                       </span>
@@ -241,7 +241,7 @@ export default function NovoPedidoPage() {
 
             <div>
               <p className="mb-3 text-[13px] font-medium">
-                Foto do jogador <span className="text-muted-2">— obrigatória</span>
+                Foto do jogador <span className="text-muted-2">obrigatória</span>
               </p>
               <Uploader arquivo={foto} aoEscolher={setFoto} />
             </div>
@@ -256,7 +256,7 @@ export default function NovoPedidoPage() {
         )}
 
         {passo === 2 && (
-          <div className="animate-fade-up space-y-5">
+          <div className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <Campo rotulo="Nome do jogador" dica="sai como camada de texto">
                 <Input
@@ -278,7 +278,7 @@ export default function NovoPedidoPage() {
             {meta?.exigeJogo && (
               <div className="space-y-5 rounded-card border border-line bg-surface-2/30 p-5">
                 <p className="text-[12px] leading-relaxed text-muted">
-                  Dados da partida. Sem eles o modelo inventa data e adversário — e data
+                  Dados da partida. Sem eles o modelo inventa data e adversário, e data
                   inventada parece certa, ninguém confere.
                 </p>
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -332,13 +332,13 @@ export default function NovoPedidoPage() {
             )}
 
             <p className="text-[12px] leading-relaxed text-muted-2">
-              O texto vem do modelo, dentro da arte — confira o nome antes de salvar. A logo da
+              O texto vem do modelo, dentro da arte. Confira o nome antes de salvar. A logo da
               agência é a única camada aplicada por cima.
             </p>
 
             {!foto && (
               <p className="rounded-field border border-warn/40 bg-warn/10 p-3 text-[12px]">
-                Falta a foto do atleta. Volte ao passo 2 — sem ela o modelo inventa um jogador.
+                Falta a foto do atleta. Volte ao passo 2: sem ela o modelo inventa um jogador.
               </p>
             )}
 
@@ -391,7 +391,6 @@ export default function NovoPedidoPage() {
               */}
               {!gerando && !resultado && tipo && meta && (
                 <div className="grid place-items-center gap-3 px-8 text-center">
-                  <span className="font-mono text-[22px] text-accent">{meta.numero}</span>
                   <p className="text-[15px] font-medium">{meta.titulo}</p>
                   <p className="text-[12px] leading-relaxed text-muted-2">{meta.descricao}</p>
                 </div>
@@ -443,7 +442,7 @@ export default function NovoPedidoPage() {
                   </BotaoIcone>
                 </div>
                 <p className="pt-1 text-center text-[11px] text-muted-2">
-                  O arquivo aprovado é exatamente este — nada é regerado depois
+                  O arquivo salvo é exatamente este, nada é regerado depois
                 </p>
               </div>
             ) : (

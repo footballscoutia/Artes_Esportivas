@@ -31,7 +31,7 @@ export default async function BibliotecaPage({
   ) as Record<Tipo, number>;
 
   return (
-    <div className="mx-auto max-w-[1400px] animate-fade-up">
+    <div className="mx-auto max-w-[1400px]">
       <TituloSecao
         titulo="Biblioteca"
         descricao={
@@ -50,11 +50,15 @@ export default async function BibliotecaPage({
         <div className="surface grid place-items-center gap-4 rounded-card py-24 text-center">
           <Images size={26} className="text-muted-2" strokeWidth={1.5} />
           <div>
-            <p className="font-medium">{filtro ? "Nada nesta categoria" : "Biblioteca vazia"}</p>
-            <p className="mt-1 text-sm text-muted">
+            <p className="font-medium">
               {filtro
-                ? `Você ainda não gerou nenhuma arte de ${TIPO_META[filtro].titulo.toLowerCase()}.`
-                : "As artes que você gerar ficam guardadas aqui, prontas para baixar."}
+                ? `Nenhuma arte de ${TIPO_META[filtro].titulo.toLowerCase()} ainda`
+                : "Comece pela foto do atleta"}
+            </p>
+            <p className="mt-1.5 max-w-[42ch] text-sm leading-relaxed text-muted">
+              {filtro
+                ? "Gere uma e ela aparece aqui, junto com as outras."
+                : "Você escolhe a categoria, envia a foto e responde três perguntas. A arte fica guardada aqui, pronta para baixar quando precisar."}
             </p>
           </div>
           <BotaoLink href="/novo" variante="sutil" tamanho="sm">

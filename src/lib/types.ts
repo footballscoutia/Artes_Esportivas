@@ -21,6 +21,10 @@ export type Papel = "submete" | "aprova";
 /**
  * Metadados de apresentacao — o usuario escolhe por aqui, nunca escreve prompt.
  *
+ * Sem `numero`: a ordem das categorias nao carrega informacao nenhuma, e
+ * numero de secao decorativo e uma das assinaturas mais reconheciveis de
+ * interface gerada por maquina.
+ *
  * `exigeJogo` liga os campos de partida no /novo. So matchday precisa deles, e
  * sem eles o modelo inventaria data e adversario — que e pior que nome errado,
  * porque data inventada parece certa e ninguem confere.
@@ -28,7 +32,6 @@ export type Papel = "submete" | "aprova";
 export const TIPO_META: Record<
   Tipo,
   {
-    numero: string;
     titulo: string;
     descricao: string;
     rotulo: string;
@@ -37,7 +40,6 @@ export const TIPO_META: Record<
   }
 > = {
   matchday: {
-    numero: "01",
     titulo: "Matchday",
     descricao: "Anúncio do próximo jogo, com adversário e horário",
     rotulo: "MATCHDAY",
@@ -45,7 +47,6 @@ export const TIPO_META: Record<
     exigeJogo: true,
   },
   contratacao: {
-    numero: "02",
     titulo: "Contratação",
     descricao: "Anúncio de chegada do atleta ao novo clube",
     rotulo: "BEM-VINDO",
@@ -53,7 +54,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   gol: {
-    numero: "03",
     titulo: "Gol",
     descricao: "Comemoração de gol marcado na partida",
     rotulo: "GOLAÇO",
@@ -61,7 +61,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   convocado: {
-    numero: "04",
     titulo: "Convocado",
     descricao: "Chamado para a seleção nacional",
     rotulo: "CONVOCADO",
@@ -69,7 +68,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   estreia: {
-    numero: "05",
     titulo: "Estreia",
     descricao: "Primeira partida com a camisa do clube",
     rotulo: "PRIMEIRO JOGO",
@@ -77,7 +75,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   mvp: {
-    numero: "06",
     titulo: "Craque do jogo",
     descricao: "Destaque da partida, melhor em campo",
     rotulo: "MELHOR EM CAMPO",
@@ -85,7 +82,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   aniversario: {
-    numero: "07",
     titulo: "Aniversário",
     descricao: "Felicitação de aniversário do atleta",
     rotulo: "PARABÉNS",
@@ -93,7 +89,6 @@ export const TIPO_META: Record<
     exigeJogo: false,
   },
   frase: {
-    numero: "08",
     titulo: "Frase",
     descricao: "Declaração do atleta em destaque na arte",
     rotulo: "EM SUAS PALAVRAS",
@@ -126,7 +121,7 @@ export const STATUS_META: Record<Status, { titulo: string; cor: string }> = {
   rascunho: { titulo: "Rascunho", cor: "var(--color-muted)" },
   em_revisao: { titulo: "Em revisão", cor: "var(--color-warn)" },
   aprovado: { titulo: "Aprovado", cor: "var(--color-ok)" },
-  publicado: { titulo: "Publicado", cor: "var(--color-accent-2)" },
+  publicado: { titulo: "Publicado", cor: "var(--color-accent)" },
 };
 
 export type Referencia = {
