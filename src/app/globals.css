@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #080b12;
+  --color-bg-2: #0b101a;
+  --color-surface: #111725;
+  --color-surface-2: #1a2133;
+  --color-surface-3: #222b40;
+  --color-line: rgba(255, 255, 255, 0.07);
+  --color-line-2: rgba(255, 255, 255, 0.14);
+  --color-text: #f4f6fb;
+  --color-muted: #8a93a8;
+  --color-muted-2: #5d6679;
+  --color-accent: #ff2d6f;
+  --color-accent-2: #7b3bff;
+  --color-ok: #2fd08a;
+  --color-warn: #ffb020;
+
+  --radius-field: 16px;
+  --radius-card: 24px;
+  --radius-panel: 28px;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* halo difuso do fundo — o "glow como hierarquia" da referencia AIAF */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20% -10% auto -10%;
+    height: 70vh;
+    background:
+      radial-gradient(60% 60% at 20% 0%, rgba(123, 59, 255, 0.16), transparent 70%),
+      radial-gradient(50% 50% at 85% 10%, rgba(255, 45, 111, 0.12), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  ::selection {
+    background: rgba(255, 45, 111, 0.3);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .display {
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+  }
+
+  .surface {
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    border: 1px solid var(--color-line);
+    backdrop-filter: blur(12px);
+  }
+
+  .accent-grad {
+    background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
+  }
+
+  .accent-text {
+    background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* moldura dos cards numerados: acende em gradiente no hover */
+  .lift {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s,
+      border-color 0.35s,
+      background 0.35s;
+  }
+  .lift:hover {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+@keyframes wobble {
+  0%,
+  100% {
+    border-radius: 48% 52% 55% 45% / 50% 46% 54% 50%;
+  }
+  33% {
+    border-radius: 55% 45% 48% 52% / 46% 54% 46% 54%;
+  }
+  66% {
+    border-radius: 45% 55% 52% 48% / 54% 48% 52% 46%;
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: 200% 0;
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 0%,
+    var(--color-surface-3) 40%,
+    var(--color-surface-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}

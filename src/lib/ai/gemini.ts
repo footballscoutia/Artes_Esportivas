@@ -1,0 +1,89 @@
+import { GoogleGenAI } from "@google/genai";
+import { GenError, type GenInput, type GenResult, type ImageGenProvider } from "./provider";
+
+/** Preco por imagem, por faixa de resolucao (US$). Referencia do contexto do projeto. */
+const CUSTO_POR_RESOLUCAO = [
+  { ate: 512, usd: 0.045 },
+  { ate: 1024, usd: 0.067 },
+  { ate: 2048, usd: 0.1 },
+  { ate: Infinity, usd: 0.15 },
+];
+
+function custoEstimado(largura: number, altura: number) {
+  const lado = Math.max(largura, altura);
+  return CUSTO_POR_RESOLUCAO.find((f) => lado <= f.ate)!.usd;
+}
+
+/**
+ * Nano Banana 2 via Gemini API.
+ *
+ * Exige projeto com billing ativo: no tier gratuito o Google usa o que sobe para
+ * treinar modelo e revisor humano pode ver o arquivo — contratacao nao anunciada
+ * e informacao confidencial.
+ */
+export class GeminiProvider implements ImageGenProvider {
+  readonly nome = "gemini";
+  readonly modelo: string;
+  private readonly client: GoogleGenAI;
+
+  constructor(apiKey: string, modelo = "gemini-3.1-flash-image") {
+    if (!apiKey) throw new GenError("GEMINI_API_KEY ausente no .env");
+    this.client = new GoogleGenAI({ apiKey });
+    this.modelo = modelo;
+  }
+
+  async gerar({ referencia, foto, prompt, largura, altura }: GenInput): Promise<GenResult> {
+    const inicio = Date.now();
+
+    const partes: Array<Record<string, unknown>> = [];
+    if (referencia) {
+      partes.push({ text: "Imagem 1 — referencia de estilo da agencia:" });
+      partes.push({ inlineData: { mimeType: "image/png", data: referencia.toString("base64") } });
+    }
+    if (foto) {
+      partes.push({ text: "Imagem 2 — foto do atleta, preservar a identidade dele:" });
+      partes.push({ inlineData: { mimeType: "image/jpeg", data: foto.toString("base64") } });
+    }
+    partes.push({ text: prompt });
+
+    try {
+      const resposta = await this.client.models.generateContent({
+        model: this.modelo,
+        contents: [{ role: "user", parts: partes }],
+        config: {
+          responseModalities: ["IMAGE"],
+          imageConfig: { aspectRatio: proporcao(largura, altura) },
+        },
+      });
+
+      const dados = resposta.candidates?.[0]?.content?.parts?.find(
+        (p) => p.inlineData?.data,
+      )?.inlineData;
+
+      if (!dados?.data) {
+        throw new GenError(
+          "O modelo respondeu sem imagem. Pode ter sido bloqueio de conteúdo — confira o prompt-mãe da referência.",
+        );
+      }
+
+      return {
+        imagem: Buffer.from(dados.data, "base64"),
+        mime: dados.mimeType ?? "image/png",
+        modelo: this.modelo,
+        custoUsd: custoEstimado(largura, altura),
+        duracaoMs: Date.now() - inicio,
+      };
+    } catch (e) {
+      if (e instanceof GenError) throw e;
+      throw new GenError("Falha na chamada ao Gemini", e);
+    }
+  }
+}
+
+function proporcao(largura: number, altura: number) {
+  const r = largura / altura;
+  if (Math.abs(r - 4 / 5) < 0.02) return "4:5";
+  if (Math.abs(r - 9 / 16) < 0.02) return "9:16";
+  if (Math.abs(r - 1) < 0.02) return "1:1";
+  return "4:5";
+}
