@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -21,6 +22,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { Orb } from "@/components/art/Orb";
 import { FORMATO_META, TIPO_META, type Geracao, type Pedido } from "@/lib/types";
 import { cn, formatarData, tempoRelativo } from "@/lib/utils";
+import { aprovarPedido, gerarOutra, recusarGeracao, regravarCamadas } from "@/lib/acoes";
 
 type Aba = "detalhes" | "camadas" | "historico";
 
@@ -36,9 +38,14 @@ export function DetalhePedido({
   const tipo = TIPO_META[pedido.tipo];
   const formato = FORMATO_META[pedido.formato];
 
+  const router = useRouter();
+  const [pendente, comTransicao] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>("detalhes");
   const [selecionada, setSelecionada] = useState<Geracao | null>(geracoes[0] ?? null);
-  const [status, setStatus] = useState(pedido.status);
+  // o status vem do servidor a cada refresh; guardar copia local so criaria
+  // divergencia entre o que a tela mostra e o que o banco tem
+  const status = pedido.status;
   const [recusando, setRecusando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [gerando, setGerando] = useState(false);
@@ -46,13 +53,34 @@ export function DetalhePedido({
   const [frase, setFrase] = useState(pedido.frase ?? "");
   const [aviso, setAviso] = useState<string | null>(null);
 
-  async function gerarOutra() {
-    setGerando(true);
+  /** Envolve toda acao: limpa o aviso, mostra o erro se vier, e recarrega os dados. */
+  function executar(acao: () => Promise<{ ok: true } | { ok: false; erro: string }>, sucesso: string) {
+    setErro(null);
     setAviso(null);
-    // fase 3: POST /api/gerar com o mesmo pedido e grava nova linha em `geracoes`
-    await new Promise((r) => setTimeout(r, 2800));
+    comTransicao(async () => {
+      const r = await acao();
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setAviso(sucesso);
+      // os dados vem do servidor; sem refresh a tela mostraria o estado velho
+      router.refresh();
+    });
+  }
+
+  async function novaGeracao() {
+    setGerando(true);
+    setErro(null);
+    setAviso(null);
+    const r = await gerarOutra(pedido.id);
     setGerando(false);
-    setAviso("Nova geração pronta. A anterior fica no histórico com o motivo da recusa.");
+    if (!r.ok) {
+      setErro(r.erro);
+      return;
+    }
+    setAviso("Nova geração pronta. A anterior fica no histórico, com o motivo da recusa.");
+    router.refresh();
   }
 
   return (
@@ -219,10 +247,17 @@ export function DetalhePedido({
                 <Button
                   variante="sutil"
                   className="w-full"
-                  onClick={() => setAviso("Camadas regravadas sobre o mesmo fundo.")}
+                  disabled={pendente || !selecionada}
+                  onClick={() =>
+                    selecionada &&
+                    executar(
+                      () => regravarCamadas(pedido.id, selecionada.id, nome, frase || null),
+                      "Camadas regravadas sobre o mesmo fundo — nenhuma geração gasta.",
+                    )
+                  }
                 >
                   <Layers size={15} />
-                  Regravar camadas
+                  {pendente ? "Regravando…" : "Regravar camadas"}
                 </Button>
               </div>
             )}
@@ -266,6 +301,11 @@ export function DetalhePedido({
           </div>
 
           <footer className="space-y-2 border-t border-line p-5">
+            {erro && (
+              <p className="mb-1 rounded-field border border-accent/40 bg-accent/10 p-3 text-[12px]">
+                {erro}
+              </p>
+            )}
             {aviso && (
               <p className="mb-1 rounded-field border border-ok/30 bg-ok/10 p-3 text-[12px] text-ok">
                 {aviso}
@@ -287,11 +327,16 @@ export function DetalhePedido({
                   <Button
                     variante="perigo"
                     className="flex-1"
-                    disabled={motivo.trim().length < 4}
+                    disabled={motivo.trim().length < 4 || pendente}
                     onClick={() => {
+                      if (!selecionada) return;
+                      const texto = motivo.trim();
+                      executar(
+                        () => recusarGeracao(pedido.id, selecionada.id, texto),
+                        "Recusa registrada. Cinco recusas do mesmo tipo apontam para a referência, não para a IA.",
+                      );
                       setRecusando(false);
                       setMotivo("");
-                      setAviso("Recusa registrada. Cinco recusas do mesmo tipo apontam para a referência, não para a IA.");
                     }}
                   >
                     Registrar recusa
@@ -308,12 +353,22 @@ export function DetalhePedido({
               </Button>
             ) : (
               <>
-                <Button className="w-full" onClick={() => setStatus("aprovado")}>
+                <Button
+                  className="w-full"
+                  disabled={pendente || !selecionada}
+                  onClick={() =>
+                    selecionada &&
+                    executar(
+                      () => aprovarPedido(pedido.id, selecionada.id),
+                      "Arte aprovada. O arquivo aprovado é exatamente este.",
+                    )
+                  }
+                >
                   <Check size={16} />
                   Aprovar arte
                 </Button>
                 <div className="flex gap-2">
-                  <Button variante="sutil" className="flex-1" disabled={gerando} onClick={gerarOutra}>
+                  <Button variante="sutil" className="flex-1" disabled={gerando || pendente} onClick={novaGeracao}>
                     <RefreshCw size={15} className={gerando ? "animate-spin" : ""} />
                     {gerando ? "Gerando…" : "Gerar outra"}
                   </Button>

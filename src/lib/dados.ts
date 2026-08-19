@@ -1,6 +1,7 @@
 import "server-only";
 import { criarClienteServidor } from "./supabase/server";
 import * as mock from "./mock";
+import { BALDE, assinar, assinarVarios } from "./storage";
 import type { Formato, Geracao, Pedido, Referencia, Tipo, Usuario } from "./types";
 
 /**
@@ -89,7 +90,11 @@ export async function geracoesDoPedido(id: string): Promise<Geracao[]> {
     .order("criado_em", { ascending: false });
 
   estourar("listar as gerações", error);
-  return (data ?? []) as Geracao[];
+
+  // o banco guarda o caminho no bucket; a tela precisa de URL que o <img> abra
+  const linhas = (data ?? []) as Geracao[];
+  const urls = await assinarVarios(BALDE.geracoes, linhas.map((g) => g.imagem_url));
+  return linhas.map((g, i) => ({ ...g, imagem_url: urls[i] }));
 }
 
 /**
@@ -117,11 +122,14 @@ export async function capasDosPedidos(ids: string[]): Promise<Record<string, str
 
   estourar("buscar as capas", error);
 
-  const capas: Record<string, string | null> = {};
+  const maisRecente: Record<string, string | null> = {};
   for (const g of data ?? []) {
-    if (!(g.pedido_id in capas)) capas[g.pedido_id] = g.imagem_url;
+    if (!(g.pedido_id in maisRecente)) maisRecente[g.pedido_id] = g.imagem_url;
   }
-  return capas;
+
+  const chaves = Object.keys(maisRecente);
+  const urls = await assinarVarios(BALDE.geracoes, chaves.map((k) => maisRecente[k]));
+  return Object.fromEntries(chaves.map((k, i) => [k, urls[i]]));
 }
 
 /**
@@ -145,7 +153,9 @@ export async function buscarReferencia(
     .maybeSingle();
 
   estourar("buscar a referência", error);
-  return (data as Referencia) ?? null;
+  if (!data) return null;
+  const r = data as Referencia;
+  return { ...r, imagem_url: await assinar(BALDE.referencias, r.imagem_url) };
 }
 
 export async function listarReferencias(): Promise<Referencia[]> {
@@ -159,7 +169,9 @@ export async function listarReferencias(): Promise<Referencia[]> {
     .order("formato");
 
   estourar("listar as referências", error);
-  return (data ?? []) as Referencia[];
+  const linhas = (data ?? []) as Referencia[];
+  const urls = await assinarVarios(BALDE.referencias, linhas.map((r) => r.imagem_url));
+  return linhas.map((r, i) => ({ ...r, imagem_url: urls[i] }));
 }
 
 /** Quem esta logado. `null` quando nao ha sessao — o proxy ja tratou disso. */

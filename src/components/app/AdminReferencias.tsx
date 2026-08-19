@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CircleCheck, CircleSlash, ImagePlus, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -9,18 +10,23 @@ import { Campo, Textarea } from "@/components/ui/Field";
 import { Drawer } from "@/components/ui/Drawer";
 import { FORMATOS, FORMATO_META, TIPOS, TIPO_META, type Referencia } from "@/lib/types";
 import { cn, formatarData } from "@/lib/utils";
+import { salvarPromptMae } from "@/lib/acoes";
 
 export function AdminReferencias({ referencias }: { referencias: Referencia[] }) {
+  const router = useRouter();
+  const [pendente, comTransicao] = useTransition();
   const [aberta, setAberta] = useState<Referencia | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [salvo, setSalvo] = useState(false);
+  const [salvo, setSalvo] = useState<number | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
   const ativas = referencias.filter((r) => r.ativa).length;
 
   function abrir(r: Referencia) {
     setAberta(r);
     setPrompt(r.prompt_mae);
-    setSalvo(false);
+    setSalvo(null);
+    setErro(null);
   }
 
   return (
@@ -126,16 +132,34 @@ export function AdminReferencias({ referencias }: { referencias: Referencia[] })
           <div className="space-y-2">
             <Button
               className="w-full"
-              disabled={!aberta || prompt === aberta.prompt_mae}
-              onClick={() => setSalvo(true)}
+              disabled={!aberta || prompt === aberta.prompt_mae || pendente}
+              onClick={() => {
+                if (!aberta) return;
+                const anterior = aberta.versao;
+                setErro(null);
+                comTransicao(async () => {
+                  const r = await salvarPromptMae(aberta.id, prompt);
+                  if (!r.ok) {
+                    setErro(r.erro);
+                    return;
+                  }
+                  setSalvo(anterior);
+                  // a lista vem do servidor; sem refresh a versao na tela fica velha
+                  router.refresh();
+                });
+              }}
             >
               <Save size={15} />
-              Salvar como versão {aberta ? aberta.versao + 1 : ""}
+              {pendente ? "Salvando…" : `Salvar como versão ${aberta ? aberta.versao + 1 : ""}`}
             </Button>
-            {salvo && (
+            {erro && (
+              <p className="rounded-field border border-accent/40 bg-accent/10 p-3 text-center text-[11px]">
+                {erro}
+              </p>
+            )}
+            {salvo !== null && (
               <p className="text-center text-[11px] text-ok">
-                Nova versão registrada — as artes antigas continuam apontando para a v
-                {aberta?.versao}
+                Nova versão registrada — as artes antigas continuam apontando para a v{salvo}
               </p>
             )}
           </div>

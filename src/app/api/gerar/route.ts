@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
-import { pegarProvider, providerAtivo, GenError } from "@/lib/ai";
-import { compor } from "@/lib/compose";
-import { buscarReferencia, usuarioAtual } from "@/lib/dados";
-import { FORMATO_META, TIPO_META, TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
+import { GenError } from "@/lib/ai";
+import { usuarioAtual } from "@/lib/dados";
+import { produzirArte, SemReferencia } from "@/lib/gerar";
+import { BALDE, assinar, subir } from "@/lib/storage";
+import { TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -18,9 +17,10 @@ const Corpo = z.object({
   frase: z.string().max(180).optional().nullable(),
 });
 
-/** Pede ao modelo uma imagem maior que o formato final — a sobra vira margem do corte. */
-const FOLGA = 1.18;
-
+/**
+ * Previa: gera a arte e devolve para o /novo mostrar, ANTES de o pedido existir.
+ * Quem grava no banco e a acao `criarPedido`, no "Enviar para aprovacao".
+ */
 export async function POST(req: Request) {
   /**
    * Esta rota fica FORA do matcher do proxy — ela responde a fetch, e um 307
@@ -60,15 +60,6 @@ export async function POST(req: Request) {
   }
 
   const { tipo, formato, nome, clube, frase } = parsed.data;
-  const alvo = FORMATO_META[formato as Formato];
-
-  const referencia = await buscarReferencia(tipo as Tipo, formato as Formato);
-  if (!referencia || !referencia.ativa) {
-    return NextResponse.json(
-      { erro: `Não há referência ativa para ${tipo} em ${formato}. Cadastre em Referências.` },
-      { status: 409 },
-    );
-  }
 
   const arquivoFoto = form.get("foto");
   const foto =
@@ -76,46 +67,29 @@ export async function POST(req: Request) {
       ? Buffer.from(await arquivoFoto.arrayBuffer())
       : null;
 
-  const refBuffer = referencia.imagem_url?.startsWith("/")
-    ? await readFile(path.join(process.cwd(), "public", referencia.imagem_url)).catch(() => null)
-    : null;
-
-  const sufixo = formato === "feed_4x5" ? "feed" : "story";
-
   try {
-    const provider = pegarProvider(`/mock/fundo-${tipo}-${sufixo}.png`);
-
-    const gerado = await provider.gerar({
-      referencia: refBuffer,
-      foto,
-      prompt: referencia.prompt_mae,
-      largura: Math.round(alvo.w * FOLGA),
-      altura: Math.round(alvo.h * FOLGA),
-    });
-
-    // camadas de codigo por cima do que a IA devolveu
-    const final = await compor({
-      fundo: gerado.imagem,
-      nome,
-      clube,
-      frase,
-      rotulo: TIPO_META[tipo as Tipo].rotulo,
-      formato: formato as Formato,
-    });
+    /**
+     * A foto sobe mesmo que o usuario desista de enviar para aprovacao. O custo
+     * e arquivo orfao; a alternativa seria carregar o binario de volta pelo
+     * navegador na hora de salvar, o que e bem pior.
+     */
+    const [arte, foto_path] = await Promise.all([
+      produzirArte({ tipo: tipo as Tipo, formato: formato as Formato, nome, clube, frase, foto }),
+      foto
+        ? subir(BALDE.fotos, foto, arquivoFoto instanceof File ? arquivoFoto.type : "image/jpeg")
+        : null,
+    ]);
 
     return NextResponse.json({
-      // fase 1 devolve a imagem embutida; na fase 2 vira URL do Supabase Storage
-      imagem: `data:image/png;base64,${final.toString("base64")}`,
-      largura: alvo.w,
-      altura: alvo.h,
-      modelo: gerado.modelo,
-      provider: providerAtivo(),
-      custo_usd: gerado.custoUsd,
-      duracao_ms: gerado.duracaoMs,
-      referencia_id: referencia.id,
-      referencia_versao: referencia.versao,
+      // URL assinada, com validade curta — os buckets sao privados
+      imagem: await assinar(BALDE.geracoes, arte.arte_path),
+      foto_path,
+      ...arte,
     });
   } catch (e) {
+    if (e instanceof SemReferencia) {
+      return NextResponse.json({ erro: e.message }, { status: 409 });
+    }
     const msg =
       e instanceof GenError
         ? e.message

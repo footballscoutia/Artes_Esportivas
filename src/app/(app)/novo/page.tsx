@@ -16,6 +16,7 @@ import { Button, BotaoIcone } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Campo, Input, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
+import { criarPedido } from "@/lib/acoes";
 import { Uploader } from "@/components/app/Uploader";
 import { Orb, OrbMini } from "@/components/art/Orb";
 import { FORMATOS, FORMATO_META, TIPOS, TIPO_META, type Formato, type Tipo } from "@/lib/types";
@@ -23,6 +24,9 @@ import { cn } from "@/lib/utils";
 
 type Resultado = {
   imagem: string;
+  arte_path: string;
+  fundo_path: string;
+  foto_path: string | null;
   modelo: string;
   provider: string;
   custo_usd: number;
@@ -52,6 +56,7 @@ export default function NovoPedidoPage() {
   const [etapa, setEtapa] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
 
   const meta = tipo ? TIPO_META[tipo] : null;
@@ -89,6 +94,37 @@ export default function NovoPedidoPage() {
     } finally {
       setGerando(false);
     }
+  }
+
+  /** So aqui o pedido passa a existir no banco. Gerar sozinho nao grava nada. */
+  async function enviarParaAprovacao() {
+    if (!resultado || !tipo) return;
+    setErro(null);
+    setSalvando(true);
+
+    const r = await criarPedido({
+      tipo,
+      formato,
+      nome: nome.trim(),
+      clube: clube.trim() || null,
+      frase: frase.trim() || null,
+      referencia_id: resultado.referencia_id,
+      referencia_versao: resultado.referencia_versao,
+      arte_path: resultado.arte_path,
+      fundo_path: resultado.fundo_path,
+      foto_path: resultado.foto_path,
+      modelo: resultado.modelo,
+      provider: resultado.provider,
+      custo_usd: resultado.custo_usd,
+      duracao_ms: Math.round(resultado.duracao_ms),
+    });
+
+    if (!r.ok) {
+      setErro(r.erro);
+      setSalvando(false);
+      return;
+    }
+    router.push(`/pedido/${r.dados.id}`);
   }
 
   function baixar() {
@@ -315,9 +351,9 @@ export default function NovoPedidoPage() {
 
             {resultado ? (
               <div className="mt-5 space-y-2">
-                <Button className="w-full" onClick={() => router.push("/fila")}>
+                <Button className="w-full" disabled={salvando} onClick={enviarParaAprovacao}>
                   <Send size={15} />
-                  Enviar para aprovação
+                  {salvando ? "Enviando…" : "Enviar para aprovação"}
                 </Button>
                 <div className="flex gap-2">
                   <Button variante="sutil" className="flex-1" onClick={gerar}>
