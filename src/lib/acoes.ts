@@ -11,10 +11,11 @@ import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 /**
  * Escrita. Tudo que muda o banco passa por aqui.
  *
- * As gravacoes de `pedidos` usam o cliente de SESSAO, de proposito: quem decide
- * se alguem pode aprovar e a RLS, nao um `if` em TypeScript. `pode_aprovar()`
- * vive no banco e vale para qualquer caminho — inclusive um que a gente esqueca
- * de proteger aqui.
+ * As gravacoes usam o cliente de SESSAO, de proposito: quem decide o que cada
+ * papel pode fazer e a RLS, nao um `if` em TypeScript. `pode_aprovar()` vive no
+ * banco e vale para qualquer caminho — inclusive um que a gente esqueca de
+ * proteger aqui. Update valido que nao volta linha nenhuma significa que a
+ * policy barrou, e isso vira mensagem em vez de sucesso silencioso.
  *
  * `geracoes` e a excecao: o esquema nao da insert para `authenticated`, porque
  * geracao e registro do servidor depois que o modelo responde. Ali entra o
@@ -33,6 +34,14 @@ const Novo = z.object({
   nome: z.string().min(2).max(60),
   clube: z.string().max(60).nullish(),
   frase: z.string().max(180).nullish(),
+  adversario: z.string().max(60).nullish(),
+  data_jogo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullish(),
+  hora_jogo: z.string().max(20).nullish(),
+  campeonato: z.string().max(80).nullish(),
+  estadio: z.string().max(80).nullish(),
   referencia_id: z.string().uuid(),
   referencia_versao: z.number().int(),
   arte_path: z.string().min(1),
@@ -44,7 +53,7 @@ const Novo = z.object({
   duracao_ms: z.number().int().nullish(),
 });
 
-/** Grava o pedido e a primeira geracao. E o "Enviar para aprovacao" do /novo. */
+/** Grava o pedido e a primeira geracao. E o "Salvar na biblioteca" do /novo. */
 export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: string }>> {
   const p = Novo.safeParse(entrada);
   if (!p.success) return falha("Dados do pedido inválidos.");
@@ -61,6 +70,11 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
       nome_jogador: p.data.nome,
       clube: p.data.clube || null,
       frase: p.data.frase || null,
+      adversario: p.data.adversario || null,
+      data_jogo: p.data.data_jogo || null,
+      hora_jogo: p.data.hora_jogo || null,
+      campeonato: p.data.campeonato || null,
+      estadio: p.data.estadio || null,
       foto_jogador_url: p.data.foto_path || null,
       referencia_id: p.data.referencia_id,
       referencia_versao: p.data.referencia_versao,
@@ -88,66 +102,8 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
     return falha(`Não consegui salvar a geração: ${erroGeracao.message}`);
   }
 
-  revalidatePath("/fila");
+  revalidatePath("/biblioteca");
   return { ok: true, dados: { id: pedido.id } };
-}
-
-export async function aprovarPedido(pedidoId: string, geracaoId: string): Promise<Resultado> {
-  const usuario = await usuarioAtual();
-  if (!usuario) return falha("Sessão expirada. Entre de novo.");
-
-  const sb = await criarClienteServidor();
-  const { data, error } = await sb
-    .from("pedidos")
-    .update({
-      status: "aprovado",
-      aprovado_por: usuario.id,
-      aprovado_em: new Date().toISOString(),
-    })
-    .eq("id", pedidoId)
-    .select("id");
-
-  if (error) return falha(`Não consegui aprovar: ${error.message}`);
-  // update valido que nao volta linha nenhuma = a RLS barrou, nao o SQL
-  if (!data?.length) return falha("Seu perfil não tem permissão para aprovar.");
-
-  await sb.from("geracoes").update({ aprovada: true, motivo_recusa: null }).eq("id", geracaoId);
-
-  revalidatePath("/fila");
-  revalidatePath(`/pedido/${pedidoId}`);
-  return { ok: true, dados: undefined };
-}
-
-/**
- * A recusa fica gravada na geracao, nao apagada.
- *
- * Cinco recusas de "gol" pelo mesmo motivo apontam para o prompt-mae, nao para
- * a IA. Esse historico e o unico diagnostico que a agencia vai ter.
- */
-export async function recusarGeracao(
-  pedidoId: string,
-  geracaoId: string,
-  motivo: string,
-): Promise<Resultado> {
-  if (motivo.trim().length < 4) {
-    return falha("Escreva o motivo — ele vira diagnóstico da referência.");
-  }
-
-  const usuario = await usuarioAtual();
-  if (!usuario) return falha("Sessão expirada. Entre de novo.");
-
-  const sb = await criarClienteServidor();
-  const { data, error } = await sb
-    .from("geracoes")
-    .update({ aprovada: false, motivo_recusa: motivo.trim() })
-    .eq("id", geracaoId)
-    .select("id");
-
-  if (error) return falha(`Não consegui registrar a recusa: ${error.message}`);
-  if (!data?.length) return falha("Seu perfil não tem permissão para recusar.");
-
-  revalidatePath(`/pedido/${pedidoId}`);
-  return { ok: true, dados: undefined };
 }
 
 /**
@@ -164,7 +120,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
   const sb = await criarClienteServidor();
   const { data: pedido } = await sb
     .from("pedidos")
-    .select("tipo, formato, nome_jogador, clube, frase")
+    .select("tipo, formato, nome_jogador, clube, frase, adversario, data_jogo, hora_jogo, campeonato, estadio")
     .eq("id", pedidoId)
     .maybeSingle();
 
@@ -177,6 +133,11 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       nome: pedido.nome_jogador,
       clube: pedido.clube,
       frase: pedido.frase,
+      adversario: pedido.adversario,
+      data_jogo: pedido.data_jogo,
+      hora_jogo: pedido.hora_jogo,
+      campeonato: pedido.campeonato,
+      estadio: pedido.estadio,
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
@@ -192,7 +153,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);
 
     revalidatePath(`/pedido/${pedidoId}`);
-    revalidatePath("/fila");
+    revalidatePath("/biblioteca");
     return { ok: true, dados: undefined };
   } catch (e) {
     if (e instanceof SemReferencia) return falha(e.message);

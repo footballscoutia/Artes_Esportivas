@@ -15,6 +15,15 @@ const Corpo = z.object({
   nome: z.string().min(2).max(60),
   clube: z.string().max(60).optional().nullable(),
   frase: z.string().max(180).optional().nullable(),
+  adversario: z.string().max(60).optional().nullable(),
+  data_jogo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
+  hora_jogo: z.string().max(20).optional().nullable(),
+  campeonato: z.string().max(80).optional().nullable(),
+  estadio: z.string().max(80).optional().nullable(),
 });
 
 /**
@@ -50,6 +59,11 @@ export async function POST(req: Request) {
     nome: form.get("nome"),
     clube: form.get("clube") || null,
     frase: form.get("frase") || null,
+    adversario: form.get("adversario") || null,
+    data_jogo: form.get("data_jogo") || null,
+    hora_jogo: form.get("hora_jogo") || null,
+    campeonato: form.get("campeonato") || null,
+    estadio: form.get("estadio") || null,
   });
 
   if (!parsed.success) {
@@ -59,7 +73,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { tipo, formato, nome, clube, frase } = parsed.data;
+  const { tipo, formato, nome, clube, frase, ...jogo } = parsed.data;
 
   const arquivoFoto = form.get("foto");
   const foto =
@@ -74,7 +88,7 @@ export async function POST(req: Request) {
      * navegador na hora de salvar, o que e bem pior.
      */
     const [arte, foto_path] = await Promise.all([
-      produzirArte({ tipo: tipo as Tipo, formato: formato as Formato, nome, clube, frase, foto }),
+      produzirArte({ tipo: tipo as Tipo, formato: formato as Formato, nome, clube, frase, foto, ...jogo }),
       foto
         ? subir(BALDE.fotos, foto, arquivoFoto instanceof File ? arquivoFoto.type : "image/jpeg")
         : null,

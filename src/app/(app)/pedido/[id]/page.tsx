@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { buscarPedido, geracoesDoPedido, buscarReferencia } from "@/lib/dados";
+import { buscarPedido, geracoesDoPedido, buscarReferenciaPorId } from "@/lib/dados";
 import { DetalhePedido } from "@/components/app/DetalhePedido";
 
 export default async function PedidoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -7,10 +7,10 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const pedido = await buscarPedido(id);
   if (!pedido) notFound();
 
-  // independentes entre si — nao ha motivo para esperar uma antes da outra
+  // a referencia que ESTA arte usou, guardada no pedido — nao um sorteio novo
   const [geracoes, referencia] = await Promise.all([
     geracoesDoPedido(id),
-    buscarReferencia(pedido.tipo, pedido.formato),
+    buscarReferenciaPorId(pedido.referencia_id),
   ]);
 
   return (

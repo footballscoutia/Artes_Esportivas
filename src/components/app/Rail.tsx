@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Plus, Search, Bell, Clock, Download, CircleHelp } from "lucide-react";
+import { Plus, Bell, Images, Layers, CircleHelp } from "lucide-react";
 import { BotaoIcone } from "@/components/ui/Button";
 
 /**
@@ -16,14 +16,11 @@ export function Rail() {
       <BotaoIcone titulo="Gerar arte" ativo onClick={() => router.push("/novo")}>
         <Plus size={18} strokeWidth={2} />
       </BotaoIcone>
-      <BotaoIcone titulo="Buscar pedido" onClick={() => router.push("/fila")}>
-        <Search size={17} strokeWidth={1.75} />
+      <BotaoIcone titulo="Biblioteca" onClick={() => router.push("/biblioteca")}>
+        <Images size={17} strokeWidth={1.75} />
       </BotaoIcone>
-      <BotaoIcone titulo="Aguardando aprovação" onClick={() => router.push("/fila?f=em_revisao")}>
-        <Clock size={17} strokeWidth={1.75} />
-      </BotaoIcone>
-      <BotaoIcone titulo="Aprovadas" onClick={() => router.push("/fila?f=aprovado")}>
-        <Download size={17} strokeWidth={1.75} />
+      <BotaoIcone titulo="Referências" onClick={() => router.push("/admin/referencias")}>
+        <Layers size={17} strokeWidth={1.75} />
       </BotaoIcone>
 
       <span className="my-2 h-px w-6 bg-line" />

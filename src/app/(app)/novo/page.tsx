@@ -51,6 +51,13 @@ export default function NovoPedidoPage() {
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
+  const [jogo, setJogo] = useState({
+    adversario: "",
+    data_jogo: "",
+    hora_jogo: "",
+    campeonato: "",
+    estadio: "",
+  });
 
   const [gerando, setGerando] = useState(false);
   const [etapa, setEtapa] = useState(0);
@@ -60,7 +67,11 @@ export default function NovoPedidoPage() {
   const painel = useRef<HTMLDivElement>(null);
 
   const meta = tipo ? TIPO_META[tipo] : null;
-  const podeGerar = Boolean(tipo && nome.trim().length > 1 && (!meta?.exigeFrase || frase.trim()));
+  // matchday sem adversario e data faria o modelo inventar a partida
+  const jogoOk = !meta?.exigeJogo || Boolean(jogo.adversario.trim() && jogo.data_jogo);
+  const podeGerar = Boolean(
+    tipo && nome.trim().length > 1 && (!meta?.exigeFrase || frase.trim()) && jogoOk,
+  );
 
   useEffect(() => {
     if (!gerando) return;
@@ -82,6 +93,7 @@ export default function NovoPedidoPage() {
     body.set("nome", nome.trim());
     body.set("clube", clube.trim());
     body.set("frase", frase.trim());
+    for (const [k, v] of Object.entries(jogo)) if (v.trim()) body.set(k, v.trim());
     if (foto) body.set("foto", foto);
 
     try {
@@ -97,7 +109,7 @@ export default function NovoPedidoPage() {
   }
 
   /** So aqui o pedido passa a existir no banco. Gerar sozinho nao grava nada. */
-  async function enviarParaAprovacao() {
+  async function salvarNaBiblioteca() {
     if (!resultado || !tipo) return;
     setErro(null);
     setSalvando(true);
@@ -108,6 +120,11 @@ export default function NovoPedidoPage() {
       nome: nome.trim(),
       clube: clube.trim() || null,
       frase: frase.trim() || null,
+      adversario: jogo.adversario.trim() || null,
+      data_jogo: jogo.data_jogo || null,
+      hora_jogo: jogo.hora_jogo.trim() || null,
+      campeonato: jogo.campeonato.trim() || null,
+      estadio: jogo.estadio.trim() || null,
       referencia_id: resultado.referencia_id,
       referencia_versao: resultado.referencia_versao,
       arte_path: resultado.arte_path,
@@ -252,6 +269,52 @@ export default function NovoPedidoPage() {
               </Campo>
             </div>
 
+            {meta?.exigeJogo && (
+              <div className="space-y-5 rounded-card border border-line bg-surface-2/30 p-5">
+                <p className="text-[12px] leading-relaxed text-muted">
+                  Dados da partida. Sem eles o modelo inventa data e adversário — e data
+                  inventada parece certa, ninguém confere.
+                </p>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Campo rotulo="Adversário" dica="obrigatório">
+                    <Input
+                      value={jogo.adversario}
+                      onChange={(e) => setJogo({ ...jogo, adversario: e.target.value })}
+                      placeholder="Famalicão"
+                    />
+                  </Campo>
+                  <Campo rotulo="Campeonato" dica="opcional">
+                    <Input
+                      value={jogo.campeonato}
+                      onChange={(e) => setJogo({ ...jogo, campeonato: e.target.value })}
+                      placeholder="Primeira Liga"
+                    />
+                  </Campo>
+                  <Campo rotulo="Data do jogo" dica="obrigatório">
+                    <Input
+                      type="date"
+                      value={jogo.data_jogo}
+                      onChange={(e) => setJogo({ ...jogo, data_jogo: e.target.value })}
+                    />
+                  </Campo>
+                  <Campo rotulo="Horário" dica="como deve aparecer na arte">
+                    <Input
+                      value={jogo.hora_jogo}
+                      onChange={(e) => setJogo({ ...jogo, hora_jogo: e.target.value })}
+                      placeholder="20h30"
+                    />
+                  </Campo>
+                </div>
+                <Campo rotulo="Estádio" dica="opcional">
+                  <Input
+                    value={jogo.estadio}
+                    onChange={(e) => setJogo({ ...jogo, estadio: e.target.value })}
+                    placeholder="Estádio António Coimbra da Mota"
+                  />
+                </Campo>
+              </div>
+            )}
+
             {meta?.exigeFrase && (
               <Campo rotulo="Frase do atleta" dica="máx. 180 caracteres">
                 <Textarea
@@ -351,9 +414,9 @@ export default function NovoPedidoPage() {
 
             {resultado ? (
               <div className="mt-5 space-y-2">
-                <Button className="w-full" disabled={salvando} onClick={enviarParaAprovacao}>
+                <Button className="w-full" disabled={salvando} onClick={salvarNaBiblioteca}>
                   <Send size={15} />
-                  {salvando ? "Enviando…" : "Enviar para aprovação"}
+                  {salvando ? "Salvando…" : "Salvar na biblioteca"}
                 </Button>
                 <div className="flex gap-2">
                   <Button variante="sutil" className="flex-1" onClick={gerar}>

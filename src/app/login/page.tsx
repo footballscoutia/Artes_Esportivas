@@ -29,7 +29,7 @@ function Login() {
 
   /** Para onde voltar depois de entrar — o proxy poe o destino original em `de`. */
   const de = params.get("de");
-  const destino = de?.startsWith("/") && !de.startsWith("//") ? de : "/fila";
+  const destino = de?.startsWith("/") && !de.startsWith("//") ? de : "/biblioteca";
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +49,7 @@ function Login() {
     const { error } = await criarClienteNavegador().auth.signInWithOtp({
       email: email.trim(),
       // tem que ser a rota que troca o codigo por sessao, nao uma tela:
-      // apontar direto para /fila deixa o usuario deslogado sem dizer nada
+      // apontar direto para /biblioteca deixa o usuario deslogado sem dizer nada
       options: { emailRedirectTo: volta.toString() },
     });
 

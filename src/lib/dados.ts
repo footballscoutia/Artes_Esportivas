@@ -133,26 +133,52 @@ export async function capasDosPedidos(ids: string[]): Promise<Record<string, str
 }
 
 /**
- * A referencia ativa daquela combinacao. So uma pode estar ativa por vez — o
- * indice unico `referencias_ativa_unica` garante isso no banco, entao aqui nao
- * precisa desempatar nada.
+ * Sorteia uma referencia do acervo para a combinacao pedida.
+ *
+ * Ate aqui era "a referencia ativa daquela combinacao", com um indice unico
+ * garantindo uma so. O acervo real tem 59 referencias de matchday: pegar sempre
+ * a mesma faria todo post da agencia sair igual, que e o oposto do objetivo.
+ *
+ * A queda e deliberada e nesta ordem:
+ *   1. mesma categoria E mesmo formato — o ideal;
+ *   2. mesma categoria, outro formato — matchday e quase todo story, contratacao
+ *      quase toda feed; melhor emprestar a proporcao errada do que falhar;
+ *   3. qualquer referencia ativa — categorias sem acervo proprio (estreia,
+ *      craque do jogo, frase) vivem daqui: a referencia da o ESTILO, o
+ *      prompt-mae da a mensagem.
  */
-export async function buscarReferencia(
+export async function sortearReferencia(
   tipo: Tipo,
   formato: Formato,
 ): Promise<Referencia | null> {
   if (!LIGADO) return mock.buscarReferencia(tipo, formato);
 
   const sb = await criarClienteServidor();
-  const { data, error } = await sb
-    .from("referencias")
-    .select("*")
-    .eq("tipo", tipo)
-    .eq("formato", formato)
-    .eq("ativa", true)
-    .maybeSingle();
 
-  estourar("buscar a referência", error);
+  const tentativas: Array<() => PromiseLike<{ data: unknown[] | null }>> = [
+    () => sb.from("referencias").select("*").eq("ativa", true).eq("tipo", tipo).eq("formato", formato),
+    () => sb.from("referencias").select("*").eq("ativa", true).eq("tipo", tipo),
+    () => sb.from("referencias").select("*").eq("ativa", true),
+  ];
+
+  for (const tentar of tentativas) {
+    const { data } = await tentar();
+    if (data?.length) {
+      const escolhida = data[Math.floor(Math.random() * data.length)] as Referencia;
+      return { ...escolhida, imagem_url: await assinar(BALDE.referencias, escolhida.imagem_url) };
+    }
+  }
+  return null;
+}
+
+/** A referencia que uma arte realmente usou. O pedido guarda o id. */
+export async function buscarReferenciaPorId(id: string | null): Promise<Referencia | null> {
+  if (!id) return null;
+  if (!LIGADO) return null;
+  if (!UUID.test(id)) return null;
+
+  const sb = await criarClienteServidor();
+  const { data } = await sb.from("referencias").select("*").eq("id", id).maybeSingle();
   if (!data) return null;
   const r = data as Referencia;
   return { ...r, imagem_url: await assinar(BALDE.referencias, r.imagem_url) };

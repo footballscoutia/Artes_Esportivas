@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageOff } from "lucide-react";
 import { FORMATO_META, TIPO_META, type Pedido } from "@/lib/types";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { tempoRelativo } from "@/lib/utils";
 
 export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | null }) {
@@ -31,12 +30,10 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
             <ImageOff size={22} strokeWidth={1.5} />
           </div>
         )}
-        <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <StatusPill status={pedido.status} className="backdrop-blur-md" />
-          <span className="rounded-full border border-line bg-bg/70 px-2.5 py-1 text-[11px] text-muted backdrop-blur-md">
-            {formato.titulo}
-          </span>
-        </div>
+        {/* sem selo de status: a biblioteca guarda arte pronta, nao pedido em analise */}
+        <span className="absolute right-3 top-3 rounded-full border border-line bg-bg/70 px-2.5 py-1 text-[11px] text-muted backdrop-blur-md">
+          {formato.titulo}
+        </span>
       </div>
 
       <div className="p-4">
@@ -46,7 +43,10 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
         </div>
         <p className="mt-1.5 truncate text-[15px] font-medium">{pedido.nome_jogador}</p>
         <p className="mt-0.5 truncate text-[12px] text-muted">
-          {pedido.clube ?? "—"} · {pedido.criado_por_nome} · {tempoRelativo(pedido.criado_em)}
+          {pedido.tipo === "matchday" && pedido.adversario
+            ? `vs ${pedido.adversario}`
+            : (pedido.clube ?? "—")}{" "}
+          · {tempoRelativo(pedido.criado_em)}
         </p>
       </div>
     </Link>

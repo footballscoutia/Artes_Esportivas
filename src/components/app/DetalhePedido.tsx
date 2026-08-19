@@ -1,28 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Check,
   Download,
   History,
   Layers,
+  Check,
   Maximize2,
   RefreshCw,
   Share2,
-  X,
 } from "lucide-react";
 import { Button, BotaoIcone } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
-import { Campo, Textarea } from "@/components/ui/Field";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { Orb } from "@/components/art/Orb";
 import { FORMATO_META, TIPO_META, type Geracao, type Pedido } from "@/lib/types";
 import { cn, formatarData, tempoRelativo } from "@/lib/utils";
-import { aprovarPedido, gerarOutra, recusarGeracao } from "@/lib/acoes";
+import { gerarOutra } from "@/lib/acoes";
 
 type Aba = "detalhes" | "camadas" | "historico";
 
@@ -39,7 +36,6 @@ export function DetalhePedido({
   const formato = FORMATO_META[pedido.formato];
 
   const router = useRouter();
-  const [pendente, comTransicao] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>("detalhes");
   /**
@@ -49,28 +45,36 @@ export function DetalhePedido({
    */
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
   const selecionada = geracoes.find((g) => g.id === selecionadaId) ?? geracoes[0] ?? null;
-  // o status vem do servidor a cada refresh; guardar copia local so criaria
-  // divergencia entre o que a tela mostra e o que o banco tem
-  const status = pedido.status;
-  const [recusando, setRecusando] = useState(false);
-  const [motivo, setMotivo] = useState("");
+  const [baixando, setBaixando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
 
-  /** Envolve toda acao: limpa o aviso, mostra o erro se vier, e recarrega os dados. */
-  function executar(acao: () => Promise<{ ok: true } | { ok: false; erro: string }>, sucesso: string) {
+  /**
+   * A imagem vem por URL assinada, que e outro dominio. Nesse caso o atributo
+   * `download` do <a> e ignorado e o navegador so navega ate o arquivo em vez
+   * de salvar. Buscar o blob e criar um object URL local e o que faz o download
+   * acontecer de verdade — e e o unico ponto da biblioteca que o cliente usa.
+   */
+  async function baixar() {
+    if (!selecionada?.imagem_url) return;
+    setBaixando(true);
     setErro(null);
-    setAviso(null);
-    comTransicao(async () => {
-      const r = await acao();
-      if (!r.ok) {
-        setErro(r.erro);
-        return;
-      }
-      setAviso(sucesso);
-      // os dados vem do servidor; sem refresh a tela mostraria o estado velho
-      router.refresh();
-    });
+    try {
+      const r = await fetch(selecionada.imagem_url);
+      if (!r.ok) throw new Error(String(r.status));
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const limpo = pedido.nome_jogador.trim().toLowerCase().replace(/\s+/g, "-");
+      a.download = `${limpo}-${pedido.tipo}-${pedido.formato}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErro("Não consegui baixar. O link da imagem pode ter expirado — recarregue a página.");
+    } finally {
+      setBaixando(false);
+    }
   }
 
   async function novaGeracao() {
@@ -83,7 +87,7 @@ export function DetalhePedido({
       setErro(r.erro);
       return;
     }
-    setAviso("Nova geração pronta. A anterior fica no histórico, com o motivo da recusa.");
+    setAviso("Nova geração pronta. A anterior continua no histórico.");
     router.refresh();
   }
 
@@ -92,11 +96,11 @@ export function DetalhePedido({
       <div className="min-w-0">
         <div className="mb-4 flex items-center gap-3">
           <Link
-            href="/fila"
+            href="/biblioteca"
             className="flex items-center gap-2 text-[13px] text-muted transition-colors hover:text-text"
           >
             <ArrowLeft size={15} />
-            Fila
+            Biblioteca
           </Link>
           <span className="text-muted-2">/</span>
           <span className="text-[13px]">{pedido.nome_jogador}</span>
@@ -110,7 +114,7 @@ export function DetalhePedido({
             <BotaoIcone titulo="Copiar link">
               <Share2 size={16} />
             </BotaoIcone>
-            <BotaoIcone titulo="Baixar arte">
+            <BotaoIcone titulo="Baixar arte" onClick={baixar}>
               <Download size={16} />
             </BotaoIcone>
           </div>
@@ -136,7 +140,7 @@ export function DetalhePedido({
           </div>
 
           <p className="mt-4 text-center text-[12px] text-muted-2">
-            {formato.w}×{formato.h} px · o arquivo aprovado é exatamente este
+            {formato.w}×{formato.h} px · pronto para publicar
           </p>
         </Card>
       </div>
@@ -155,10 +159,9 @@ export function DetalhePedido({
                 </div>
                 <h1 className="display mt-1 truncate text-[26px]">{pedido.nome_jogador}</h1>
               </div>
-              <StatusPill status={status} />
             </div>
             <p className="mt-2 text-[12px] text-muted">
-              Enviado por {pedido.criado_por_nome} · {formatarData(pedido.criado_em)}
+              Gerada por {pedido.criado_por_nome} · {formatarData(pedido.criado_em)}
             </p>
           </header>
 
@@ -294,73 +297,19 @@ export function DetalhePedido({
               </p>
             )}
 
-            {recusando ? (
-              <div className="space-y-2">
-                <Campo rotulo="Por que essa arte não serve?" dica="vira diagnóstico da referência">
-                  <Textarea
-                    autoFocus
-                    value={motivo}
-                    onChange={(e) => setMotivo(e.target.value)}
-                    placeholder="Mão direita com seis dedos, escudo do clube deformado…"
-                    className="min-h-20"
-                  />
-                </Campo>
-                <div className="flex gap-2">
-                  <Button
-                    variante="perigo"
-                    className="flex-1"
-                    disabled={motivo.trim().length < 4 || pendente}
-                    onClick={() => {
-                      if (!selecionada) return;
-                      const texto = motivo.trim();
-                      executar(
-                        () => recusarGeracao(pedido.id, selecionada.id, texto),
-                        "Recusa registrada. Cinco recusas do mesmo tipo apontam para a referência, não para a IA.",
-                      );
-                      setRecusando(false);
-                      setMotivo("");
-                    }}
-                  >
-                    Registrar recusa
-                  </Button>
-                  <Button variante="fantasma" onClick={() => setRecusando(false)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
-            ) : status === "aprovado" || status === "publicado" ? (
-              <Button className="w-full">
-                <Download size={15} />
-                Baixar arte aprovada
-              </Button>
-            ) : (
-              <>
-                <Button
-                  className="w-full"
-                  disabled={pendente || !selecionada}
-                  onClick={() =>
-                    selecionada &&
-                    executar(
-                      () => aprovarPedido(pedido.id, selecionada.id),
-                      "Arte aprovada. O arquivo aprovado é exatamente este.",
-                    )
-                  }
-                >
-                  <Check size={16} />
-                  Aprovar arte
-                </Button>
-                <div className="flex gap-2">
-                  <Button variante="sutil" className="flex-1" disabled={gerando || pendente} onClick={novaGeracao}>
-                    <RefreshCw size={15} className={gerando ? "animate-spin" : ""} />
-                    {gerando ? "Gerando…" : "Gerar outra"}
-                  </Button>
-                  <Button variante="perigo" onClick={() => setRecusando(true)}>
-                    <X size={15} />
-                    Recusar
-                  </Button>
-                </div>
-              </>
-            )}
+            <Button className="w-full" disabled={baixando || !selecionada} onClick={baixar}>
+              <Download size={15} />
+              {baixando ? "Preparando…" : "Baixar arte"}
+            </Button>
+            <Button
+              variante="sutil"
+              className="w-full"
+              disabled={gerando}
+              onClick={novaGeracao}
+            >
+              <RefreshCw size={15} className={gerando ? "animate-spin" : ""} />
+              {gerando ? "Gerando…" : "Gerar outra"}
+            </Button>
           </footer>
         </Card>
       </div>

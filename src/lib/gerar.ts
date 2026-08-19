@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
-import { buscarReferencia } from "./dados";
+import { sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
 import { FORMATO_META, TIPO_META, type Formato, type Tipo } from "./types";
 
@@ -32,7 +32,39 @@ export type ArteProduzida = {
 
 export class SemReferencia extends Error {}
 
-type Textos = { nome: string; clube?: string | null; frase?: string | null; rotulo: string };
+export type DadosDoJogo = {
+  adversario?: string | null;
+  data_jogo?: string | null;
+  hora_jogo?: string | null;
+  campeonato?: string | null;
+  estadio?: string | null;
+};
+
+type Textos = {
+  nome: string;
+  clube?: string | null;
+  frase?: string | null;
+  rotulo: string;
+} & DadosDoJogo;
+
+const DIAS = ["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"];
+
+/**
+ * "2026-08-22" -> "SÁBADO 22/08".
+ *
+ * O dia da semana entra porque quase toda arte do acervo mostra ele — quem ve o
+ * story quer saber se o jogo e hoje, nao a data por extenso. Monta com UTC de
+ * proposito: a data vem do banco como dia puro, e converter para fuso local
+ * viraria o dia para quem estiver a oeste de Greenwich.
+ */
+function formatarData(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${DIAS[d.getUTCDay()]} ${dd}/${mm}`;
+}
 
 /**
  * Injeta os textos no prompt-mae.
@@ -52,12 +84,21 @@ export function montarPrompt(promptMae: string, t: Textos): string {
     clube: t.clube?.trim() ?? "",
     frase: t.frase?.trim() ?? "",
     rotulo: t.rotulo,
+    adversario: t.adversario?.trim() ?? "",
+    data: formatarData(t.data_jogo),
+    hora: t.hora_jogo?.trim() ?? "",
+    campeonato: t.campeonato?.trim() ?? "",
+    estadio: t.estadio?.trim() ?? "",
   };
 
-  const temMarcador = /\{\{\s*(nome|clube|frase|rotulo)\s*\}\}/.test(promptMae);
+  const CHAVES = "nome|clube|frase|rotulo|adversario|data|hora|campeonato|estadio";
+  const marcador = new RegExp(`\\{\\{\\s*(${CHAVES})\\s*\\}\\}`, "g");
+
+  const temMarcador = marcador.test(promptMae);
+  marcador.lastIndex = 0; // regex global guarda posicao entre chamadas
 
   const comValores = promptMae.replace(
-    /\{\{\s*(nome|clube|frase|rotulo)\s*\}\}/g,
+    marcador,
     (_, chave: string) => valores[chave] ?? "",
   );
 
@@ -69,6 +110,11 @@ export function montarPrompt(promptMae: string, t: Textos): string {
     `- Etiqueta: "${valores.rotulo}" — menor, acima do nome.`,
   ];
   if (valores.clube) linhas.push(`- Clube: "${valores.clube}" — discreto.`);
+  if (valores.adversario) linhas.push(`- Adversário: "${valores.adversario}".`);
+  if (valores.campeonato) linhas.push(`- Campeonato: "${valores.campeonato}".`);
+  if (valores.data) linhas.push(`- Data: "${valores.data}".`);
+  if (valores.hora) linhas.push(`- Horário: "${valores.hora}".`);
+  if (valores.estadio) linhas.push(`- Estádio: "${valores.estadio}".`);
   if (valores.frase) linhas.push(`- Frase do atleta: "${valores.frase}" — em itálico.`);
   linhas.push(
     `Nenhum outro texto na imagem. Não inventar palavras, números nem escudos de clube.`,
@@ -85,6 +131,7 @@ export async function produzirArte({
   clube,
   frase,
   foto,
+  ...jogo
 }: {
   tipo: Tipo;
   formato: Formato;
@@ -92,10 +139,10 @@ export async function produzirArte({
   clube?: string | null;
   frase?: string | null;
   foto?: Buffer | null;
-}): Promise<ArteProduzida> {
+} & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
-  const referencia = await buscarReferencia(tipo, formato);
+  const referencia = await sortearReferencia(tipo, formato);
   if (!referencia || !referencia.ativa) {
     throw new SemReferencia(
       `Não há referência ativa para ${tipo} em ${formato}. Cadastre em Referências.`,
@@ -123,6 +170,7 @@ export async function produzirArte({
       clube,
       frase,
       rotulo: TIPO_META[tipo].rotulo,
+      ...jogo,
     }),
     largura: Math.round(alvo.w * FOLGA),
     altura: Math.round(alvo.h * FOLGA),

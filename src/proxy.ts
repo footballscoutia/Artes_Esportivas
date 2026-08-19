@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  *   1. renova o cookie da sessao do Supabase. Server Component nao consegue
  *      escrever cookie, entao se ninguem renovar aqui a sessao morre sozinha.
- *   2. checagem otimista: manda para /login quem nao tem sessao, e para /fila
+ *   2. checagem otimista: manda para /login quem nao tem sessao, e para /biblioteca
  *      quem ja tem e caiu no /login.
  *
  * "Otimista" e a palavra que importa. O proxy roda em TODA requisicao, prefetch
@@ -77,7 +77,7 @@ export async function proxy(req: NextRequest) {
 
   if (temSessao && caminho === "/login") {
     const fila = req.nextUrl.clone();
-    fila.pathname = "/fila";
+    fila.pathname = "/biblioteca";
     fila.search = "";
     return NextResponse.redirect(fila);
   }

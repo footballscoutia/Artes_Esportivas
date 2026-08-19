@@ -8,7 +8,7 @@ import { BotaoLink } from "@/components/ui/Button";
 import type { Usuario } from "@/lib/types";
 
 const SECOES = [
-  { href: "/fila", rotulo: "Fila", icone: LayoutGrid },
+  { href: "/biblioteca", rotulo: "Biblioteca", icone: LayoutGrid },
   { href: "/novo", rotulo: "Nova arte", icone: Sparkles },
   { href: "/admin/referencias", rotulo: "Referências", icone: Images },
 ];
@@ -18,7 +18,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 backdrop-blur-xl lg:px-6">
-      <Link href="/fila" className="flex shrink-0 items-center gap-2.5">
+      <Link href="/biblioteca" className="flex shrink-0 items-center gap-2.5">
         <span className="accent-grad grid size-9 place-items-center rounded-[12px] text-[13px] font-bold text-white">
           MB
         </span>

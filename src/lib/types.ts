@@ -1,4 +1,13 @@
-export const TIPOS = ["contratacao", "gol", "estreia", "mvp", "aniversario", "frase"] as const;
+export const TIPOS = [
+  "matchday",
+  "contratacao",
+  "gol",
+  "convocado",
+  "estreia",
+  "mvp",
+  "aniversario",
+  "frase",
+] as const;
 export type Tipo = (typeof TIPOS)[number];
 
 export const FORMATOS = ["feed_4x5", "story_9x16"] as const;
@@ -9,52 +18,87 @@ export type Status = (typeof STATUS)[number];
 
 export type Papel = "submete" | "aprova";
 
-/** Metadados de apresentacao dos tipos de post — o usuario escolhe por aqui, nunca escreve prompt. */
+/**
+ * Metadados de apresentacao — o usuario escolhe por aqui, nunca escreve prompt.
+ *
+ * `exigeJogo` liga os campos de partida no /novo. So matchday precisa deles, e
+ * sem eles o modelo inventaria data e adversario — que e pior que nome errado,
+ * porque data inventada parece certa e ninguem confere.
+ */
 export const TIPO_META: Record<
   Tipo,
-  { numero: string; titulo: string; descricao: string; rotulo: string; exigeFrase: boolean }
+  {
+    numero: string;
+    titulo: string;
+    descricao: string;
+    rotulo: string;
+    exigeFrase: boolean;
+    exigeJogo: boolean;
+  }
 > = {
-  contratacao: {
+  matchday: {
     numero: "01",
+    titulo: "Matchday",
+    descricao: "Anúncio do próximo jogo, com adversário e horário",
+    rotulo: "MATCHDAY",
+    exigeFrase: false,
+    exigeJogo: true,
+  },
+  contratacao: {
+    numero: "02",
     titulo: "Contratação",
     descricao: "Anúncio de chegada do atleta ao novo clube",
     rotulo: "BEM-VINDO",
     exigeFrase: false,
+    exigeJogo: false,
   },
   gol: {
-    numero: "02",
+    numero: "03",
     titulo: "Gol",
     descricao: "Comemoração de gol marcado na partida",
     rotulo: "GOLAÇO",
     exigeFrase: false,
+    exigeJogo: false,
+  },
+  convocado: {
+    numero: "04",
+    titulo: "Convocado",
+    descricao: "Chamado para a seleção nacional",
+    rotulo: "CONVOCADO",
+    exigeFrase: false,
+    exigeJogo: false,
   },
   estreia: {
-    numero: "03",
+    numero: "05",
     titulo: "Estreia",
     descricao: "Primeira partida com a camisa do clube",
     rotulo: "PRIMEIRO JOGO",
     exigeFrase: false,
+    exigeJogo: false,
   },
   mvp: {
-    numero: "04",
+    numero: "06",
     titulo: "Craque do jogo",
     descricao: "Destaque da partida, melhor em campo",
     rotulo: "MELHOR EM CAMPO",
     exigeFrase: false,
+    exigeJogo: false,
   },
   aniversario: {
-    numero: "05",
+    numero: "07",
     titulo: "Aniversário",
     descricao: "Felicitação de aniversário do atleta",
     rotulo: "PARABÉNS",
     exigeFrase: false,
+    exigeJogo: false,
   },
   frase: {
-    numero: "06",
+    numero: "08",
     titulo: "Frase",
     descricao: "Declaração do atleta em destaque na arte",
     rotulo: "EM SUAS PALAVRAS",
     exigeFrase: true,
+    exigeJogo: false,
   },
 };
 
@@ -104,6 +148,12 @@ export type Pedido = {
   nome_jogador: string;
   clube?: string | null;
   frase?: string | null;
+  /** So preenchidos quando o tipo e matchday. */
+  adversario?: string | null;
+  data_jogo?: string | null;
+  hora_jogo?: string | null;
+  campeonato?: string | null;
+  estadio?: string | null;
   referencia_id: string | null;
   referencia_versao: number | null;
   status: Status;

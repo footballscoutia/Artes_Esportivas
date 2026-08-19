@@ -26,10 +26,10 @@ export async function GET(req: Request) {
   const type = searchParams.get("type") as EmailOtpType | null;
 
   // para onde o usuario queria ir antes de ser barrado pelo proxy
-  const destino = searchParams.get("next") ?? searchParams.get("de") ?? "/fila";
+  const destino = searchParams.get("next") ?? searchParams.get("de") ?? "/biblioteca";
 
   // so caminho interno: `next=https://outro.site` viraria redirect aberto
-  const seguro = destino.startsWith("/") && !destino.startsWith("//") ? destino : "/fila";
+  const seguro = destino.startsWith("/") && !destino.startsWith("//") ? destino : "/biblioteca";
 
   // o proprio Supabase avisa aqui quando o link expirou ou ja foi usado
   const erroSupabase = searchParams.get("error_description") ?? searchParams.get("error");
