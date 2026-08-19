@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, Sparkles, Images } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Usuario } from "@/lib/types";
+import { Marca } from "@/components/app/Marca";
 import { Tema } from "@/components/app/Tema";
 
 const SECOES = [
@@ -25,14 +25,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
         title="Estúdio de Artes — Marcio Bittencourt Sports"
       >
         {/* a marca real da agência, no lugar do quadrado em gradiente */}
-        <Image
-          src="/brand/logo.png"
-          alt="Marcio Bittencourt Sports"
-          width={410}
-          height={161}
-          priority
-          className="h-8 w-auto"
-        />
+        <Marca className="h-8" />
         <span className="sr-only">Estúdio de Artes</span>
       </Link>
 

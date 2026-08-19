@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Campo, Input } from "@/components/ui/Field";
-import Image from "next/image";
+import { Marca } from "@/components/app/Marca";
 import { criarClienteNavegador } from "@/lib/supabase/client";
 
 const CONFIGURADO = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -70,14 +70,7 @@ function Login() {
           produto é a agência; a IA é a ferramenta.
         */}
         <div className="mb-9 grid place-items-center gap-5 text-center">
-          <Image
-            src="/brand/logo.png"
-            alt="Marcio Bittencourt Sports"
-            width={410}
-            height={161}
-            priority
-            className="h-14 w-auto"
-          />
+          <Marca className="h-14" />
           <h1 className="display text-[22px]">Estúdio de Artes</h1>
         </div>
 
