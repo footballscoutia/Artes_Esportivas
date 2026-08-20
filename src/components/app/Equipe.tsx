@@ -10,11 +10,13 @@ import { convidar, retirarConvite, sair } from "@/lib/acoes";
 import type { Convite, Usuario } from "@/lib/types";
 
 /**
- * Quem tem acesso ao estudio.
+ * Quem tem acesso a esta agencia.
  *
- * Existe porque a entrada virou senha e o cadastro precisou ser fechado: sem
- * uma tela, liberar alguem novo viraria abrir o painel do Supabase e escrever
- * SQL, e uma tarefa dessas ou nao acontece ou acontece errado.
+ * Cadastro e aberto — qualquer um pode criar a propria org. O que esta tela
+ * controla e outra coisa: quem, ao se cadastrar, cai DENTRO desta org em vez
+ * de ganhar uma nova. Sem uma tela para isso, liberar alguem viraria abrir o
+ * painel do Supabase e escrever SQL, e uma tarefa dessas ou nao acontece ou
+ * acontece errado.
  */
 export function Equipe({
   contas,
@@ -105,8 +107,10 @@ export function Equipe({
             <div className="mt-8">
               <h3 className="text-[13px] font-medium">Convidar</h3>
               <p className="mt-1.5 max-w-[58ch] text-[12px] leading-relaxed text-muted">
-                Sem convite, ninguém cria conta — quem tenta é barrado pelo banco, não pela
-                tela. Libere o e-mail aqui e peça para a pessoa se cadastrar na entrada.
+                Qualquer pessoa pode se cadastrar, mas cria uma agência própria e separada
+                da sua. Convidar é o que faz alguém entrar NESTA — a pessoa se cadastra
+                normalmente com o e-mail liberado aqui, e o banco decide sozinho para
+                qual das duas ela vai.
               </p>
 
               <form

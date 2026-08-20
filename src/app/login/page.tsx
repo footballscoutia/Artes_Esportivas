@@ -38,14 +38,8 @@ function emPortugues(msg: string) {
     return "Muitas tentativas seguidas. Espere um minuto e tente de novo.";
   if (m.includes("unable to validate email") || m.includes("invalid email"))
     return "Confira o e-mail digitado.";
-  /**
-   * O gatilho `exigir_convite()` barra quem nao foi liberado, e o Supabase
-   * envelopa qualquer excecao do banco nesta frase generica. Neste app essa e a
-   * unica coisa que impede a linha de nascer, entao traduzir para o motivo real
-   * diz a verdade — e diz o que fazer, que "database error" nao diz.
-   */
   if (m.includes("database error saving new user"))
-    return "Este e-mail não está liberado. Peça o acesso a quem administra o estúdio.";
+    return "Não consegui criar a conta agora. Tente de novo em instantes.";
   return msg;
 }
 
@@ -64,6 +58,7 @@ function Login() {
 
   const [modo, setModo] = useState<Modo>("entrar");
   const [email, setEmail] = useState("");
+  const [organizacao, setOrganizacao] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -131,6 +126,10 @@ function Login() {
     }
 
     if (modo === "criar") {
+      if (!organizacao.trim()) {
+        setErro("Diga o nome da sua agência ou clube.");
+        return;
+      }
       if (senha.length < MINIMO_SENHA) {
         setErro(`A senha precisa de pelo menos ${MINIMO_SENHA} caracteres.`);
         return;
@@ -166,7 +165,11 @@ function Login() {
     const { data, error } = await sb.auth.signUp({
       email: email.trim(),
       password: senha,
-      options: { emailRedirectTo: volta.toString() },
+      options: {
+        emailRedirectTo: volta.toString(),
+        // ignorado se o e-mail ja tiver convite: quem convidou decide a org
+        data: { organizacao: organizacao.trim() },
+      },
     });
     setOcupado(false);
     if (error) return setErro(emPortugues(error.message));
@@ -210,7 +213,7 @@ function Login() {
           tela já sabe onde está, e o título repetia a logo em texto.
         */}
         <div className="mb-9 grid place-items-center">
-          <Marca className="h-16" />
+          <Marca className="text-[32px]" />
         </div>
 
         <Card className="p-6">
@@ -250,9 +253,22 @@ function Login() {
                     autoFocus
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="voce@mbsports.com.br"
+                    placeholder="voce@suaagencia.com.br"
                   />
                 </Campo>
+
+                {modo === "criar" && (
+                  <Campo rotulo="Agência ou clube" dica="ignorado se você foi convidado">
+                    <Input
+                      name="organizacao"
+                      autoComplete="organization"
+                      required
+                      value={organizacao}
+                      onChange={(e) => setOrganizacao(e.target.value)}
+                      placeholder="Sua agência"
+                    />
+                  </Campo>
+                )}
 
                 <Campo
                   rotulo="Senha"
@@ -313,7 +329,7 @@ function Login() {
         </Card>
 
         <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-2">
-          Uso interno da equipe de marketing da Marcio Bittencourt Sports.
+          Cadastre sua agência, ou entre com o convite que você recebeu.
         </p>
       </div>
     </main>
