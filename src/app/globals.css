@@ -233,3 +233,77 @@
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
+
+/* ---------------------------------------------------------------------------
+ * Transicoes de rota.
+ *
+ * Sao TRES momentos, nao efeito espalhado. Cada um responde "o que isso
+ * comunica?": continuidade do objeto, posicao na navegacao, e chegada de
+ * conteudo. Fora disso a tela nao se mexe.
+ *
+ * A assimetria e deliberada: o que sai vai rapido para nao disputar atencao, o
+ * que entra chega mais devagar para dar tempo de registrar.
+ * ------------------------------------------------------------------------ */
+:root {
+  --dur-saida: 140ms;
+  --dur-entrada: 200ms;
+  --dur-mover: 360ms;
+}
+
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes vt-sobe {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes vt-desfoque-no-meio {
+  30% {
+    filter: blur(3px);
+  }
+}
+
+/* conteudo da rota: o antigo sai depressa, o novo chega depois que ele terminou */
+::view-transition-old(.rota-sai) {
+  animation:
+    var(--dur-saida) ease-out both vt-fade reverse,
+    var(--dur-saida) ease-out both vt-sobe reverse;
+}
+::view-transition-new(.rota-entra) {
+  animation:
+    var(--dur-entrada) ease-in var(--dur-saida) both vt-fade,
+    var(--dur-mover) cubic-bezier(0.22, 1, 0.36, 1) both vt-sobe;
+}
+
+/* indicador da navegacao: desliza entre as secoes em vez de piscar */
+::view-transition-group(nav-atual) {
+  animation-duration: var(--dur-mover);
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* a miniatura vira a arte grande: o desfoque esconde o serrilhado do caminho */
+::view-transition-group(.morph) {
+  animation-duration: var(--dur-mover);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: vt-desfoque-no-meio;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

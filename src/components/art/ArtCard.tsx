@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ImageOff } from "lucide-react";
@@ -18,13 +19,20 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
         style={{ aspectRatio: formato.ratio }}
       >
         {imagem ? (
-          <Image
-            src={imagem}
-            alt={`Arte de ${tipo.titulo.toLowerCase()} — ${pedido.nome_jogador}`}
-            fill
-            sizes="(max-width: 768px) 50vw, 300px"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          />
+          /*
+            Mesmo nome no detalhe: a miniatura vira a arte grande em vez de
+            sumir e outra aparecer. O usuario ve um objeto se movendo, e
+            entende que clicou no que queria sem precisar conferir.
+          */
+          <ViewTransition name={`arte-${pedido.id}`} share="morph" default="none">
+            <Image
+              src={imagem}
+              alt={`Arte de ${tipo.titulo.toLowerCase()}, ${pedido.nome_jogador}`}
+              fill
+              sizes="(max-width: 768px) 50vw, 300px"
+              className="object-cover transition-transform duration-[400ms] group-hover:scale-[1.03]"
+            />
+          </ViewTransition>
         ) : (
           <div className="grid h-full place-items-center text-muted-2">
             <ImageOff size={22} strokeWidth={1.5} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -128,14 +128,16 @@ export function DetalhePedido({
                 <Orb tamanho={200} />
               </div>
             ) : selecionada?.imagem_url ? (
-              <Image
-                src={selecionada.imagem_url}
-                alt={`Arte de ${tipo.titulo.toLowerCase()} de ${pedido.nome_jogador}`}
-                fill
-                sizes="520px"
-                className="animate-fade-up object-cover"
-                priority
-              />
+              <ViewTransition name={`arte-${pedido.id}`} share="morph" default="none">
+                <Image
+                  src={selecionada.imagem_url}
+                  alt={`Arte de ${tipo.titulo.toLowerCase()} de ${pedido.nome_jogador}`}
+                  fill
+                  sizes="520px"
+                  className="object-cover"
+                  priority
+                />
+              </ViewTransition>
             ) : null}
           </div>
 

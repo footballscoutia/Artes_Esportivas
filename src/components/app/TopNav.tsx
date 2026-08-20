@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ViewTransition } from "react";
 import { LayoutGrid, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Usuario } from "@/lib/types";
@@ -36,14 +37,23 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium transition-all",
-                ativo
-                  ? "bg-surface-3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06)]"
-                  : "text-muted hover:text-text",
+                "relative flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium",
+                "transition-colors duration-[180ms]",
+                ativo ? "text-text" : "text-muted hover:text-text",
               )}
             >
-              <Icone size={15} strokeWidth={1.75} />
-              <span className="hidden md:block">{rotulo}</span>
+              {/*
+                O fundo da seção ativa é UM elemento que se move entre os itens,
+                não um fundo que apaga aqui e acende ali. É o mesmo objeto
+                mudando de lugar, e é isso que a navegação comunica.
+              */}
+              {ativo && (
+                <ViewTransition name="nav-atual">
+                  <span className="absolute inset-0 rounded-full bg-surface-3" />
+                </ViewTransition>
+              )}
+              <Icone size={15} strokeWidth={1.75} className="relative" />
+              <span className="relative hidden md:block">{rotulo}</span>
             </Link>
           );
         })}
