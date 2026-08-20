@@ -1,7 +1,8 @@
-# Estúdio de Artes — Marcio Bittencourt Sports
+# MatchPost
 
-Ferramenta interna para gerar as artes promocionais dos atletas (contratação, gol,
-estreia, craque do jogo, aniversário, frase) no padrão visual da agência.
+Ferramenta para agências e clubes gerarem as artes promocionais dos seus atletas
+(matchday, contratação, gol, convocado, estreia, craque do jogo, aniversário, frase)
+no padrão visual de cada cliente.
 
 O usuário sobe a foto do jogador, responde três perguntas e recebe a arte pronta,
 em alta, para aprovação. **Ninguém escreve prompt** — cada combinação de tipo e

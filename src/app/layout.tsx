@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const anton = Anton({ variable: "--fonte-anton", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
-  title: "Estúdio de Artes — Marcio Bittencourt Sports",
-  description: "Geração das artes promocionais dos atletas no padrão visual da agência.",
+  title: "MatchPost",
+  description: "Artes promocionais de atletas, geradas no padrão visual de cada agência.",
 };
 
 /**

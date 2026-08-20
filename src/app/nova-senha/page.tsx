@@ -160,7 +160,7 @@ export default function NovaSenhaPage() {
 
       <div className="relative z-10 w-full max-w-[400px]">
         <div className="mb-9 grid place-items-center">
-          <Marca className="h-16" />
+          <Marca className="text-[32px]" />
         </div>
 
         <Card className="p-6">

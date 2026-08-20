@@ -12,11 +12,10 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
       <Link
         href="/biblioteca"
         className="mr-auto flex h-11 shrink-0 items-center gap-3 md:mr-0 md:h-auto"
-        title="Estúdio de Artes — Marcio Bittencourt Sports"
+        title="MatchPost"
       >
-        {/* a marca real da agência, no lugar do quadrado em gradiente */}
-        <Marca className="h-8" />
-        <span className="sr-only">Estúdio de Artes</span>
+        <Marca className="text-[19px]" />
+        <span className="sr-only">MatchPost</span>
       </Link>
 
       <Secoes />
