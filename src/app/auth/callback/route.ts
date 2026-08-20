@@ -5,10 +5,13 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 /**
  * Volta do link de e-mail.
  *
- * `signInWithOtp` nao loga ninguem: ele manda um link. Quem loga e esta rota,
- * que troca o que vem na URL por uma sessao e grava os cookies. Sem ela o link
- * chega, o usuario clica, cai numa tela qualquer e continua deslogado — sem
- * nenhum erro visivel, que e o pior tipo de bug.
+ * A entrada e por senha, e o login nao passa por aqui. Quem passa e a
+ * confirmacao de cadastro: com "Confirm email" ligado no projeto, o `signUp`
+ * nao devolve sessao nenhuma — manda um link, e quem transforma esse link em
+ * sessao e esta rota. Sem ela o usuario clica, cai numa tela qualquer e
+ * continua deslogado, sem nenhum erro visivel, que e o pior tipo de bug.
+ *
+ * Vale tambem para recuperacao de senha, quando ela existir: mesmo caminho.
  *
  * Dois formatos chegam aqui, porque depende do template de e-mail do projeto:
  *
