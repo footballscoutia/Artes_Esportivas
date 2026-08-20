@@ -32,6 +32,7 @@
   --radius-panel: 16px;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--fonte-anton), "Arial Narrow", ui-sans-serif, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 /**
@@ -111,10 +112,13 @@
 }
 
 @layer components {
+  /* Anton e condensada e so tem um peso: o tracking abre um pouco e a caixa
+     alta fica confortavel. Sem peso 600 porque a familia nao tem. */
   .display {
-    font-weight: 600;
-    letter-spacing: -0.025em;
-    line-height: 1.02;
+    font-family: var(--font-display), var(--font-sans);
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    line-height: 1.04;
   }
 
   /* Elevacao declarada uma vez: borda. Somar borda, desfoque e sombra e o
