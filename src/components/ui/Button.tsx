@@ -14,11 +14,12 @@ const VARIANTE: Record<Variante, string> = {
     "varredura corpo-botao bg-accent text-[var(--color-accent-texto)] hover:bg-[var(--color-accent-forte)]",
   sutil:
     "varredura corpo-botao-sutil bg-surface-2 text-text hover:bg-surface-3 border border-line hover:border-line-2",
-  contorno: "border border-line-2 text-text hover:bg-surface-2",
-  // fantasma e perigo ficam chapados de proposito: sao acoes secundarias, e dar
-  // volume a elas competiria com a acao primaria da tela
+  contorno: "corpo-botao-sutil border border-line-2 text-text hover:bg-surface-2",
+  perigo: "corpo-botao-sutil border border-erro/40 text-erro hover:bg-erro/10",
+  /* Fantasma continua chapado, e nao por economia: ele e so texto. Sombra em
+     algo que nao tem superficie inventa uma borda que nao existe, e o botao
+     passa a parecer solido sem ser clicavel de fato. */
   fantasma: "text-muted hover:text-text hover:bg-surface-2",
-  perigo: "border border-erro/40 text-erro hover:bg-erro/10",
 };
 
 const TAMANHO: Record<Tamanho, string> = {
