@@ -170,13 +170,19 @@
     opacity: 0;
     transition: opacity 240ms ease-out;
     background: radial-gradient(
-      340px circle at var(--px, 50%) var(--py, 50%),
-      color-mix(in srgb, var(--color-accent) 16%, transparent),
-      transparent 60%
+      300px circle at var(--px, 50%) var(--py, 50%),
+      color-mix(in srgb, var(--color-accent) 26%, transparent),
+      transparent 62%
     );
   }
   .holofote:hover::before {
     opacity: 1;
+  }
+  .holofote {
+    transition: border-color 240ms ease-out;
+  }
+  .holofote:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* ------------------------------------------------------------------
