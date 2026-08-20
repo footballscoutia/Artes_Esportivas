@@ -11,9 +11,12 @@ type Tamanho = "sm" | "md" | "lg";
  */
 const VARIANTE: Record<Variante, string> = {
   primario:
-    "varredura bg-accent text-[var(--color-accent-texto)] hover:bg-[var(--color-accent-forte)]",
-  sutil: "varredura bg-surface-2 text-text hover:bg-surface-3 border border-line hover:border-line-2",
+    "varredura corpo-botao bg-accent text-[var(--color-accent-texto)] hover:bg-[var(--color-accent-forte)]",
+  sutil:
+    "varredura corpo-botao-sutil bg-surface-2 text-text hover:bg-surface-3 border border-line hover:border-line-2",
   contorno: "border border-line-2 text-text hover:bg-surface-2",
+  // fantasma e perigo ficam chapados de proposito: sao acoes secundarias, e dar
+  // volume a elas competiria com a acao primaria da tela
   fantasma: "text-muted hover:text-text hover:bg-surface-2",
   perigo: "border border-erro/40 text-erro hover:bg-erro/10",
 };
@@ -35,8 +38,8 @@ function classes({ variante = "primario", tamanho = "md", className }: Base) {
   return cn(
     "inline-flex items-center justify-center rounded-full font-medium",
     // 180ms: usuario esta em fluxo, nao quer esperar coreografia
-    "transition-[background-color,border-color,transform] duration-[180ms]",
-    "hover:-translate-y-px active:translate-y-0 disabled:opacity-40 disabled:pointer-events-none",
+    "transition-[background-color,border-color,transform,box-shadow] duration-[180ms]",
+    "hover:-translate-y-px active:translate-y-px disabled:opacity-40 disabled:pointer-events-none",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
     VARIANTE[variante],
     TAMANHO[tamanho],
@@ -90,12 +93,13 @@ export function BotaoIcone({
       title={titulo}
       aria-label={titulo}
       className={cn(
-        "grid size-10 place-items-center rounded-full border transition-colors duration-[180ms]",
-        "active:translate-y-px disabled:opacity-40 disabled:pointer-events-none",
+        "grid size-10 place-items-center rounded-full border",
+        "transition-[background-color,border-color,transform,box-shadow] duration-[180ms]",
+        "hover:-translate-y-px active:translate-y-px disabled:opacity-40 disabled:pointer-events-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         ativo
-          ? "border-transparent bg-accent text-[var(--color-accent-texto)]"
-          : "border-line bg-surface-2 text-muted hover:text-text hover:border-line-2",
+          ? "corpo-botao border-transparent bg-accent text-[var(--color-accent-texto)]"
+          : "corpo-botao-sutil border-line bg-surface-2 text-muted hover:border-line-2 hover:text-text",
         className,
       )}
       {...props}

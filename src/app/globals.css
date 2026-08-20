@@ -27,6 +27,13 @@
   --color-erro: #c9584f;
 
   /* Raio: card entre 12 e 16. Pilula fica para controle pequeno. */
+  /* Profundidade do botao. Sombra com deslocamento e desfoque, nao halo:
+     halo colorido sem deslocamento e decoracao, isto e luz. */
+  --sombra-botao: 0 1px 1px rgba(0, 0, 0, 0.5), 0 3px 8px -2px rgba(0, 0, 0, 0.45);
+  --sombra-botao-alta: 0 2px 2px rgba(0, 0, 0, 0.45), 0 7px 18px -4px rgba(0, 0, 0, 0.5);
+  --luz-topo: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --luz-topo-sutil: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
   --radius-field: 10px;
   --radius-card: 14px;
   --radius-panel: 16px;
@@ -66,6 +73,12 @@
   --color-ok: #2f7a55;
   --color-warn: #966c1f;
   --color-erro: #a63f37;
+
+  /* no claro a sombra e mais curta e mais fraca: papel nao tem tanta queda */
+  --sombra-botao: 0 1px 1px rgba(20, 21, 24, 0.12), 0 2px 6px -2px rgba(20, 21, 24, 0.18);
+  --sombra-botao-alta: 0 2px 3px rgba(20, 21, 24, 0.14), 0 6px 14px -4px rgba(20, 21, 24, 0.22);
+  --luz-topo: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  --luz-topo-sutil: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 @layer base {
@@ -192,6 +205,51 @@
    * infinito num botao de ferramenta vira poluicao periferica enquanto a
    * pessoa tenta preencher um formulario.
    * --------------------------------------------------------------- */
+  /* ------------------------------------------------------------------
+   * Corpo do botao.
+   *
+   * O chapado nao lia como objeto: sem aresta de luz no topo, sem sombra
+   * embaixo, sem nada acontecendo ao apertar. O degrade aqui e de ILUMINACAO,
+   * nao de marca — oito por cento entre topo e base, que e o suficiente para
+   * o olho ler volume e pouco para virar enfeite.
+   * --------------------------------------------------------------- */
+  .corpo-botao {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, white 9%, transparent),
+      transparent 55%
+    );
+    box-shadow: var(--luz-topo), var(--sombra-botao);
+  }
+  .corpo-botao:hover:not(:disabled) {
+    box-shadow: var(--luz-topo), var(--sombra-botao-alta);
+  }
+  /* apertado: afunda, a sombra some e a luz vira sombra interna */
+  .corpo-botao:active:not(:disabled) {
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.28),
+      0 1px 1px rgba(0, 0, 0, 0.2);
+  }
+  .corpo-botao:disabled {
+    box-shadow: none;
+    background-image: none;
+  }
+
+  .corpo-botao-sutil {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, white 4%, transparent),
+      transparent 60%
+    );
+    box-shadow: var(--luz-topo-sutil), var(--sombra-botao);
+  }
+  .corpo-botao-sutil:hover:not(:disabled) {
+    box-shadow: var(--luz-topo-sutil), var(--sombra-botao-alta);
+  }
+  .corpo-botao-sutil:active:not(:disabled) {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.22);
+  }
+
   .varredura {
     position: relative;
     overflow: hidden;
