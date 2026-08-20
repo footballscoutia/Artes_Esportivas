@@ -67,7 +67,8 @@ function Login() {
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [confirmar, setConfirmar] = useState(false);
+  /* "confirmar" = cadastro feito, falta clicar no link; "recuperar" = pedimos a senha nova */
+  const [enviado, setEnviado] = useState<"confirmar" | "recuperar" | null>(null);
   // erro vindo de /auth/callback (link expirado, ja usado) aparece de cara
   const [erro, setErro] = useState<string | null>(params.get("erro"));
   const campoEmail = useRef<HTMLInputElement>(null);
@@ -81,6 +82,41 @@ function Login() {
     setErro(null);
     setConfirmacao("");
     campoEmail.current?.focus();
+  }
+
+  /**
+   * Manda o link de recuperacao.
+   *
+   * Ele aponta para `/auth/callback`, nao para a tela de senha nova: e o
+   * callback que troca o codigo por sessao. Apontar direto para /nova-senha
+   * levaria a pessoa a uma tela sem sessao, onde a troca seria recusada sem
+   * ninguem entender por que.
+   */
+  async function recuperar() {
+    setErro(null);
+    if (!email.trim()) {
+      setErro("Digite o seu e-mail primeiro — o link vai para ele.");
+      campoEmail.current?.focus();
+      return;
+    }
+
+    setOcupado(true);
+
+    /**
+     * Aponta direto para a tela, sem passar por `/auth/callback`.
+     *
+     * O callback e uma rota de servidor, e dependendo de como o link foi
+     * gerado o Supabase devolve a sessao no fragmento da URL — que o servidor
+     * nao recebe. A tela de senha nova roda no navegador e enxerga tanto o
+     * fragmento quanto o `?code=`, entao ela da conta dos dois formatos.
+     */
+    const { error } = await criarClienteNavegador().auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: new URL("/nova-senha", location.origin).toString(),
+    });
+    setOcupado(false);
+
+    if (error) return setErro(emPortugues(error.message));
+    setEnviado("recuperar");
   }
 
   async function enviar(e: React.FormEvent) {
@@ -146,7 +182,7 @@ function Login() {
       router.refresh();
       return;
     }
-    setConfirmar(true);
+    setEnviado("confirmar");
   }
 
   return (
@@ -178,16 +214,26 @@ function Login() {
         </div>
 
         <Card className="p-6">
-          {confirmar ? (
+          {enviado ? (
             <div className="grid gap-3 py-6 text-center">
               <span className="mx-auto grid size-11 place-items-center rounded-full border border-line bg-surface-2 text-muted">
                 <Mail size={18} strokeWidth={1.6} />
               </span>
-              <p className="text-sm font-medium">Confirme o e-mail</p>
-              <p className="text-[12px] leading-relaxed text-muted">
-                Mandamos uma mensagem para {email}. Abra o link dela para ativar a conta e
-                entrar.
+              <p className="text-sm font-medium">
+                {enviado === "confirmar" ? "Confirme o e-mail" : "Link enviado"}
               </p>
+              <p className="text-[12px] leading-relaxed text-muted">
+                {enviado === "confirmar"
+                  ? `Mandamos uma mensagem para ${email}. Abra o link dela para ativar a conta e entrar.`
+                  : `Mandamos para ${email} um link para você definir uma senha nova. Ele vale por uma hora.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => setEnviado(null)}
+                className="mx-auto mt-1 h-10 rounded-full px-4 text-[12px] text-muted transition-colors hover:bg-surface-2 hover:text-text"
+              >
+                Voltar
+              </button>
             </div>
           ) : (
             <>
@@ -239,6 +285,17 @@ function Login() {
                   <p className="rounded-field border border-erro/40 bg-erro/10 p-3 text-[12px] leading-relaxed">
                     {erro}
                   </p>
+                )}
+
+                {modo === "entrar" && (
+                  <button
+                    type="button"
+                    onClick={recuperar}
+                    disabled={ocupado}
+                    className="-mt-1 flex h-10 items-center text-[12px] text-muted transition-colors hover:text-text disabled:opacity-40"
+                  >
+                    Esqueci a senha — ou nunca defini uma
+                  </button>
                 )}
 
                 <Button type="submit" className="w-full" tamanho="lg" disabled={ocupado}>

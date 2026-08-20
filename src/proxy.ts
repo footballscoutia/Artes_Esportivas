@@ -19,7 +19,18 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 
 /** Rotas que existem sem sessao. O resto de `(app)` e fechado. */
-const PUBLICAS = ["/login", "/auth"];
+/**
+ * `/nova-senha` e publica de proposito.
+ *
+ * O link de recuperacao entrega a sessao no FRAGMENTO da URL, que so o
+ * navegador enxerga — o servidor nao. Se o proxy exigisse sessao aqui, ele
+ * mandaria a pessoa para o login antes de o JavaScript ter chance de ler o
+ * fragmento, e o link nunca funcionaria.
+ *
+ * Deixar a tela publica nao abre nada: ela e um formulario. Quem autoriza a
+ * troca e o `updateUser` do Supabase, que sem sessao de recuperacao recusa.
+ */
+const PUBLICAS = ["/login", "/auth", "/nova-senha"];
 
 /** A fase 1 roda inteira sem Supabase: sem chave, o proxy sai de cena. */
 const CONFIGURADO = Boolean(
