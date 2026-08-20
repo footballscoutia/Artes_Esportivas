@@ -19,6 +19,27 @@ import { cn } from "@/lib/utils";
  * prompt como texto. Nas 78 artes do acervo a paleta inteira sai do clube, e
  * escudo descrito em palavras sai inventado.
  */
+/**
+ * Uma cor como quadrado clicavel, nao como campo de texto.
+ *
+ * O seletor nativo faz o trabalho: o valor certo ja vem do escudo, e corrigir e
+ * apontar para a cor, nunca digitar um hex — que era o que o formulario pedia
+ * antes, e ninguem sabe de cor.
+ */
+function Amostra({ nome, rotulo, valor }: { nome: string; rotulo: string; valor: string }) {
+  return (
+    <label className="flex flex-1 cursor-pointer items-center gap-2.5 rounded-field border border-line bg-surface-2/60 p-2.5 transition-colors hover:border-line-2">
+      <input
+        type="color"
+        name={nome}
+        defaultValue={valor}
+        className="size-8 shrink-0 cursor-pointer rounded-[6px] border border-line bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0.5 [&::-webkit-color-swatch]:rounded-[4px] [&::-webkit-color-swatch]:border-0"
+      />
+      <span className="text-[12px] text-muted">{rotulo}</span>
+    </label>
+  );
+}
+
 export function Clubes({ clubes }: { clubes: Clube[] }) {
   const router = useRouter();
   const [pendente, comTransicao] = useTransition();
@@ -218,26 +239,32 @@ export function Clubes({ clubes }: { clubes: Clube[] }) {
               <Input name="nome_curto" defaultValue={editando?.nome_curto ?? ""} placeholder="Estoril" />
             </Campo>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Campo rotulo="Cor primária" dica="hex">
-                <Input
-                  name="cor_primaria"
-                  defaultValue={editando?.cor_primaria ?? ""}
-                  placeholder="#0B4F9E"
-                />
-              </Campo>
-              <Campo rotulo="Cor secundária" dica="opcional">
-                <Input
-                  name="cor_secundaria"
-                  defaultValue={editando?.cor_secundaria ?? ""}
-                  placeholder="#F2C200"
-                />
-              </Campo>
-            </div>
-            <p className="text-[11px] leading-relaxed text-muted-2">
-              As cores mandam na paleta da arte inteira, não só no escudo. É assim que as
-              referências do acervo funcionam.
-            </p>
+            {previa ? (
+              <p className="text-[11px] leading-relaxed text-muted-2">
+                As cores do clube serão lidas do novo escudo ao salvar.
+              </p>
+            ) : editando?.cor_primaria ? (
+              <div>
+                <p className="mb-2 text-[13px] font-medium">Cores da arte</p>
+                <div className="flex gap-3">
+                  <Amostra nome="cor_primaria" rotulo="Primária" valor={editando.cor_primaria} />
+                  <Amostra
+                    nome="cor_secundaria"
+                    rotulo="Secundária"
+                    valor={editando.cor_secundaria ?? "#FFFFFF"}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-2">
+                  Lidas do escudo. Elas mandam na paleta da arte inteira, não só no brasão —
+                  clique para corrigir se alguma saiu errada.
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-muted-2">
+                As cores do clube saem do escudo enviado e mandam na paleta da arte inteira, não
+                só no brasão. É assim que as referências do acervo funcionam.
+              </p>
+            )}
           </form>
         </Drawer>
       </div>

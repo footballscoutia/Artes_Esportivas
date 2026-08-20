@@ -7,6 +7,7 @@ import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
 import { produzirArte, SemReferencia } from "./gerar";
 import { materiaisDaArte } from "./materiais";
+import { paletaDoEscudo, type Paleta } from "./paleta";
 import { BALDE, subir } from "./storage";
 import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 
@@ -315,6 +316,7 @@ const ClubeEntrada = z.object({
   id: z.string().uuid().nullish(),
   nome: z.string().min(2).max(60),
   nome_curto: z.string().max(30).nullish(),
+  /* correcao manual pelo seletor de cor; o normal e vir vazio e sair do escudo */
   cor_primaria: z.string().regex(HEX).nullish().or(z.literal("")),
   cor_secundaria: z.string().regex(HEX).nullish().or(z.literal("")),
 });
@@ -331,6 +333,10 @@ function cor(v: unknown) {
  *
  * O escudo vai para o bucket de referencias, nao para o de fotos: ele e ativo
  * da agencia, do mesmo lado do acervo, e nao conteudo enviado por pedido.
+ *
+ * As cores saem do proprio escudo. O formulario chegou a pedir dois hex, o que
+ * era pedir o impossivel: quem esta cadastrando o Estoril nao sabe que o azul
+ * dele e #0B4F9E, deixa em branco, e a arte sai com cor generica.
  */
 export async function salvarClube(form: FormData): Promise<Resultado<{ id: string }>> {
   const p = ClubeEntrada.safeParse({
@@ -340,7 +346,7 @@ export async function salvarClube(form: FormData): Promise<Resultado<{ id: strin
     cor_primaria: form.get("cor_primaria") || null,
     cor_secundaria: form.get("cor_secundaria") || null,
   });
-  if (!p.success) return falha("Confira o nome e as cores. A cor vai em hex, como #1F5C4A.");
+  if (!p.success) return falha("Confira o nome do clube: mínimo de dois caracteres.");
 
   const usuario = await usuarioAtual();
   if (!usuario) return falha("Sessão expirada. Entre de novo.");
@@ -350,10 +356,17 @@ export async function salvarClube(form: FormData): Promise<Resultado<{ id: strin
   if (!p.data.id && !temEscudo) return falha("Envie o escudo do clube.");
 
   let escudo_url: string | null = null;
+  let daImagem: Paleta = { primaria: null, secundaria: null };
+
   if (temEscudo) {
     try {
       const bytes = Buffer.from(await arquivo.arrayBuffer());
       escudo_url = await subir(BALDE.referencias, bytes, arquivo.type || "image/png");
+      /* ler a paleta nao pode derrubar o cadastro: clube sem cor ainda serve */
+      daImagem = await paletaDoEscudo(bytes).catch((e) => {
+        console.error("[salvarClube] não li as cores do escudo:", e);
+        return { primaria: null, secundaria: null };
+      });
     } catch (e) {
       console.error("[salvarClube] upload:", e);
       return falha("Não consegui enviar o escudo. Tente de novo.");
@@ -363,10 +376,22 @@ export async function salvarClube(form: FormData): Promise<Resultado<{ id: strin
   const campos: Record<string, unknown> = {
     nome: p.data.nome.trim(),
     nome_curto: p.data.nome_curto?.trim() || null,
-    cor_primaria: cor(p.data.cor_primaria),
-    cor_secundaria: cor(p.data.cor_secundaria),
   };
   if (escudo_url) campos.escudo_url = escudo_url;
+
+  /**
+   * Escudo novo redefine a paleta; sem escudo novo, vale a correcao manual.
+   *
+   * Nessa ordem porque o seletor de cor SEMPRE manda um valor, mesmo intocado.
+   * Se o manual ganhasse sempre, trocar o escudo de um clube manteria as cores
+   * do escudo antigo, e ninguem entenderia por que. A tela ajuda: enquanto ha um
+   * escudo novo escolhido, ela esconde os seletores e avisa que as cores vem
+   * dele.
+   */
+  const primaria = daImagem.primaria ?? cor(p.data.cor_primaria);
+  const secundaria = daImagem.secundaria ?? cor(p.data.cor_secundaria);
+  if (primaria) campos.cor_primaria = primaria;
+  if (secundaria) campos.cor_secundaria = secundaria;
 
   const sb = await criarClienteServidor();
 
