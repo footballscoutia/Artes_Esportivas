@@ -8,6 +8,7 @@ import type {
   Formato,
   Geracao,
   Jogador,
+  Marca,
   Pedido,
   Referencia,
   Tipo,
@@ -214,6 +215,23 @@ export async function listarJogadores(): Promise<Jogador[]> {
   const linhas = (data ?? []) as Jogador[];
   const urls = await assinarVarios(BALDE.fotos, linhas.map((j) => j.foto_url));
   return linhas.map((j, i) => ({ ...j, foto_url: urls[i] }));
+}
+
+/** As marcas cadastradas pela org, para escolher qual carimbar em cada geração. */
+export async function listarMarcas(): Promise<Marca[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("marcas")
+    .select("id, nome, imagem_url, ativa, criado_em")
+    .eq("ativa", true)
+    .order("criado_em");
+
+  estourar("listar as marcas", error);
+  const linhas = (data ?? []) as Marca[];
+  const urls = await assinarVarios(BALDE.marcas, linhas.map((m) => m.imagem_url));
+  return linhas.map((m, i) => ({ ...m, imagem_url: urls[i] }));
 }
 
 /** Os clubes cadastrados, com o escudo pronto para exibir. */

@@ -1,21 +1,20 @@
 import sharp from "sharp";
 import type { OverlayOptions } from "sharp";
-import path from "node:path";
-import { FORMATO_META, type Formato } from "./types";
+import { FORMATO_META, type Formato, type PosicaoLogo } from "./types";
 
 /**
  * Acabamento sobre o que a IA devolveu.
  *
- *   arte gerada (ja com o texto)  ->  recorte do jogador  ->  logo da agencia
+ *   arte gerada (ja com o texto)  ->  recorte do jogador  ->  logo do cliente
  *
  * O texto NAO passa mais por aqui. O nome, o rotulo e a frase sao pedidos ao
  * modelo dentro do prompt-mae — texto desenhado por cima ficava chapado, sem a
  * perspectiva e a luz da arte.
  *
  * A logo continua sendo camada de codigo, e por um motivo diferente do texto:
- * um nome errado se corrige, mas a marca da agencia tem forma exata e o modelo
+ * um nome errado se corrige, mas a marca do cliente tem forma exata e o modelo
  * nao a conhece. Mesmo com referencia ele aproxima, e escudo torto publicado no
- * perfil da agencia e um erro de outra categoria.
+ * perfil do cliente e um erro de outra categoria.
  */
 
 export type ComposeInput = {
@@ -24,18 +23,39 @@ export type ComposeInput = {
   /** Recorte do atleta com alpha, quando existir. Sem ele, o atleta ja veio na arte. */
   recorte?: Buffer | null;
   formato: Formato;
-  /** Caminho do arquivo de logo dentro de public/. */
-  logo?: string;
-  /** Arte sem marca, para conferir o que o modelo produziu sozinho. */
-  semLogo?: boolean;
+  /**
+   * Bytes da logo escolhida. Nulo/ausente = nenhuma logo — a escolha e de
+   * cada geracao, nao mais um arquivo fixo do codigo (era `public/brand/logo.png`
+   * sempre, sem opcao).
+   */
+  logo?: Buffer | null;
+  /**
+   * Onde a logo entra. Fixo era so "inferior-direito", e nem sempre sobra
+   * espaco ali: a composicao muda a cada geracao, e o canto livre so se sabe
+   * depois de ver a arte pronta.
+   */
+  posicaoLogo?: PosicaoLogo;
 };
+
+const MARGEM = 0.07;
+
+function posicaoDaLogo(posicao: PosicaoLogo, w: number, h: number, larguraLogo: number, alturaLogo: number) {
+  const margemX = Math.round(w * MARGEM);
+  const margemYBase = Math.round(w * 0.075);
+  const esquerda = posicao.endsWith("esquerdo");
+  const emCima = posicao.startsWith("superior");
+  return {
+    left: esquerda ? margemX : w - larguraLogo - margemX,
+    top: emCima ? margemYBase : h - alturaLogo - margemYBase,
+  };
+}
 
 export async function compor({
   fundo,
   recorte,
   formato,
-  logo = "brand/logo.png",
-  semLogo = false,
+  logo,
+  posicaoLogo = "inferior-direito",
 }: ComposeInput): Promise<Buffer> {
   const { w, h } = FORMATO_META[formato];
 
@@ -55,17 +75,13 @@ export async function compor({
     });
   }
 
-  if (!semLogo) {
+  if (logo) {
     const larguraLogo = Math.round(w * 0.3);
-    const marca = await sharp(path.join(process.cwd(), "public", logo))
-      .resize({ width: larguraLogo })
-      .png()
-      .toBuffer();
+    const marca = await sharp(logo).resize({ width: larguraLogo }).png().toBuffer();
     const metaMarca = await sharp(marca).metadata();
     camadas.push({
       input: marca,
-      top: Math.round(h - w * 0.075 - (metaMarca.height ?? 0)),
-      left: w - larguraLogo - Math.round(w * 0.07),
+      ...posicaoDaLogo(posicaoLogo, w, h, larguraLogo, metaMarca.height ?? 0),
     });
   }
 

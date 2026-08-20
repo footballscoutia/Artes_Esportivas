@@ -41,6 +41,8 @@ type Resultado = {
   duracao_ms: number;
   referencia_id: string;
   referencia_versao: number;
+  marca_id: string | null;
+  posicao_logo: string;
 };
 
 /* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
@@ -178,6 +180,8 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
       provider: resultado.provider,
       custo_usd: resultado.custo_usd,
       duracao_ms: Math.round(resultado.duracao_ms),
+      marca_id: resultado.marca_id,
+      posicao_logo: resultado.posicao_logo,
     });
 
     if (!r.ok) {

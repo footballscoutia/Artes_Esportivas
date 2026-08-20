@@ -5,7 +5,7 @@ import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
 import { sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
-import { FORMATO_META, TIPO_META, type Formato, type Tipo } from "./types";
+import { FORMATO_META, TIPO_META, type Formato, type PosicaoLogo, type Tipo } from "./types";
 
 /**
  * O caminho unico de "pedir uma arte ao modelo e guardar o resultado".
@@ -175,6 +175,8 @@ export async function produzirArte({
   frase,
   foto,
   clubes = [],
+  marcaLogo = null,
+  posicaoLogo = "inferior-direito",
   ...jogo
 }: {
   tipo: Tipo;
@@ -185,6 +187,9 @@ export async function produzirArte({
   foto?: Buffer | null;
   /** Clube do atleta e, em matchday, o adversario. Nesta ordem. */
   clubes?: ClubeNaArte[];
+  /** Bytes da marca a carimbar. Nulo = a org ainda nao cadastrou nenhuma. */
+  marcaLogo?: Buffer | null;
+  posicaoLogo?: PosicaoLogo;
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
@@ -226,7 +231,7 @@ export async function produzirArte({
   });
 
   // corte para o formato final e a logo por cima
-  const final = await compor({ fundo: gerado.imagem, formato });
+  const final = await compor({ fundo: gerado.imagem, formato, logo: marcaLogo, posicaoLogo });
 
   /**
    * Guarda tambem o que o modelo devolveu sem corte e sem logo. Serve para

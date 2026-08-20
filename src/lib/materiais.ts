@@ -99,3 +99,29 @@ export async function materiaisDaArte({
 
   return { foto, clubes };
 }
+
+/**
+ * A marca da org, pronta para carimbar.
+ *
+ * "Padrao" porque hoje toda org so cadastra uma. Quando a Fase 1 ganhar tela
+ * de escolha manual, isto vira so o valor inicial do seletor — nao muda quem
+ * chama.
+ */
+export async function marcaPadraoDaOrg(): Promise<{ id: string; bytes: Buffer } | null> {
+  const sb = await criarClienteServidor();
+  const { data } = await sb
+    .from("marcas")
+    .select("id, imagem_url")
+    .eq("ativa", true)
+    .order("criado_em")
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const bytes = await baixar(BALDE.marcas, data.imagem_url).catch((e) => {
+    console.error("[materiais] logo da marca não veio:", e);
+    return null;
+  });
+  return bytes ? { id: data.id, bytes } : null;
+}

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GenError } from "@/lib/ai";
 import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
-import { materiaisDaArte } from "@/lib/materiais";
+import { materiaisDaArte, marcaPadraoDaOrg } from "@/lib/materiais";
 import { BALDE, assinar } from "@/lib/storage";
 import { TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
 
@@ -89,7 +89,10 @@ export async function POST(req: Request) {
    * tirou o upload de toda geracao: o atleta ja esta no elenco com a foto boa,
    * e repetir o upload semanal era a chance de subir a foto ruim.
    */
-  const { foto, clubes } = await materiaisDaArte({ jogador_id, clube_id, adversario_id });
+  const [{ foto, clubes }, marca] = await Promise.all([
+    materiaisDaArte({ jogador_id, clube_id, adversario_id }),
+    marcaPadraoDaOrg(),
+  ]);
 
   try {
     /**
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
       frase,
       foto,
       clubes,
+      marcaLogo: marca?.bytes ?? null,
       ...jogo,
     });
 
@@ -112,6 +116,9 @@ export async function POST(req: Request) {
       // URL assinada, com validade curta — os buckets sao privados
       imagem: await assinar(BALDE.geracoes, arte.arte_path),
       ...arte,
+      // a org ainda pode nao ter cadastrado marca nenhuma: nulo e valido
+      marca_id: marca?.id ?? null,
+      posicao_logo: marca ? "inferior-direito" : "nenhuma",
     });
   } catch (e) {
     if (e instanceof SemReferencia) {

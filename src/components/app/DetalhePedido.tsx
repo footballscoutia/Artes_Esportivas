@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ViewTransition } from "react";
+import { useState, useTransition, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,19 +17,50 @@ import {
 import { Button, BotaoIcone } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Orb } from "@/components/art/Orb";
-import { FORMATO_META, TIPO_META, type Geracao, type Pedido } from "@/lib/types";
+import {
+  FORMATO_META,
+  POSICAO_LOGO_ROTULO,
+  POSICOES_LOGO,
+  TIPO_META,
+  type Geracao,
+  type Marca,
+  type Pedido,
+  type PosicaoLogo,
+} from "@/lib/types";
 import { cn, formatarData, tempoRelativo } from "@/lib/utils";
-import { gerarOutra } from "@/lib/acoes";
+import { gerarOutra, recompor } from "@/lib/acoes";
 
 type Aba = "detalhes" | "camadas" | "historico";
+
+/** Mini-moldura mostrando em qual canto a logo vai cair. Só enfeite, mas é o
+    tipo de enfeite que poupa a pessoa de ler quatro rótulos parecidos. */
+function Cantinho({ posicao }: { posicao: PosicaoLogo }) {
+  const emCima = posicao.startsWith("superior");
+  const naEsquerda = posicao.endsWith("esquerdo");
+  return (
+    <span className="relative block size-8 shrink-0 rounded-[6px] border border-line-2 bg-surface-2">
+      <span
+        className="absolute size-2 rounded-[2px] bg-current"
+        style={{
+          top: emCima ? 3 : undefined,
+          bottom: emCima ? undefined : 3,
+          left: naEsquerda ? 3 : undefined,
+          right: naEsquerda ? undefined : 3,
+        }}
+      />
+    </span>
+  );
+}
 
 export function DetalhePedido({
   pedido,
   geracoes,
+  marcas,
   promptMae,
 }: {
   pedido: Pedido;
   geracoes: Geracao[];
+  marcas: Marca[];
   promptMae: string;
 }) {
   const tipo = TIPO_META[pedido.tipo];
@@ -48,6 +79,15 @@ export function DetalhePedido({
   const [baixando, setBaixando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [recompondo, comTransicao] = useTransition();
+  const [canto, setCanto] = useState<PosicaoLogo | "nenhuma">(
+    (selecionadaId && geracoes.find((g) => g.id === selecionadaId)?.posicao_logo) ||
+      geracoes[0]?.posicao_logo ||
+      "inferior-direito",
+  );
+  const [marcaId, setMarcaId] = useState<string | null>(
+    geracoes[0]?.marca_id ?? marcas[0]?.id ?? null,
+  );
 
   /**
    * A imagem vem por URL assinada, que e outro dominio. Nesse caso o atributo
@@ -75,6 +115,30 @@ export function DetalhePedido({
     } finally {
       setBaixando(false);
     }
+  }
+
+  /**
+   * Troca canto ou logo sem gastar geração nova — recompõe o `fundo_url` já
+   * guardado. Vira uma linha nova no histórico, com custo zero.
+   */
+  function aplicarCamada() {
+    if (!selecionada) return;
+    setErro(null);
+    setAviso(null);
+    comTransicao(async () => {
+      const r = await recompor({
+        pedido_id: pedido.id,
+        geracao_id: selecionada.id,
+        marca_id: canto === "nenhuma" ? null : marcaId,
+        posicao_logo: canto === "nenhuma" ? null : canto,
+      });
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setAviso("Camada aplicada. A versão anterior continua no histórico.");
+      router.refresh();
+    });
   }
 
   async function novaGeracao() {
@@ -218,30 +282,84 @@ export function DetalhePedido({
             )}
 
             {aba === "camadas" && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <p className="text-[12px] leading-relaxed text-muted">
-                  O texto vem do modelo, dentro da arte. Se o nome sair errado, o caminho é
-                  gerar outra, e vale ajustar o prompt-mãe em Referências, porque o erro
-                  tende a se repetir.
+                  O texto vem do modelo, dentro da arte — se o nome sair errado, o caminho é
+                  gerar outra. A logo é diferente: é carimbada por cima, então trocar de canto
+                  não custa uma geração nova.
                 </p>
-                <ol className="space-y-1.5 text-[12px]">
-                  {["Arte do modelo, com os textos dentro", "Recorte do jogador", "Logo da agência"].map(
-                    (c, i) => (
-                      <li
-                        key={c}
-                        className="flex items-center gap-3 rounded-field border border-line bg-surface-2/40 px-3.5 py-2.5"
-                      >
-                        <span className="text-[11px] tabular-nums text-muted-2">{i + 1}</span>
-                        <span className={i === 0 ? "text-muted" : ""}>{c}</span>
-                        {i === 0 && (
-                          <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-2">
-                            IA
-                          </span>
+
+                <div>
+                  <p className="mb-2 text-[12px] font-medium">Onde a logo entra</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {POSICOES_LOGO.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setCanto(p)}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-field border p-2.5 text-left transition-colors",
+                          canto === p
+                            ? "border-accent bg-accent/10 text-accent"
+                            : "border-line bg-surface-2/40 text-text hover:border-line-2",
                         )}
-                      </li>
-                    ),
-                  )}
-                </ol>
+                      >
+                        <Cantinho posicao={p} />
+                        <span className="text-[12px] leading-tight">{POSICAO_LOGO_ROTULO[p]}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCanto("nenhuma")}
+                    className={cn(
+                      "mt-2 w-full rounded-field border p-2.5 text-[12px] transition-colors",
+                      canto === "nenhuma"
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-line bg-surface-2/40 text-muted hover:border-line-2",
+                    )}
+                  >
+                    Sem logo nesta arte
+                  </button>
+                </div>
+
+                {canto !== "nenhuma" && marcas.length > 1 && (
+                  <div>
+                    <p className="mb-2 text-[12px] font-medium">Qual logo</p>
+                    <div className="flex flex-wrap gap-2">
+                      {marcas.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMarcaId(m.id)}
+                          className={cn(
+                            "rounded-field border px-3 py-2 text-[12px] transition-colors",
+                            marcaId === m.id
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-line bg-surface-2/40 text-muted hover:border-line-2",
+                          )}
+                        >
+                          {m.nome}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {canto !== "nenhuma" && marcas.length === 0 && (
+                  <p className="rounded-field border border-warn/40 bg-warn/10 p-3 text-[12px] leading-relaxed">
+                    Nenhuma marca cadastrada ainda. Sem ela a arte sai sem logo.
+                  </p>
+                )}
+
+                <Button
+                  variante="sutil"
+                  className="w-full"
+                  disabled={recompondo || (canto !== "nenhuma" && !marcaId)}
+                  onClick={aplicarCamada}
+                >
+                  {recompondo ? "Aplicando…" : "Aplicar"}
+                </Button>
               </div>
             )}
 

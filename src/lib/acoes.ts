@@ -6,11 +6,12 @@ import { z } from "zod";
 import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
+import { compor } from "./compose";
 import { produzirArte, SemReferencia } from "./gerar";
-import { materiaisDaArte } from "./materiais";
+import { materiaisDaArte, marcaPadraoDaOrg } from "./materiais";
 import { paletaDoEscudo, type Paleta } from "./paleta";
-import { BALDE, subir } from "./storage";
-import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
+import { BALDE, baixar, subir } from "./storage";
+import { FORMATOS, POSICOES_LOGO, TIPOS, type Formato, type PosicaoLogo, type Tipo } from "./types";
 
 /**
  * Escrita. Tudo que muda o banco passa por aqui.
@@ -63,6 +64,11 @@ const Novo = z.object({
   provider: z.string(),
   custo_usd: z.number(),
   duracao_ms: z.number().int().nullish(),
+  /** Qual marca a previa carimbou. Vem do /api/gerar, nao e escolha nova aqui. */
+  marca_id: z.string().uuid().nullish(),
+  posicao_logo: z
+    .enum(["inferior-direito", "inferior-esquerdo", "superior-direito", "superior-esquerdo", "nenhuma"])
+    .nullish(),
 });
 
 /** Grava o pedido e a primeira geracao. E o "Salvar na biblioteca" do /novo. */
@@ -95,19 +101,29 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
       status: "em_revisao",
       criado_por: usuario.id,
     })
-    .select("id")
+    .select("id, org_id")
     .single();
 
   if (error || !pedido) return falha(`Não consegui salvar o pedido: ${error?.message ?? "sem retorno"}`);
 
+  /**
+   * `org_id` entra na mao aqui, e so aqui: o insert de `pedidos` acima usa o
+   * cliente de SESSAO, entao `org_id` se preenche sozinho pelo default
+   * `minha_org()`. Este insert usa o cliente ADMIN, sem sessao — sem
+   * `auth.uid()` nao ha `minha_org()`, entao o valor tem que vir de uma linha
+   * que ja tem org certa: o pedido que acabou de nascer.
+   */
   const { error: erroGeracao } = await criarClienteAdmin().from("geracoes").insert({
     pedido_id: pedido.id,
+    org_id: pedido.org_id,
     imagem_url: p.data.arte_path,
     fundo_url: p.data.fundo_path,
     modelo: p.data.modelo,
     provider: p.data.provider,
     custo_usd: p.data.custo_usd,
     duracao_ms: p.data.duracao_ms ?? null,
+    marca_id: p.data.marca_id || null,
+    posicao_logo: p.data.posicao_logo || null,
   });
 
   if (erroGeracao) {
@@ -135,7 +151,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
   const { data: pedido } = await sb
     .from("pedidos")
     .select(
-      "tipo, formato, nome_jogador, clube, frase, foto_jogador_url, jogador_id, clube_id, adversario_id, adversario, data_jogo, hora_jogo, campeonato, estadio",
+      "org_id, tipo, formato, nome_jogador, clube, frase, foto_jogador_url, jogador_id, clube_id, adversario_id, adversario, data_jogo, hora_jogo, campeonato, estadio",
     )
     .eq("id", pedidoId)
     .maybeSingle();
@@ -149,12 +165,15 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
      * arte nenhuma; sem os escudos ela sai com a cor de outro time. O pedido
      * guarda o caminho antigo da foto para os que nasceram antes do elenco.
      */
-    const { foto, clubes } = await materiaisDaArte({
-      jogador_id: pedido.jogador_id,
-      clube_id: pedido.clube_id,
-      adversario_id: pedido.adversario_id,
-      foto_path: pedido.foto_jogador_url,
-    });
+    const [{ foto, clubes }, marca] = await Promise.all([
+      materiaisDaArte({
+        jogador_id: pedido.jogador_id,
+        clube_id: pedido.clube_id,
+        adversario_id: pedido.adversario_id,
+        foto_path: pedido.foto_jogador_url,
+      }),
+      marcaPadraoDaOrg(),
+    ]);
 
     const arte = await produzirArte({
       foto,
@@ -169,16 +188,20 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       hora_jogo: pedido.hora_jogo,
       campeonato: pedido.campeonato,
       estadio: pedido.estadio,
+      marcaLogo: marca?.bytes ?? null,
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
       pedido_id: pedidoId,
+      org_id: pedido.org_id,
       imagem_url: arte.arte_path,
       fundo_url: arte.fundo_path,
       modelo: arte.modelo,
       provider: arte.provider,
       custo_usd: arte.custo_usd,
       duracao_ms: arte.duracao_ms,
+      marca_id: marca?.id ?? null,
+      posicao_logo: marca ? "inferior-direito" : "nenhuma",
     });
 
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);
@@ -190,6 +213,91 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
     if (e instanceof SemReferencia) return falha(e.message);
     console.error("[gerarOutra]", e);
     return falha("Falha ao gerar a arte. Tente de novo.");
+  }
+}
+
+const Recompor = z.object({
+  pedido_id: z.string().uuid(),
+  /** De qual geração vem o fundo — normalmente a mais recente. */
+  geracao_id: z.string().uuid(),
+  marca_id: z.string().uuid().nullish(),
+  posicao_logo: z.enum(POSICOES_LOGO).nullish(),
+});
+
+/**
+ * Troca a logo ou o canto sem gastar geração nova.
+ *
+ * O modelo so e chamado uma vez; daqui pra frente, trocar canto e recompor
+ * `fundo_url` — a imagem crua, sem nenhuma camada de codigo — com uma logo e
+ * posicao diferentes. Custa uma composicao local, nao uma chamada de API.
+ *
+ * Vira uma geracao NOVA na lista, do mesmo jeito que "gerar outra": o
+ * historico continua contando a verdade de cada tentativa, e o `custo_usd`
+ * zerado ja mostra na tela que essa troca não pesou na conta.
+ */
+export async function recompor(entrada: unknown): Promise<Resultado> {
+  const p = Recompor.safeParse(entrada);
+  if (!p.success) return falha("Dados inválidos.");
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const sb = await criarClienteServidor();
+
+  const [{ data: geracao }, { data: pedido }] = await Promise.all([
+    sb
+      .from("geracoes")
+      .select("fundo_url, modelo, org_id")
+      .eq("id", p.data.geracao_id)
+      .eq("pedido_id", p.data.pedido_id)
+      .maybeSingle(),
+    sb.from("pedidos").select("formato").eq("id", p.data.pedido_id).maybeSingle(),
+  ]);
+
+  if (!geracao?.fundo_url) return falha("Não achei o fundo desta geração para recompor.");
+  if (!pedido) return falha("Pedido não encontrado.");
+
+  try {
+    const fundo = await baixar(BALDE.geracoes, geracao.fundo_url);
+
+    let logo: Buffer | null = null;
+    if (p.data.marca_id) {
+      const { data: marca } = await sb
+        .from("marcas")
+        .select("imagem_url")
+        .eq("id", p.data.marca_id)
+        .maybeSingle();
+      if (marca) logo = await baixar(BALDE.marcas, marca.imagem_url).catch(() => null);
+    }
+
+    const posicao: PosicaoLogo = p.data.posicao_logo ?? "inferior-direito";
+    const final = await compor({
+      fundo,
+      formato: pedido.formato as Formato,
+      logo,
+      posicaoLogo: posicao,
+    });
+    const arte_path = await subir(BALDE.geracoes, final);
+
+    const { error } = await criarClienteAdmin().from("geracoes").insert({
+      pedido_id: p.data.pedido_id,
+      org_id: geracao.org_id,
+      imagem_url: arte_path,
+      fundo_url: geracao.fundo_url,
+      modelo: geracao.modelo,
+      provider: "recomposicao",
+      custo_usd: 0,
+      duracao_ms: 0,
+      marca_id: logo ? p.data.marca_id : null,
+      posicao_logo: logo ? posicao : "nenhuma",
+    });
+    if (error) return falha(`Recompus mas não consegui gravar: ${error.message}`);
+
+    revalidatePath(`/pedido/${p.data.pedido_id}`);
+    return { ok: true, dados: undefined };
+  } catch (e) {
+    console.error("[recompor]", e);
+    return falha("Falha ao recompor a arte. Tente de novo.");
   }
 }
 

@@ -173,9 +173,39 @@ export type Geracao = {
   motivo_recusa: string | null;
   custo_usd: number;
   modelo: string;
-  /** qual adapter respondeu — "mock", "gemini". Serve para comparar modelos. */
+  /** qual adapter respondeu — "mock", "gemini", "recomposicao". Serve para comparar modelos. */
   provider?: string;
   duracao_ms?: number | null;
+  /** Qual marca foi carimbada nesta tentativa. Nulo = sem logo. */
+  marca_id?: string | null;
+  posicao_logo?: PosicaoLogo | "nenhuma" | null;
+  criado_em: string;
+};
+
+export const POSICOES_LOGO = [
+  "inferior-direito",
+  "inferior-esquerdo",
+  "superior-direito",
+  "superior-esquerdo",
+] as const;
+export type PosicaoLogo = (typeof POSICOES_LOGO)[number];
+
+export const POSICAO_LOGO_ROTULO: Record<PosicaoLogo, string> = {
+  "inferior-direito": "Inferior direito",
+  "inferior-esquerdo": "Inferior esquerdo",
+  "superior-direito": "Superior direito",
+  "superior-esquerdo": "Superior esquerdo",
+};
+
+/**
+ * Logo que a arte pode levar carimbada. Cada org cadastra a propria — a
+ * agencia e cada cliente dela — e escolhe qual entra em cada geracao.
+ */
+export type Marca = {
+  id: string;
+  nome: string;
+  imagem_url: string | null;
+  ativa: boolean;
   criado_em: string;
 };
 
