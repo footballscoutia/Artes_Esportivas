@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
@@ -471,4 +472,21 @@ export async function retirarConvite(email: string): Promise<Resultado> {
 
   revalidatePath("/equipe");
   return { ok: true, dados: undefined };
+}
+
+/**
+ * Encerra a sessao.
+ *
+ * Acao de servidor, e nao `signOut()` no navegador, porque quem guarda a
+ * sessao e um cookie httpOnly: o cliente do navegador limpa o que enxerga e o
+ * servidor continua respondendo logado ate o cookie vencer. Sair pela metade e
+ * pior que nao sair, porque parece que saiu.
+ *
+ * O `redirect` fica aqui dentro para nao existir o intervalo em que a sessao
+ * ja morreu e a tela ainda mostra a biblioteca.
+ */
+export async function sair(): Promise<void> {
+  const sb = await criarClienteServidor();
+  await sb.auth.signOut();
+  redirect("/login");
 }

@@ -55,12 +55,12 @@ export default async function BibliotecaPage({
             <p className="font-medium">
               {filtro
                 ? `Nenhuma arte de ${TIPO_META[filtro].titulo.toLowerCase()} ainda`
-                : "Comece pela foto do atleta"}
+                : "Comece escolhendo o atleta"}
             </p>
             <p className="mt-1.5 max-w-[42ch] text-sm leading-relaxed text-muted">
               {filtro
                 ? "Gere uma e ela aparece aqui, junto com as outras."
-                : "Você escolhe a categoria, envia a foto e responde três perguntas. A arte fica guardada aqui, pronta para baixar quando precisar."}
+                : "Você escolhe a categoria, o atleta do elenco e responde três perguntas. A arte fica guardada aqui, pronta para baixar quando precisar."}
             </p>
           </div>
           <BotaoLink href="/novo" variante="sutil" tamanho="sm">

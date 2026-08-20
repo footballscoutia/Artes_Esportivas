@@ -34,7 +34,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
           className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold transition-colors hover:border-line-2 hover:bg-surface-3"
           title={
             usuario
-              ? `${usuario.email}, ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"} — ver a equipe`
+              ? `${usuario.email} — sua conta, a equipe e a saída`
               : "Sem sessão"
           }
         >
@@ -45,9 +45,15 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
   );
 }
 
-/** Duas letras para o avatar. Sem nome, cai num tracinho em vez de string vazia. */
+/**
+ * Duas letras para o avatar. Sem nome, cai num tracinho em vez de string vazia.
+ *
+ * O separador era `/s+/`, sem a barra: partia a letra "s" em vez de espaco.
+ * "Lucas Ferreira" virava ["Luca", " Ferreira"] e o avatar saia "L ". So nao
+ * aparecia porque a unica conta tinha nome de uma palavra e sem "s".
+ */
 function iniciais(nome?: string) {
-  const partes = (nome ?? "").trim().split(/s+/).filter(Boolean);
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "—";
   const letras = partes.length === 1 ? partes[0].slice(0, 2) : partes[0][0] + partes[1][0];
   return letras.toUpperCase();

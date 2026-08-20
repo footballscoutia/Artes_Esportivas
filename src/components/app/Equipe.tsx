@@ -2,11 +2,11 @@
 
 import { useRef, useState, useTransition, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Clock, ShieldCheck, UserPlus, X } from "lucide-react";
+import { Check, Clock, LogOut, ShieldCheck, UserPlus, X } from "lucide-react";
 import { Button, BotaoIcone } from "@/components/ui/Button";
 import { TituloSecao } from "@/components/ui/Card";
 import { Campo, Input } from "@/components/ui/Field";
-import { convidar, retirarConvite } from "@/lib/acoes";
+import { convidar, retirarConvite, sair } from "@/lib/acoes";
 import type { Convite, Usuario } from "@/lib/types";
 
 /**
@@ -55,6 +55,16 @@ export function Equipe({
         <TituloSecao
           titulo="Equipe"
           descricao={`${contas.length} ${contas.length === 1 ? "pessoa com acesso" : "pessoas com acesso"}`}
+          acao={
+            <Button
+              variante="contorno"
+              disabled={pendente}
+              onClick={() => comTransicao(() => sair())}
+            >
+              <LogOut size={15} strokeWidth={1.9} />
+              Sair da conta
+            </Button>
+          }
         />
 
         <section className="surface overflow-hidden rounded-card">
