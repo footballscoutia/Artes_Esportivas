@@ -1,22 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ViewTransition } from "react";
-import { LayoutGrid, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Usuario } from "@/lib/types";
 import { Marca } from "@/components/app/Marca";
+import { Secoes } from "@/components/app/Secoes";
 import { Tema } from "@/components/app/Tema";
 
-const SECOES = [
-  { href: "/biblioteca", rotulo: "Biblioteca", icone: LayoutGrid },
-  { href: "/novo", rotulo: "Nova arte", icone: Sparkles },
-];
-
 export function TopNav({ usuario }: { usuario: Usuario | null }) {
-  const path = usePathname();
-
   return (
     <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 backdrop-blur-xl lg:px-6">
       <Link
@@ -29,35 +19,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
         <span className="sr-only">Estúdio de Artes</span>
       </Link>
 
-      <nav className="surface mx-auto flex items-center gap-1 rounded-full p-1.5">
-        {SECOES.map(({ href, rotulo, icone: Icone }) => {
-          const ativo = path === href || path.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium",
-                "transition-colors duration-[180ms]",
-                ativo ? "text-text" : "text-muted hover:text-text",
-              )}
-            >
-              {/*
-                O fundo da seção ativa é UM elemento que se move entre os itens,
-                não um fundo que apaga aqui e acende ali. É o mesmo objeto
-                mudando de lugar, e é isso que a navegação comunica.
-              */}
-              {ativo && (
-                <ViewTransition name="nav-atual">
-                  <span className="absolute inset-0 rounded-full bg-surface-3" />
-                </ViewTransition>
-              )}
-              <Icone size={15} strokeWidth={1.75} className="relative" />
-              <span className="relative hidden md:block">{rotulo}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <Secoes />
 
       <div className="flex shrink-0 items-center gap-3">
         <Tema />

@@ -262,7 +262,7 @@
 }
 @keyframes vt-sobe {
   from {
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
   to {
     transform: none;
@@ -272,6 +272,17 @@
   30% {
     filter: blur(3px);
   }
+}
+
+/*
+ * A raiz NAO anima. Por padrao o navegador cross-fadeia a pagina inteira, e era
+ * isso que passava por cima da transicao do conteudo: dois fades sobrepostos,
+ * nenhum visivel. Desligada a raiz, so os grupos nomeados se mexem, e a barra
+ * fica parada porque nao mudou.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
 }
 
 /* conteudo da rota: o antigo sai depressa, o novo chega depois que ele terminou */
@@ -284,12 +295,6 @@
   animation:
     var(--dur-entrada) ease-in var(--dur-saida) both vt-fade,
     var(--dur-mover) cubic-bezier(0.22, 1, 0.36, 1) both vt-sobe;
-}
-
-/* indicador da navegacao: desliza entre as secoes em vez de piscar */
-::view-transition-group(nav-atual) {
-  animation-duration: var(--dur-mover);
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* a miniatura vira a arte grande: o desfoque esconde o serrilhado do caminho */
