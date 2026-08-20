@@ -55,14 +55,37 @@ export default function NovaSenhaPage() {
     });
 
     (async () => {
+      const busca = new URLSearchParams(location.search);
+      const token_hash = busca.get("token_hash");
+
       /**
-       * O fragmento tem que ser lido na mao.
+       * O caminho principal: trocar o token do e-mail por sessao aqui.
        *
-       * O cliente do `@supabase/ssr` roda em PKCE, e nesse modo o
-       * `detectSessionInUrl` so olha o `?code=` da query. Link que traz
-       * `#access_token=` — o formato antigo, e o que o painel do Supabase
-       * gera quando alguem manda a recuperacao de la — passava batido, e a
-       * tela dizia "link vencido" com a sessao inteira ali na URL.
+       * O modelo de e-mail manda `?token_hash=`, e nao o `{{ .ConfirmationURL }}`
+       * de fabrica. A URL de fabrica aponta para um GET no `/auth/v1/verify` do
+       * Supabase que GASTA o token de uso unico — e o Gmail abre os links das
+       * mensagens para escanear antes de entregar. O scanner clicava primeiro,
+       * o link chegava queimado, e a pessoa via "este link nao vale mais" num
+       * e-mail recem-recebido.
+       *
+       * `verifyOtp` e POST. O scanner, que so faz GET, nao gasta nada. E como
+       * nao depende do verificador do PKCE, o link tambem funciona quando abre
+       * em outro navegador — o do aplicativo de e-mail, por exemplo.
+       */
+      if (token_hash) {
+        const { error } = await sb.auth.verifyOtp({ type: "recovery", token_hash });
+        history.replaceState(null, "", location.pathname);
+        if (vivo && !error) return setSessao("ok");
+        if (vivo && error) return setSessao("nenhuma");
+      }
+
+      /**
+       * Formato antigo, com a sessao no fragmento.
+       *
+       * Continua atendido porque e o que o painel do Supabase gera quando
+       * alguem manda a recuperacao de la. O cliente do `@supabase/ssr` roda em
+       * PKCE, e nesse modo o `detectSessionInUrl` so olha o `?code=` — sem
+       * isto aqui, o `#access_token=` passava batido.
        */
       const frag = new URLSearchParams(location.hash.replace(/^#/, ""));
       const access_token = frag.get("access_token");
