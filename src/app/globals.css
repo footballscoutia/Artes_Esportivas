@@ -147,6 +147,67 @@
     display: none;
   }
 
+  /* ------------------------------------------------------------------
+   * Holofote (ideia do Spotlight Card, do React Bits).
+   *
+   * Um brilho radial segue o cursor dentro do cartao. Escrito aqui em vez de
+   * importado porque o componente de la traz ogl e GSAP junto, e isso e peso
+   * de biblioteca 3D para um efeito que sao dez linhas de CSS.
+   *
+   * Serve a um proposito: num grid de oito opcoes iguais, ele responde "e este
+   * que eu vou clicar" antes do clique.
+   * --------------------------------------------------------------- */
+  .holofote {
+    position: relative;
+    isolation: isolate;
+  }
+  .holofote::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 240ms ease-out;
+    background: radial-gradient(
+      340px circle at var(--px, 50%) var(--py, 50%),
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 60%
+    );
+  }
+  .holofote:hover::before {
+    opacity: 1;
+  }
+
+  /* ------------------------------------------------------------------
+   * Varredura de brilho no botao (ideia do Shine / Star Border).
+   *
+   * Uma faixa de luz atravessa uma vez no hover. Uma vez, nao em laco: laco
+   * infinito num botao de ferramenta vira poluicao periferica enquanto a
+   * pessoa tenta preencher um formulario.
+   * --------------------------------------------------------------- */
+  .varredura {
+    position: relative;
+    overflow: hidden;
+  }
+  .varredura::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%) skewX(-18deg);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, white 26%, transparent),
+      transparent
+    );
+    transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .varredura:hover::after {
+    transform: translateX(120%) skewX(-18deg);
+  }
+
   .lift {
     transition:
       transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -221,9 +282,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
-  .lift {
+  .lift,
+  .holofote::before,
+  .varredura::after {
     animation: none;
     transition: none;
+  }
+  .varredura::after {
+    display: none;
   }
 }
 

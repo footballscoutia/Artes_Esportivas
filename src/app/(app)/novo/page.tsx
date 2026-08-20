@@ -65,6 +65,14 @@ export default function NovoPedidoPage() {
   const [salvando, setSalvando] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
 
+  /** Alimenta o holofote com a posicao do cursor dentro do proprio cartao. */
+  function seguirCursor(e: React.MouseEvent<HTMLElement>) {
+    const alvo = e.currentTarget;
+    const caixa = alvo.getBoundingClientRect();
+    alvo.style.setProperty("--px", `${e.clientX - caixa.left}px`);
+    alvo.style.setProperty("--py", `${e.clientY - caixa.top}px`);
+  }
+
   const meta = tipo ? TIPO_META[tipo] : null;
   // matchday sem adversario e data faria o modelo inventar a partida
   const jogoOk = !meta?.exigeJogo || Boolean(jogo.adversario.trim() && jogo.data_jogo);
@@ -184,8 +192,9 @@ export default function NovoPedidoPage() {
                     setTipo(t);
                     setPasso(1);
                   }}
+                  onMouseMove={seguirCursor}
                   className={cn(
-                    "lift group relative overflow-hidden rounded-card border p-5 text-left",
+                    "lift holofote group overflow-hidden rounded-card border p-5 text-left",
                     ativo
                       ? "border-accent bg-accent/10"
                       : "border-line bg-surface hover:border-line-2 hover:bg-surface-2",
@@ -213,8 +222,9 @@ export default function NovoPedidoPage() {
                       key={f}
                       type="button"
                       onClick={() => setFormato(f)}
+                      onMouseMove={seguirCursor}
                       className={cn(
-                        "lift flex items-center gap-4 rounded-card border p-4 text-left",
+                        "lift holofote flex items-center gap-4 rounded-card border p-4 text-left",
                         ativo
                           ? "border-accent bg-accent/10"
                           : "border-line bg-surface/70 hover:border-line-2",
