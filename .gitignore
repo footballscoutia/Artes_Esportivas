@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# candidatos gerados por scripts/gerar-acervo.mjs — passam pela curadoria e so
+# entram no bucket privado via scripts/importar-referencias.mjs, nunca pelo git
+/acervo-novo/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
