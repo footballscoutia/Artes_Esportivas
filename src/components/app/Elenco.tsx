@@ -122,7 +122,9 @@ export function Elenco({ jogadores, clubes }: { jogadores: Jogador[]; clubes: Cl
                   )}
                 </span>
                 <span className="block p-3.5">
-                  <span className="block truncate text-[15px] font-medium">{j.nome}</span>
+                  <span className="line-clamp-2 block text-[15px] font-medium leading-snug">
+                    {j.nome}
+                  </span>
                   <span className="mt-1 block truncate text-[12px] text-muted">
                     {[j.clube, j.posicao].filter(Boolean).join(", ") || "Sem clube"}
                   </span>

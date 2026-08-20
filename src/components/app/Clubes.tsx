@@ -129,7 +129,7 @@ export function Clubes({ clubes }: { clubes: Clube[] }) {
                     </span>
                   )}
                 </span>
-                <span className="mt-3.5 block truncate text-center text-[14px] font-medium">
+                <span className="mt-3.5 line-clamp-2 block text-center text-[14px] font-medium leading-snug">
                   {c.nome}
                 </span>
                 <span className="mt-2 flex items-center justify-center gap-1.5">

@@ -97,7 +97,7 @@ export function DetalhePedido({
         <div className="mb-4 flex items-center gap-3">
           <Link
             href="/biblioteca"
-            className="flex items-center gap-2 text-[13px] text-muted transition-colors hover:text-text"
+            className="-ml-2 flex h-10 items-center gap-2 rounded-full px-2 text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-text"
           >
             <ArrowLeft size={15} />
             Biblioteca
@@ -163,7 +163,7 @@ export function DetalhePedido({
             </p>
           </header>
 
-          <nav className="flex gap-1 border-b border-line px-3 py-2">
+          <nav className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2">
             {(
               [
                 ["detalhes", "Detalhes", null],
@@ -175,7 +175,7 @@ export function DetalhePedido({
                 key={id}
                 onClick={() => setAba(id as Aba)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] transition-colors",
+                  "flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12px] transition-colors",
                   aba === id ? "bg-surface-3 text-text" : "text-muted hover:text-text",
                 )}
               >
@@ -208,7 +208,7 @@ export function DetalhePedido({
 
                 <details className="group">
                   <summary className="cursor-pointer list-none text-[12px] text-muted transition-colors hover:text-text">
-                    Prompt-mãe usado (somente leitura)
+                    Ver as instruções enviadas ao modelo
                   </summary>
                   <pre className="mt-3 whitespace-pre-wrap rounded-field border border-line bg-bg-2 p-4 font-mono text-[11px] leading-relaxed text-muted">
                     {promptMae}
@@ -225,7 +225,7 @@ export function DetalhePedido({
                   tende a se repetir.
                 </p>
                 <ol className="space-y-1.5 text-[12px]">
-                  {["Arte gerada pela IA, texto incluso", "Recorte do jogador", "Logo da agência"].map(
+                  {["Arte do modelo, com os textos dentro", "Recorte do jogador", "Logo da agência"].map(
                     (c, i) => (
                       <li
                         key={c}

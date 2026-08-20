@@ -50,7 +50,7 @@ export function ArtCard({ pedido, imagem }: { pedido: Pedido; imagem: string | n
           ja mostra. O que o usuario procura na biblioteca e o jogador, e
           depois o contexto — entao e essa a ordem.
         */}
-        <p className="truncate text-[15px] font-medium">{pedido.nome_jogador}</p>
+        <p className="line-clamp-2 text-[15px] font-medium leading-snug">{pedido.nome_jogador}</p>
         <p className="mt-1 truncate text-[12px] text-muted">
           {pedido.tipo === "matchday" && pedido.adversario
             ? `${tipo.titulo} contra ${pedido.adversario}`

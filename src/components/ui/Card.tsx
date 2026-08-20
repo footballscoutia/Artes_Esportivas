@@ -22,12 +22,12 @@ export function TituloSecao({
   acao?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-6">
-      <div>
-        <h2 className="display text-[28px]">{titulo}</h2>
+    <div className="mb-6 flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between min-[420px]:gap-6">
+      <div className="min-w-0">
+        <h2 className="display text-[26px] sm:text-[28px]">{titulo}</h2>
         {descricao && <p className="mt-1.5 text-sm text-muted">{descricao}</p>}
       </div>
-      {acao}
+      {acao && <div className="shrink-0">{acao}</div>}
     </div>
   );
 }

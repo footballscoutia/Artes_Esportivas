@@ -81,11 +81,15 @@ export function Equipe({
                   {c.nome || c.email}
                   {c.id === usuario?.id && <span className="ml-2 text-[12px] text-muted-2">você</span>}
                 </span>
-                {c.nome && <span className="block truncate text-[12px] text-muted">{c.email}</span>}
+                {c.nome && (
+                  <span className="block break-all text-[12px] leading-snug text-muted">
+                    {c.email}
+                  </span>
+                )}
               </span>
               {c.papel === "aprova" && (
                 <span
-                  title="Pode aprovar arte e convidar gente"
+                  title="Pode aprovar artes e liberar o acesso de outras pessoas"
                   className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] text-muted"
                 >
                   <ShieldCheck size={13} strokeWidth={1.8} />
@@ -105,8 +109,12 @@ export function Equipe({
                 tela. Libere o e-mail aqui e peça para a pessoa se cadastrar na entrada.
               </p>
 
-              <form ref={formulario} onSubmit={enviar} className="mt-4 flex items-end gap-3">
-                <Campo rotulo="E-mail" className="flex-1">
+              <form
+                ref={formulario}
+                onSubmit={enviar}
+                className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+              >
+                <Campo rotulo="E-mail" className="min-w-0 flex-1">
                   <Input
                     name="email"
                     type="email"
@@ -115,7 +123,7 @@ export function Equipe({
                     autoComplete="off"
                   />
                 </Campo>
-                <Button type="submit" tamanho="lg" disabled={pendente}>
+                <Button type="submit" tamanho="lg" disabled={pendente} className="shrink-0">
                   <UserPlus size={15} strokeWidth={2} />
                   {pendente ? "Liberando…" : "Liberar"}
                 </Button>
@@ -146,7 +154,9 @@ export function Equipe({
                       className={`flex items-center gap-3 p-3.5 ${i > 0 ? "border-t border-line" : ""}`}
                     >
                       <Clock size={15} className="shrink-0 text-muted-2" strokeWidth={1.7} />
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{c.email}</span>
+                      <span className="min-w-0 flex-1 break-all text-[13px] leading-snug">
+                        {c.email}
+                      </span>
                       <BotaoIcone
                         titulo={`Retirar o convite de ${c.email}`}
                         onClick={() =>

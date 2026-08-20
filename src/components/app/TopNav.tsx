@@ -8,10 +8,10 @@ import { Tema } from "@/components/app/Tema";
 
 export function TopNav({ usuario }: { usuario: Usuario | null }) {
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 backdrop-blur-xl lg:px-6">
+    <header className="sticky top-0 z-30 flex items-center gap-3 px-4 py-3 backdrop-blur-xl md:gap-4 lg:px-6">
       <Link
         href="/biblioteca"
-        className="flex shrink-0 items-center gap-3"
+        className="mr-auto flex h-11 shrink-0 items-center gap-3 md:mr-0 md:h-auto"
         title="Estúdio de Artes — Marcio Bittencourt Sports"
       >
         {/* a marca real da agência, no lugar do quadrado em gradiente */}
@@ -21,7 +21,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
 
       <Secoes />
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <Tema />
         {/*
           O avatar era um <div> com title e mais nada. Agora leva à Equipe, que
@@ -31,7 +31,7 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
         */}
         <Link
           href="/equipe"
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold transition-colors hover:border-line-2 hover:bg-surface-3"
+          className="grid size-11 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold transition-colors hover:border-line-2 hover:bg-surface-3 md:size-9"
           title={
             usuario
               ? `${usuario.email} — sua conta, a equipe e a saída`

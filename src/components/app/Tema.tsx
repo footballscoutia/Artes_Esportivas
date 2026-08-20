@@ -31,7 +31,7 @@ export function Tema() {
       type="button"
       onClick={alternar}
       title="Alternar tema"
-      className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-line-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="grid size-11 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-line-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:size-9"
     >
       <Sun size={16} strokeWidth={1.75} className="so-escuro" />
       <Moon size={16} strokeWidth={1.75} className="so-claro" />

@@ -1,4 +1,5 @@
 import { TopNav } from "@/components/app/TopNav";
+import { SecoesRodape } from "@/components/app/Secoes";
 import { Rail } from "@/components/app/Rail";
 import { usuarioAtual } from "@/lib/dados";
 
@@ -9,7 +10,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="relative z-10 min-h-dvh">
       <TopNav usuario={usuario} />
-      <div className="flex gap-4 px-4 pb-10 lg:px-6">
+      {/* pb-24 no telefone: a barra de baixo e fixa e cobriria o fim da lista */}
+      <div className="flex gap-4 px-4 pb-24 md:pb-10 lg:px-6">
         <Rail />
         {/*
           A transicao de rota mora em cada page.tsx, nao aqui. Layout persiste
@@ -18,6 +20,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         */}
         <main className="min-w-0 flex-1">{children}</main>
       </div>
+
+      <SecoesRodape />
     </div>
   );
 }

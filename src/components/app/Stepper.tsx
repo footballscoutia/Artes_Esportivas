@@ -33,7 +33,7 @@ export function Stepper({
               disabled={i > atual}
               onClick={() => aoIr(i)}
               className={cn(
-                "flex items-center gap-2.5 rounded-full border py-1.5 pl-1.5 pr-4 text-[13px]",
+                "flex h-11 items-center gap-2.5 rounded-full border pl-1.5 pr-4 text-[13px] md:h-9",
                 "transition-[background-color,border-color,color,transform] duration-[220ms]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                 ativo && "border-accent/40 bg-surface-3 text-text",

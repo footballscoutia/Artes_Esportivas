@@ -90,7 +90,7 @@ export function Senha({ className, ...props }: React.ComponentPropsWithRef<"inpu
         tabIndex={-1}
         onClick={() => setAberta((v) => !v)}
         aria-label={aberta ? "Ocultar senha" : "Mostrar senha"}
-        className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-[8px] text-muted-2 transition-colors hover:bg-surface-3 hover:text-text"
+        className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-[8px] text-muted-2 transition-colors hover:bg-surface-3 hover:text-text"
       >
         {aberta ? <EyeOff size={16} strokeWidth={1.7} /> : <Eye size={16} strokeWidth={1.7} />}
       </button>

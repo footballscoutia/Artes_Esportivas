@@ -51,7 +51,7 @@ function Chip({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] transition-colors",
+        "flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] transition-colors",
         ativo
           ? "border-line-2 bg-surface-3 text-text"
           : "border-line bg-surface-2/40 text-muted hover:text-text",

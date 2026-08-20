@@ -290,7 +290,7 @@ function Alternador({ modo, aoTrocar }: { modo: Modo; aoTrocar: (m: Modo) => voi
           type="button"
           onClick={() => aoTrocar(id)}
           className={cn(
-            "relative z-10 h-9 rounded-full text-[13px] font-medium transition-colors duration-[180ms]",
+            "relative z-10 h-11 rounded-full text-[13px] font-medium transition-colors duration-[180ms]",
             modo === id ? "text-text" : "text-muted hover:text-text",
           )}
         >

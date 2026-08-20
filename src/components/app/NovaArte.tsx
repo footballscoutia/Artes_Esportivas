@@ -43,11 +43,13 @@ type Resultado = {
   referencia_versao: number;
 };
 
+/* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
+   barra que anda sozinha sem dizer o que faz e a mesma coisa que nao ter. */
 const ETAPAS_GERACAO = [
-  "Carregando a referência curada",
-  "Enviando referência, foto e escudos ao modelo",
-  "Desenhando o fundo em alta resolução",
-  "Compondo nome, recorte e logo",
+  "Buscando o estilo da categoria",
+  "Enviando a foto e os escudos ao modelo",
+  "Desenhando a arte em alta resolução",
+  "Aplicando o corte e a logo",
 ];
 
 export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: Clube[] }) {
@@ -202,12 +204,12 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
         <div className="mb-6">
           <h1 className="display text-[34px]">Gerar arte</h1>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            Três perguntas. A referência e o prompt saem do banco, já testados. Não há nada para
-            escrever aqui.
+            Escolha a categoria e o atleta. O estilo da arte já está definido — você não precisa
+            descrever nada.
           </p>
         </div>
 
-        <Stepper passos={["Tipo do post", "Formato e foto", "Textos"]} atual={passo} aoIr={setPasso} />
+        <Stepper passos={["Tipo do post", "Formato e atleta", "Textos"]} atual={passo} aoIr={setPasso} />
 
         {passo === 0 && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -243,7 +245,7 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
           <div className="space-y-6">
             <div>
               <p className="mb-3 text-[13px] font-medium">Onde essa arte vai ser publicada</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 min-[420px]:grid-cols-2">
                 {FORMATOS.map((f) => {
                   const m = FORMATO_META[f];
                   const ativo = formato === f;
@@ -296,7 +298,7 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
                   </BotaoLink>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-3 min-[420px]:grid-cols-3 sm:grid-cols-5 lg:grid-cols-6">
                   {jogadores.map((j) => (
                     <button
                       key={j.id}
@@ -319,7 +321,9 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
                           </span>
                         )}
                       </span>
-                      <span className="block truncate p-2 text-[12px] font-medium">{j.nome}</span>
+                      <span className="line-clamp-2 block p-2 text-[12px] font-medium leading-snug">
+                        {j.nome}
+                      </span>
                     </button>
                   ))}
                 </div>
