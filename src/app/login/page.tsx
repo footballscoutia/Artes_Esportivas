@@ -225,7 +225,7 @@ function Login() {
               <p className="text-[12px] leading-relaxed text-muted">
                 {enviado === "confirmar"
                   ? `Mandamos uma mensagem para ${email}. Abra o link dela para ativar a conta e entrar.`
-                  : `Mandamos para ${email} um link para você definir uma senha nova. Ele vale por uma hora.`}
+                  : `Se ${email} tiver conta, o link para definir uma senha nova chega em instantes. Ele vale por uma hora.`}
               </p>
               <button
                 type="button"

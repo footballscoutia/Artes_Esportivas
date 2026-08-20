@@ -490,3 +490,55 @@ export async function sair(): Promise<void> {
   await sb.auth.signOut();
   redirect("/login");
 }
+
+/**
+ * Pede o link de recuperacao de senha.
+ *
+ * Roda no servidor, e nao pelo cliente do navegador, por causa do PKCE. O
+ * `resetPasswordForEmail` do `@supabase/ssr` guarda um verificador em cookie e
+ * manda um link `?code=`, que so vale no MESMO navegador que pediu — quem abre
+ * o e-mail no aplicativo do celular cai noutro navegador, o cookie nao esta la,
+ * e o link morre sem explicacao.
+ *
+ * Chamado daqui nao ha verificador nenhum, entao o Supabase manda o formato
+ * antigo, com a sessao na propria URL. Esse funciona em qualquer navegador.
+ *
+ * Responde igual para e-mail que existe e para e-mail que nao existe: dizer
+ * "essa conta nao existe" transforma a tela de entrada num confirmador de quem
+ * trabalha na agencia, para quem quiser ficar testando enderecos.
+ */
+export async function pedirRecuperacao(email: string, origem: string): Promise<Resultado> {
+  const alvo = String(email ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(alvo)) return falha("Confira o e-mail digitado.");
+
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!base || !chave) return falha("Supabase não configurado.");
+
+  /**
+   * O destino vai na QUERY, nao no corpo — o endpoint le `redirect_to` de la.
+   *
+   * A origem chega da tela para o link voltar para o mesmo endereco de onde
+   * foi pedido (producao, preview ou localhost). Nao e um buraco: o Supabase
+   * so aceita destino que esteja na lista de URLs permitidas do projeto, e
+   * ignora qualquer outro.
+   */
+  const url = new URL(`${base}/auth/v1/recover`);
+  if (/^https?:\/\//.test(origem)) {
+    url.searchParams.set("redirect_to", `${origem.replace(/\/$/, "")}/nova-senha`);
+  }
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { apikey: chave, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: alvo }),
+  });
+
+  if (r.status === 429) return falha("Muitos pedidos seguidos. Espere alguns minutos e tente de novo.");
+  if (!r.ok) {
+    const corpo = await r.text();
+    console.error("[pedirRecuperacao]", r.status, corpo.slice(0, 300));
+    return falha("Não consegui enviar agora. Tente de novo em alguns minutos.");
+  }
+  return { ok: true, dados: undefined };
+}
