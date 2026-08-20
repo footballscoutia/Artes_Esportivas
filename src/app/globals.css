@@ -34,6 +34,10 @@
   --luz-topo: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
   --luz-topo-sutil: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 
+  /* Luz que o cursor acende na borda do cartao. Neutra: o acento fica
+     reservado para a selecao, senao hover e escolhido viram a mesma coisa. */
+  --luz-borda: rgba(255, 255, 255, 0.55);
+
   --radius-field: 10px;
   --radius-card: 14px;
   --radius-panel: 16px;
@@ -79,6 +83,9 @@
   --sombra-botao-alta: 0 2px 4px rgba(20, 21, 24, 0.18), 0 8px 18px -5px rgba(20, 21, 24, 0.3);
   --luz-topo: inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(20, 21, 24, 0.12);
   --luz-topo-sutil: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* no claro nao ha luz a acender: a borda ESCURECE onde o cursor esta */
+  --luz-borda: rgba(20, 21, 24, 0.55);
 }
 
 @layer base {
@@ -163,39 +170,54 @@
   /* ------------------------------------------------------------------
    * Holofote (ideia do Spotlight Card, do React Bits).
    *
-   * Um brilho radial segue o cursor dentro do cartao. Escrito aqui em vez de
-   * importado porque o componente de la traz ogl e GSAP junto, e isso e peso
-   * de biblioteca 3D para um efeito que sao dez linhas de CSS.
+   * O cursor acende a BORDA do cartao, na parte mais proxima dele. Escrito aqui
+   * em vez de importado porque o componente de la traz ogl e GSAP junto, e isso
+   * e peso de biblioteca 3D para um efeito que sao dez linhas de CSS.
    *
    * Serve a um proposito: num grid de oito opcoes iguais, ele responde "e este
    * que eu vou clicar" antes do clique.
+   *
+   * A primeira versao pintava a face inteira com o acento a 26%. Dois problemas,
+   * e o segundo e o grave: um borrao laranja no meio do cartao le como mancha,
+   * nao como luz; e o cartao SELECIONADO tambem e laranja, entao passar o mouse
+   * por cima de um cartao qualquer o deixava com cara de escolhido. Agora o
+   * acento e so da selecao, e o hover e luz neutra — dois estados, duas
+   * linguagens.
+   *
+   * A luz e um anel de 1px, e nao um contorno inteiro: o gradiente radial pinta
+   * a caixa toda e a mascara descarta o miolo, sobrando so a aresta. Por isso os
+   * dois `mask` — um recorta pelo content-box, o outro pela borda, e o
+   * `exclude` fica com a diferenca.
    * --------------------------------------------------------------- */
   .holofote {
     position: relative;
-    isolation: isolate;
   }
   .holofote::before {
     content: "";
     position: absolute;
     inset: 0;
-    z-index: -1;
+    z-index: 2;
+    pointer-events: none;
     border-radius: inherit;
-    opacity: 0;
-    transition: opacity 240ms ease-out;
+    padding: 1px;
     background: radial-gradient(
-      300px circle at var(--px, 50%) var(--py, 50%),
-      color-mix(in srgb, var(--color-accent) 26%, transparent),
-      transparent 62%
+      180px circle at var(--px, 50%) var(--py, 50%),
+      var(--luz-borda),
+      transparent 72%
     );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 220ms ease-out;
   }
   .holofote:hover::before {
     opacity: 1;
-  }
-  .holofote {
-    transition: border-color 240ms ease-out;
-  }
-  .holofote:hover {
-    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 
   /* ------------------------------------------------------------------
