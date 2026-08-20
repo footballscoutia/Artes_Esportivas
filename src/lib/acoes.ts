@@ -430,3 +430,45 @@ export async function arquivarClube(id: string): Promise<Resultado> {
   revalidatePath("/novo");
   return { ok: true, dados: undefined };
 }
+
+/**
+ * Libera um e-mail a criar conta.
+ *
+ * Quem barra de verdade e o gatilho `exigir_convite()` em auth.users, nao esta
+ * acao: conta criada pela API do Supabase, por OAuth ou pelo painel nao passa
+ * por aqui, e uma checagem que so existe na aplicacao protege so a aplicacao.
+ * Aqui a RLS decide quem pode convidar; o banco decide quem pode entrar.
+ */
+export async function convidar(form: FormData): Promise<Resultado<{ email: string }>> {
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const bruto = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bruto)) return falha("Confira o e-mail digitado.");
+
+  const sb = await criarClienteServidor();
+  const { error } = await sb.from("convites").insert({ email: bruto, criado_por: usuario.id });
+
+  if (error) {
+    // chave primaria e o proprio e-mail: repetir nao e erro, ja esta liberado
+    if (error.code === "23505") return { ok: true, dados: { email: bruto } };
+    if (error.code === "42501") return falha("Só quem aprova pode convidar.");
+    return falha(`Não consegui convidar: ${error.message}`);
+  }
+
+  revalidatePath("/equipe");
+  return { ok: true, dados: { email: bruto } };
+}
+
+/** Tira o convite. Quem ja criou conta continua entrando: a conta e que vale. */
+export async function retirarConvite(email: string): Promise<Resultado> {
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const sb = await criarClienteServidor();
+  const { error } = await sb.from("convites").delete().eq("email", email.toLowerCase());
+  if (error) return falha(`Não consegui retirar: ${error.message}`);
+
+  revalidatePath("/equipe");
+  return { ok: true, dados: undefined };
+}

@@ -23,16 +23,23 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
 
       <div className="flex shrink-0 items-center gap-3">
         <Tema />
-        <div
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold"
+        {/*
+          O avatar era um <div> com title e mais nada. Agora leva à Equipe, que
+          é onde se libera acesso — a tela existe e não tinha porta de entrada,
+          e um item a mais na navegação seria peso permanente por uma tarefa
+          que acontece de mês em mês.
+        */}
+        <Link
+          href="/equipe"
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold transition-colors hover:border-line-2 hover:bg-surface-3"
           title={
             usuario
-              ? `${usuario.email}, ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"}`
+              ? `${usuario.email}, ${usuario.papel === "aprova" ? "pode aprovar" : "envia para aprovação"} — ver a equipe`
               : "Sem sessão"
           }
         >
           {iniciais(usuario?.nome)}
-        </div>
+        </Link>
       </div>
     </header>
   );

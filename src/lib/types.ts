@@ -213,6 +213,13 @@ export type Jogador = {
   criado_em: string;
 };
 
+/** E-mail liberado a criar conta. `usado_em` marca quando virou conta. */
+export type Convite = {
+  email: string;
+  criado_em: string;
+  usado_em: string | null;
+};
+
 /** Quem esta usando o sistema. Sai do join de auth.users com perfis. */
 export type Usuario = {
   id: string;

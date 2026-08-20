@@ -38,6 +38,14 @@ function emPortugues(msg: string) {
     return "Muitas tentativas seguidas. Espere um minuto e tente de novo.";
   if (m.includes("unable to validate email") || m.includes("invalid email"))
     return "Confira o e-mail digitado.";
+  /**
+   * O gatilho `exigir_convite()` barra quem nao foi liberado, e o Supabase
+   * envelopa qualquer excecao do banco nesta frase generica. Neste app essa e a
+   * unica coisa que impede a linha de nascer, entao traduzir para o motivo real
+   * diz a verdade — e diz o que fazer, que "database error" nao diz.
+   */
+  if (m.includes("database error saving new user"))
+    return "Este e-mail não está liberado. Peça o acesso a quem administra o estúdio.";
   return msg;
 }
 

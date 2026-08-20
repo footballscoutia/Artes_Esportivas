@@ -2,7 +2,17 @@ import "server-only";
 import { criarClienteServidor } from "./supabase/server";
 import * as mock from "./mock";
 import { BALDE, assinar, assinarVarios } from "./storage";
-import type { Clube, Formato, Geracao, Jogador, Pedido, Referencia, Tipo, Usuario } from "./types";
+import type {
+  Clube,
+  Convite,
+  Formato,
+  Geracao,
+  Jogador,
+  Pedido,
+  Referencia,
+  Tipo,
+  Usuario,
+} from "./types";
 
 /**
  * Camada de leitura. Toda tela passa por aqui — nenhuma delas fala com o
@@ -217,6 +227,32 @@ export async function listarClubes(): Promise<Clube[]> {
   const linhas = (data ?? []) as Clube[];
   const urls = await assinarVarios(BALDE.referencias, linhas.map((c) => c.escudo_url));
   return linhas.map((c, i) => ({ ...c, escudo_url: urls[i] }));
+}
+
+/**
+ * Quem ja tem conta e quem esta convidado.
+ *
+ * As duas listas em uma chamada porque a tela mostra as duas juntas: sem isso
+ * "convidei fulano?" vira ir e voltar entre duas telas. A RLS de `convites`
+ * so responde para quem aprova, entao para os demais a lista volta vazia e a
+ * tela some com a secao — nao ha filtro de permissao escrito aqui.
+ */
+export async function listarEquipe(): Promise<{ contas: Usuario[]; convites: Convite[] }> {
+  if (!LIGADO) return { contas: [], convites: [] };
+
+  const sb = await criarClienteServidor();
+  const [perfis, convites] = await Promise.all([
+    sb.from("perfis").select("id, nome, email, papel").order("criado_em"),
+    sb.from("convites").select("email, criado_em, usado_em").order("criado_em", { ascending: false }),
+  ]);
+
+  estourar("listar a equipe", perfis.error);
+  return {
+    contas: (perfis.data ?? []) as Usuario[],
+    /* erro aqui e quase sempre RLS negando para quem nao aprova: lista vazia,
+       nao tela quebrada */
+    convites: (convites.data ?? []) as Convite[],
+  };
 }
 
 /** Quem esta logado. `null` quando nao ha sessao — o proxy ja tratou disso. */
