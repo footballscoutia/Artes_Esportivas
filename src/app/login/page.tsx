@@ -56,7 +56,9 @@ function Login() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const [modo, setModo] = useState<Modo>("entrar");
+  /* a landing chama /login?criar=1: quem clicou em "Criar conta" la nao deve
+     cair na aba de entrar e ter que trocar de novo */
+  const [modo, setModo] = useState<Modo>(params.get("criar") ? "criar" : "entrar");
   const [email, setEmail] = useState("");
   const [organizacao, setOrganizacao] = useState("");
   const [senha, setSenha] = useState("");

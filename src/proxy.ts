@@ -30,7 +30,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * Deixar a tela publica nao abre nada: ela e um formulario. Quem autoriza a
  * troca e o `updateUser` do Supabase, que sem sessao de recuperacao recusa.
  */
-const PUBLICAS = ["/login", "/auth", "/nova-senha"];
+const PUBLICAS = ["/", "/login", "/auth", "/nova-senha"];
 
 /** A fase 1 roda inteira sem Supabase: sem chave, o proxy sai de cena. */
 const CONFIGURADO = Boolean(
@@ -86,7 +86,14 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (temSessao && caminho === "/login") {
+  /**
+   * Quem ja entrou nao precisa da pagina de venda nem da tela de entrada.
+   *
+   * A raiz e publica (e a landing), mas so para visitante. Com sessao, ela
+   * vira o caminho mais curto ate o trabalho — que e o que a pessoa abriu o
+   * site para fazer.
+   */
+  if (temSessao && (caminho === "/login" || caminho === "/")) {
     const fila = req.nextUrl.clone();
     fila.pathname = "/biblioteca";
     fila.search = "";

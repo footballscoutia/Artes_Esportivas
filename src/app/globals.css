@@ -116,6 +116,27 @@
 
   ::selection {
     background: color-mix(in srgb, var(--color-accent) 32%, transparent);
+    /* sem cor declarada, o tema claro seleciona texto escuro sobre azul escuro */
+    color: var(--color-text);
+  }
+
+  /* O cursor de texto e do sistema por padrao — preto no claro, branco no
+     escuro — e nao pertence a paleta de ninguem. */
+  :where(input, textarea, [contenteditable]) {
+    caret-color: var(--color-accent);
+  }
+
+  /*
+   * Anel de foco unico, do acento.
+   *
+   * `:focus-visible` e nao `:focus`: o navegador so acende quando a navegacao
+   * foi por teclado, entao quem clica com o mouse nao ganha um anel que nao
+   * pediu. O contorno fica FORA da caixa para nao empurrar layout.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar {
