@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -157,7 +157,8 @@ export default function NovoPedidoPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-[1400px] gap-6 lg:grid-cols-[1fr_380px]">
+    <ViewTransition enter="rota-entra" exit="rota-sai" default="none">
+      <div className="mx-auto grid max-w-[1400px] gap-6 lg:grid-cols-[1fr_380px]">
       {/* coluna do formulário */}
       <div className="min-w-0">
         <div className="mb-6">
@@ -453,8 +454,9 @@ export default function NovoPedidoPage() {
             )}
           </div>
         </Card>
+        </div>
       </div>
-    </div>
+    </ViewTransition>
   );
 }
 

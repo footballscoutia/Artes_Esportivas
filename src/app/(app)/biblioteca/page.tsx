@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import { Images } from "lucide-react";
 import { listarPedidos, capasDosPedidos } from "@/lib/dados";
 import { TIPOS, TIPO_META, type Tipo } from "@/lib/types";
@@ -31,7 +32,8 @@ export default async function BibliotecaPage({
   ) as Record<Tipo, number>;
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <ViewTransition enter="rota-entra" exit="rota-sai" default="none">
+      <div className="mx-auto max-w-[1400px]">
       <TituloSecao
         titulo="Biblioteca"
         descricao={
@@ -72,6 +74,7 @@ export default async function BibliotecaPage({
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </ViewTransition>
   );
 }
