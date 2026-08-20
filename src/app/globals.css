@@ -14,12 +14,14 @@
   --color-muted: #8a8c93;
   --color-muted-2: #63656b;
 
-  /* UM acento, 55% de saturacao, so em acao primaria, selecao e estado.
-     Ambar porque quase todo clube e vermelho, azul ou verde: assim a interface
-     nunca disputa atencao com a arte que ela produz. */
-  --color-accent: #c8813c;
-  --color-accent-forte: #d99b5c;
-  --color-accent-texto: #14100a;
+  /* UM acento, so em acao primaria, selecao e estado. E o azul da marca
+     MatchPost (o mesmo bloco do "POST" na logo) — antes era ambar, escolhido
+     porque quase todo clube e vermelho, azul ou verde e a interface nunca
+     disputava atencao com a arte que ela produz. Essa razao continua valendo;
+     a identidade da marca pesou mais. */
+  --color-accent: #2e7cff;
+  --color-accent-forte: #5b95ff;
+  --color-accent-texto: #ffffff;
 
   /* Semanticas, separadas do acento — nao contam como cor de marca. */
   --color-ok: #4a9d72;
@@ -70,8 +72,8 @@
   --color-muted-2: #8e9096;
 
   /* acento escurece no claro para manter contraste sobre papel */
-  --color-accent: #a9662a;
-  --color-accent-forte: #8f5522;
+  --color-accent: #1e5fdb;
+  --color-accent-forte: #164fbd;
   --color-accent-texto: #ffffff;
 
   --color-ok: #2f7a55;
