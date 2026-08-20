@@ -32,7 +32,7 @@ export class GeminiProvider implements ImageGenProvider {
     this.modelo = modelo;
   }
 
-  async gerar({ referencia, foto, prompt, largura, altura }: GenInput): Promise<GenResult> {
+  async gerar({ referencia, foto, escudos, prompt, largura, altura }: GenInput): Promise<GenResult> {
     const inicio = Date.now();
 
     const partes: Array<Record<string, unknown>> = [];
@@ -43,6 +43,12 @@ export class GeminiProvider implements ImageGenProvider {
     if (foto) {
       partes.push({ text: "Imagem 2 — foto do atleta, preservar a identidade dele:" });
       partes.push({ inlineData: { mimeType: "image/jpeg", data: foto.toString("base64") } });
+    }
+    for (const escudo of escudos ?? []) {
+      partes.push({ text: `Escudo do ${escudo.rotulo}, reproduzir fielmente, sem redesenhar:` });
+      partes.push({
+        inlineData: { mimeType: "image/png", data: escudo.imagem.toString("base64") },
+      });
     }
     partes.push({ text: prompt });
 

@@ -143,6 +143,10 @@ export type Pedido = {
   nome_jogador: string;
   clube?: string | null;
   frase?: string | null;
+  /** De qual atleta da carteira este pedido saiu. Nulo nos pedidos antigos. */
+  jogador_id?: string | null;
+  clube_id?: string | null;
+  adversario_id?: string | null;
   /** So preenchidos quando o tipo e matchday. */
   adversario?: string | null;
   data_jogo?: string | null;
@@ -172,6 +176,40 @@ export type Geracao = {
   /** qual adapter respondeu — "mock", "gemini". Serve para comparar modelos. */
   provider?: string;
   duracao_ms?: number | null;
+  criado_em: string;
+};
+
+/**
+ * Clube cadastrado.
+ *
+ * O escudo vai para o modelo como imagem de referencia; as cores entram no
+ * prompt como texto. Nas artes do acervo a paleta inteira sai do clube.
+ */
+export type Clube = {
+  id: string;
+  nome: string;
+  nome_curto: string | null;
+  escudo_url: string | null;
+  cor_primaria: string | null;
+  cor_secundaria: string | null;
+  ativo: boolean;
+  criado_em: string;
+};
+
+/**
+ * Atleta da carteira da agencia.
+ *
+ * Cadastrado uma vez, escolhido a cada post. `foto_url` guarda o caminho no
+ * bucket privado; a tela recebe URL assinada.
+ */
+export type Jogador = {
+  id: string;
+  nome: string;
+  clube: string | null;
+  posicao: string | null;
+  foto_url: string | null;
+  clube_id: string | null;
+  ativo: boolean;
   criado_em: string;
 };
 

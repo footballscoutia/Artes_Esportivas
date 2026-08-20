@@ -6,7 +6,7 @@ import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
 import { produzirArte, SemReferencia } from "./gerar";
-import { BALDE, baixar } from "./storage";
+import { BALDE, baixar, subir } from "./storage";
 import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 
 /**
@@ -177,4 +177,198 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
     console.error("[gerarOutra]", e);
     return falha("Falha ao gerar a arte. Tente de novo.");
   }
+}
+
+const Atleta = z.object({
+  id: z.string().uuid().nullish(),
+  nome: z.string().min(2).max(60),
+  clube: z.string().max(60).nullish(),
+  posicao: z.string().max(40).nullish(),
+});
+
+/**
+ * Cadastra ou atualiza um atleta da carteira.
+ *
+ * A foto chega como File e vai para o bucket privado antes da linha. Se o
+ * upload falhar num cadastro novo, nada e gravado: atleta sem foto nao serve
+ * para gerar arte, e melhor falhar na cara do usuario do que criar um registro
+ * quebrado que ele so descobre na hora de usar.
+ */
+export async function salvarJogador(form: FormData): Promise<Resultado<{ id: string }>> {
+  const p = Atleta.safeParse({
+    id: form.get("id") || null,
+    nome: form.get("nome"),
+    clube: form.get("clube") || null,
+    posicao: form.get("posicao") || null,
+  });
+  if (!p.success) return falha("Confira o nome do atleta: mínimo de dois caracteres.");
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const arquivo = form.get("foto");
+  const temFoto = arquivo instanceof File && arquivo.size > 0;
+
+  if (!p.data.id && !temFoto) return falha("Envie a foto do atleta.");
+
+  let foto_url: string | null = null;
+  if (temFoto) {
+    try {
+      const bytes = Buffer.from(await arquivo.arrayBuffer());
+      foto_url = await subir(BALDE.fotos, bytes, arquivo.type || "image/jpeg", "jpg");
+    } catch (e) {
+      console.error("[salvarJogador] upload:", e);
+      return falha("Não consegui enviar a foto. Tente de novo.");
+    }
+  }
+
+  const sb = await criarClienteServidor();
+
+  if (p.data.id) {
+    const campos: Record<string, unknown> = {
+      nome: p.data.nome.trim(),
+      clube: p.data.clube?.trim() || null,
+      posicao: p.data.posicao?.trim() || null,
+    };
+    // sem foto nova, a antiga fica: editar o clube nao pode apagar o retrato
+    if (foto_url) campos.foto_url = foto_url;
+
+    const { data, error } = await sb.from("jogadores").update(campos).eq("id", p.data.id).select("id");
+    if (error) return falha(`Não consegui salvar: ${error.message}`);
+    if (!data?.length) return falha("Atleta não encontrado.");
+
+    revalidatePath("/elenco");
+    revalidatePath("/novo");
+    return { ok: true, dados: { id: p.data.id } };
+  }
+
+  const { data, error } = await sb
+    .from("jogadores")
+    .insert({
+      nome: p.data.nome.trim(),
+      clube: p.data.clube?.trim() || null,
+      posicao: p.data.posicao?.trim() || null,
+      foto_url,
+      criado_por: usuario.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return falha(`Não consegui cadastrar: ${error?.message ?? "sem retorno"}`);
+
+  revalidatePath("/elenco");
+  revalidatePath("/novo");
+  return { ok: true, dados: { id: data.id } };
+}
+
+/** Tira da lista de escolha sem apagar: pedido antigo aponta para ele. */
+export async function arquivarJogador(id: string): Promise<Resultado> {
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb.from("jogadores").update({ ativo: false }).eq("id", id).select("id");
+  if (error) return falha(`Não consegui arquivar: ${error.message}`);
+  if (!data?.length) return falha("Atleta não encontrado.");
+
+  revalidatePath("/elenco");
+  revalidatePath("/novo");
+  return { ok: true, dados: undefined };
+}
+
+const HEX = /^#?[0-9a-fA-F]{6}$/;
+
+const ClubeEntrada = z.object({
+  id: z.string().uuid().nullish(),
+  nome: z.string().min(2).max(60),
+  nome_curto: z.string().max(30).nullish(),
+  cor_primaria: z.string().regex(HEX).nullish().or(z.literal("")),
+  cor_secundaria: z.string().regex(HEX).nullish().or(z.literal("")),
+});
+
+/** Normaliza para "#RRGGBB", que e como o prompt vai citar a cor. */
+function cor(v: unknown) {
+  const t = typeof v === "string" ? v.trim() : "";
+  if (!t || !HEX.test(t)) return null;
+  return t.startsWith("#") ? t.toUpperCase() : `#${t.toUpperCase()}`;
+}
+
+/**
+ * Cadastra ou atualiza um clube.
+ *
+ * O escudo vai para o bucket de referencias, nao para o de fotos: ele e ativo
+ * da agencia, do mesmo lado do acervo, e nao conteudo enviado por pedido.
+ */
+export async function salvarClube(form: FormData): Promise<Resultado<{ id: string }>> {
+  const p = ClubeEntrada.safeParse({
+    id: form.get("id") || null,
+    nome: form.get("nome"),
+    nome_curto: form.get("nome_curto") || null,
+    cor_primaria: form.get("cor_primaria") || null,
+    cor_secundaria: form.get("cor_secundaria") || null,
+  });
+  if (!p.success) return falha("Confira o nome e as cores. A cor vai em hex, como #1F5C4A.");
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const arquivo = form.get("escudo");
+  const temEscudo = arquivo instanceof File && arquivo.size > 0;
+  if (!p.data.id && !temEscudo) return falha("Envie o escudo do clube.");
+
+  let escudo_url: string | null = null;
+  if (temEscudo) {
+    try {
+      const bytes = Buffer.from(await arquivo.arrayBuffer());
+      escudo_url = await subir(BALDE.referencias, bytes, arquivo.type || "image/png");
+    } catch (e) {
+      console.error("[salvarClube] upload:", e);
+      return falha("Não consegui enviar o escudo. Tente de novo.");
+    }
+  }
+
+  const campos: Record<string, unknown> = {
+    nome: p.data.nome.trim(),
+    nome_curto: p.data.nome_curto?.trim() || null,
+    cor_primaria: cor(p.data.cor_primaria),
+    cor_secundaria: cor(p.data.cor_secundaria),
+  };
+  if (escudo_url) campos.escudo_url = escudo_url;
+
+  const sb = await criarClienteServidor();
+
+  if (p.data.id) {
+    const { data, error } = await sb.from("clubes").update(campos).eq("id", p.data.id).select("id");
+    if (error) return falha(`Não consegui salvar: ${error.message}`);
+    if (!data?.length) return falha("Clube não encontrado.");
+    revalidatePath("/clubes");
+    revalidatePath("/novo");
+    return { ok: true, dados: { id: p.data.id } };
+  }
+
+  const { data, error } = await sb
+    .from("clubes")
+    .insert({ ...campos, criado_por: usuario.id })
+    .select("id")
+    .single();
+
+  if (error || !data) return falha(`Não consegui cadastrar: ${error?.message ?? "sem retorno"}`);
+
+  revalidatePath("/clubes");
+  revalidatePath("/novo");
+  return { ok: true, dados: { id: data.id } };
+}
+
+export async function arquivarClube(id: string): Promise<Resultado> {
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb.from("clubes").update({ ativo: false }).eq("id", id).select("id");
+  if (error) return falha(`Não consegui arquivar: ${error.message}`);
+  if (!data?.length) return falha("Clube não encontrado.");
+
+  revalidatePath("/clubes");
+  revalidatePath("/novo");
+  return { ok: true, dados: undefined };
 }

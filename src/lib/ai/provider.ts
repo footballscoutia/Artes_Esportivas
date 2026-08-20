@@ -11,6 +11,14 @@ export type GenInput = {
   referencia: Buffer | null;
   /** Foto do jogador enviada pelo usuario. */
   foto: Buffer | null;
+  /**
+   * Escudos dos clubes envolvidos, na ordem em que o prompt fala deles.
+   *
+   * Vao como IMAGEM, nao como descricao: escudo descrito em texto sai
+   * inventado, e escudo inventado parece escudo — o pior tipo de erro, porque
+   * ninguem confere.
+   */
+  escudos?: Array<{ rotulo: string; imagem: Buffer }>;
   /** Prompt-mae da referencia. O usuario nunca escreve isto. */
   prompt: string;
   /** Resolucao pedida ao modelo — maior que o formato final, o corte vem depois. */

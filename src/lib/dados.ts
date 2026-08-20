@@ -2,7 +2,7 @@ import "server-only";
 import { criarClienteServidor } from "./supabase/server";
 import * as mock from "./mock";
 import { BALDE, assinar, assinarVarios } from "./storage";
-import type { Formato, Geracao, Pedido, Referencia, Tipo, Usuario } from "./types";
+import type { Clube, Formato, Geracao, Jogador, Pedido, Referencia, Tipo, Usuario } from "./types";
 
 /**
  * Camada de leitura. Toda tela passa por aqui — nenhuma delas fala com o
@@ -182,6 +182,41 @@ export async function buscarReferenciaPorId(id: string | null): Promise<Referenc
   if (!data) return null;
   const r = data as Referencia;
   return { ...r, imagem_url: await assinar(BALDE.referencias, r.imagem_url) };
+}
+
+/**
+ * O elenco da agencia, para escolher de quem e o post.
+ *
+ * So os ativos: arquivado sai da lista de escolha mas continua no banco, porque
+ * pedido antigo aponta para ele.
+ */
+export async function listarJogadores(): Promise<Jogador[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("jogadores")
+    .select("*")
+    .eq("ativo", true)
+    .order("nome");
+
+  estourar("listar o elenco", error);
+  const linhas = (data ?? []) as Jogador[];
+  const urls = await assinarVarios(BALDE.fotos, linhas.map((j) => j.foto_url));
+  return linhas.map((j, i) => ({ ...j, foto_url: urls[i] }));
+}
+
+/** Os clubes cadastrados, com o escudo pronto para exibir. */
+export async function listarClubes(): Promise<Clube[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb.from("clubes").select("*").eq("ativo", true).order("nome");
+
+  estourar("listar os clubes", error);
+  const linhas = (data ?? []) as Clube[];
+  const urls = await assinarVarios(BALDE.referencias, linhas.map((c) => c.escudo_url));
+  return linhas.map((c, i) => ({ ...c, escudo_url: urls[i] }));
 }
 
 /** Quem esta logado. `null` quando nao ha sessao — o proxy ja tratou disso. */

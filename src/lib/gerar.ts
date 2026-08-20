@@ -32,6 +32,49 @@ export type ArteProduzida = {
 
 export class SemReferencia extends Error {}
 
+/** Escudo e cores de um clube, prontos para ir ao modelo. */
+export type ClubeNaArte = {
+  rotulo: string;
+  escudo: Buffer | null;
+  cor_primaria?: string | null;
+  cor_secundaria?: string | null;
+};
+
+/**
+ * Instrucao de identidade visual do clube.
+ *
+ * O escudo vai como imagem; as cores vao aqui, em texto, porque o modelo
+ * precisa saber que elas mandam na paleta e nao sao so um detalhe do brasao.
+ * Nas 78 referencias do acervo a arte inteira sai da cor do clube.
+ */
+function blocoDeClubes(clubes: ClubeNaArte[]) {
+  if (clubes.length === 0) return "";
+
+  const linhas: string[] = ["", "IDENTIDADE DOS CLUBES:"];
+  let algumaCor = false;
+
+  for (const c of clubes) {
+    linhas.push(
+      c.escudo
+        ? `- ${c.rotulo}: usar o escudo enviado como imagem, reproduzido fielmente, sem redesenhar nem estilizar.`
+        : `- ${c.rotulo}: não desenhar escudo algum.`,
+    );
+    const cores = [c.cor_primaria, c.cor_secundaria].filter(Boolean).join(" e ");
+    if (cores) {
+      linhas.push(`  Cores do ${c.rotulo}: ${cores}.`);
+      algumaCor = true;
+    }
+  }
+
+  if (algumaCor) {
+    linhas.push(
+      "A paleta da arte sai dessas cores. Elas dominam fundo, faixas e destaques,",
+      "não aparecem apenas dentro do escudo.",
+    );
+  }
+  return linhas.join("\n");
+}
+
 export type DadosDoJogo = {
   adversario?: string | null;
   data_jogo?: string | null;
@@ -131,6 +174,7 @@ export async function produzirArte({
   clube,
   frase,
   foto,
+  clubes = [],
   ...jogo
 }: {
   tipo: Tipo;
@@ -139,6 +183,8 @@ export async function produzirArte({
   clube?: string | null;
   frase?: string | null;
   foto?: Buffer | null;
+  /** Clube do atleta e, em matchday, o adversario. Nesta ordem. */
+  clubes?: ClubeNaArte[];
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
@@ -171,7 +217,10 @@ export async function produzirArte({
       frase,
       rotulo: TIPO_META[tipo].rotulo,
       ...jogo,
-    }),
+    }) + blocoDeClubes(clubes),
+    escudos: clubes
+      .filter((c): c is ClubeNaArte & { escudo: Buffer } => Boolean(c.escudo))
+      .map((c) => ({ rotulo: c.rotulo, imagem: c.escudo })),
     largura: Math.round(alvo.w * FOLGA),
     altura: Math.round(alvo.h * FOLGA),
   });
