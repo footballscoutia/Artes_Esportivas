@@ -184,22 +184,6 @@ export async function buscarReferenciaPorId(id: string | null): Promise<Referenc
   return { ...r, imagem_url: await assinar(BALDE.referencias, r.imagem_url) };
 }
 
-export async function listarReferencias(): Promise<Referencia[]> {
-  if (!LIGADO) return mock.REFERENCIAS;
-
-  const sb = await criarClienteServidor();
-  const { data, error } = await sb
-    .from("referencias")
-    .select("*")
-    .order("tipo")
-    .order("formato");
-
-  estourar("listar as referências", error);
-  const linhas = (data ?? []) as Referencia[];
-  const urls = await assinarVarios(BALDE.referencias, linhas.map((r) => r.imagem_url));
-  return linhas.map((r, i) => ({ ...r, imagem_url: urls[i] }));
-}
-
 /** Quem esta logado. `null` quando nao ha sessao — o proxy ja tratou disso. */
 export async function usuarioAtual(): Promise<Usuario | null> {
   if (!LIGADO) return mock.USUARIO_ATUAL;

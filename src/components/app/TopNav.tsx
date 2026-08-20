@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Sparkles, Images } from "lucide-react";
+import { LayoutGrid, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Usuario } from "@/lib/types";
 import { Marca } from "@/components/app/Marca";
@@ -11,7 +11,6 @@ import { Tema } from "@/components/app/Tema";
 const SECOES = [
   { href: "/biblioteca", rotulo: "Biblioteca", icone: LayoutGrid },
   { href: "/novo", rotulo: "Nova arte", icone: Sparkles },
-  { href: "/admin/referencias", rotulo: "Referências", icone: Images },
 ];
 
 export function TopNav({ usuario }: { usuario: Usuario | null }) {
