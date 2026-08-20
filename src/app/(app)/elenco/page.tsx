@@ -1,6 +1,7 @@
-import { listarJogadores } from "@/lib/dados";
+import { listarClubes, listarJogadores } from "@/lib/dados";
 import { Elenco } from "@/components/app/Elenco";
 
 export default async function ElencoPage() {
-  return <Elenco jogadores={await listarJogadores()} />;
+  const [jogadores, clubes] = await Promise.all([listarJogadores(), listarClubes()]);
+  return <Elenco jogadores={jogadores} clubes={clubes} />;
 }

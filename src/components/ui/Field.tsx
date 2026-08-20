@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Campo({
@@ -28,6 +29,34 @@ const base =
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(base, "h-12", className)} {...props} />;
+}
+
+/**
+ * Select nativo com a mesma casca do Input.
+ *
+ * Nativo de proposito: a lista suspensa do sistema ja e acessivel, ja abre no
+ * teclado e, no celular, vira a roda nativa — coisas que um menu escrito a mao
+ * so alcanca depois de muito codigo. O que se ganha reescrevendo e a seta
+ * combinando, e essa da para trocar sozinha: `appearance-none` tira a do
+ * sistema e a nossa entra por cima, sem interceptar o clique.
+ */
+export function Select({
+  className,
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <span className="relative block">
+      <select className={cn(base, "h-12 appearance-none pr-10", className)} {...props}>
+        {children}
+      </select>
+      <ChevronDown
+        size={15}
+        aria-hidden
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-2"
+      />
+    </span>
+  );
 }
 
 export function Textarea({

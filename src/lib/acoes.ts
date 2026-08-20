@@ -6,7 +6,8 @@ import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
 import { produzirArte, SemReferencia } from "./gerar";
-import { BALDE, baixar, subir } from "./storage";
+import { materiaisDaArte } from "./materiais";
+import { BALDE, subir } from "./storage";
 import { FORMATOS, TIPOS, type Formato, type Tipo } from "./types";
 
 /**
@@ -47,7 +48,15 @@ const Novo = z.object({
   referencia_versao: z.number().int(),
   arte_path: z.string().min(1),
   fundo_path: z.string().min(1),
-  foto_path: z.string().nullish(),
+  /**
+   * De quem e a arte e contra quem. A foto e os escudos nao trafegam por aqui:
+   * o servidor busca pelos ids na hora de gerar, e o pedido guarda so a
+   * referencia. `pedidos.foto_jogador_url` ficou de legado, dos pedidos
+   * anteriores ao elenco.
+   */
+  jogador_id: z.string().uuid().nullish(),
+  clube_id: z.string().uuid().nullish(),
+  adversario_id: z.string().uuid().nullish(),
   modelo: z.string(),
   provider: z.string(),
   custo_usd: z.number(),
@@ -76,7 +85,9 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
       hora_jogo: p.data.hora_jogo || null,
       campeonato: p.data.campeonato || null,
       estadio: p.data.estadio || null,
-      foto_jogador_url: p.data.foto_path || null,
+      jogador_id: p.data.jogador_id || null,
+      clube_id: p.data.clube_id || null,
+      adversario_id: p.data.adversario_id || null,
       referencia_id: p.data.referencia_id,
       referencia_versao: p.data.referencia_versao,
       status: "em_revisao",
@@ -122,7 +133,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
   const { data: pedido } = await sb
     .from("pedidos")
     .select(
-      "tipo, formato, nome_jogador, clube, frase, foto_jogador_url, adversario, data_jogo, hora_jogo, campeonato, estadio",
+      "tipo, formato, nome_jogador, clube, frase, foto_jogador_url, jogador_id, clube_id, adversario_id, adversario, data_jogo, hora_jogo, campeonato, estadio",
     )
     .eq("id", pedidoId)
     .maybeSingle();
@@ -131,20 +142,21 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
 
   try {
     /**
-     * A foto do atleta precisa voltar junto. Sem ela o modelo inventa um jogador
+     * A foto e os escudos voltam junto. Sem a foto o modelo inventa um jogador
      * generico — e uma arte com o rosto errado no perfil da agencia e pior que
-     * arte nenhuma. Falhar em baixar nao aborta: gerar sem foto ainda e util
-     * para conferir estilo, e o erro fica no log.
+     * arte nenhuma; sem os escudos ela sai com a cor de outro time. O pedido
+     * guarda o caminho antigo da foto para os que nasceram antes do elenco.
      */
-    const foto = pedido.foto_jogador_url
-      ? await baixar(BALDE.fotos, pedido.foto_jogador_url).catch((e) => {
-          console.error("[gerarOutra] não recuperei a foto do atleta:", e);
-          return null;
-        })
-      : null;
+    const { foto, clubes } = await materiaisDaArte({
+      jogador_id: pedido.jogador_id,
+      clube_id: pedido.clube_id,
+      adversario_id: pedido.adversario_id,
+      foto_path: pedido.foto_jogador_url,
+    });
 
     const arte = await produzirArte({
       foto,
+      clubes,
       tipo: pedido.tipo as Tipo,
       formato: pedido.formato as Formato,
       nome: pedido.nome_jogador,
@@ -182,7 +194,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
 const Atleta = z.object({
   id: z.string().uuid().nullish(),
   nome: z.string().min(2).max(60),
-  clube: z.string().max(60).nullish(),
+  clube_id: z.string().uuid().nullish(),
   posicao: z.string().max(40).nullish(),
 });
 
@@ -198,7 +210,7 @@ export async function salvarJogador(form: FormData): Promise<Resultado<{ id: str
   const p = Atleta.safeParse({
     id: form.get("id") || null,
     nome: form.get("nome"),
-    clube: form.get("clube") || null,
+    clube_id: form.get("clube_id") || null,
     posicao: form.get("posicao") || null,
   });
   if (!p.success) return falha("Confira o nome do atleta: mínimo de dois caracteres.");
@@ -224,10 +236,30 @@ export async function salvarJogador(form: FormData): Promise<Resultado<{ id: str
 
   const sb = await criarClienteServidor();
 
+  /**
+   * O nome do clube fica copiado na linha do atleta.
+   *
+   * Duplicar dado costuma ser erro, mas aqui paga: e esse texto que sai escrito
+   * na arte e que aparece na lista, e ler pelo join em toda tela custaria uma
+   * consulta a mais para um dado que muda de ano em ano. Quem manda e o
+   * clube_id; o texto so acompanha.
+   */
+  let clube: string | null = null;
+  if (p.data.clube_id) {
+    const { data: c } = await sb
+      .from("clubes")
+      .select("nome, nome_curto")
+      .eq("id", p.data.clube_id)
+      .maybeSingle();
+    if (!c) return falha("Clube não encontrado. Cadastre-o em Clubes.");
+    clube = c.nome_curto || c.nome;
+  }
+
   if (p.data.id) {
     const campos: Record<string, unknown> = {
       nome: p.data.nome.trim(),
-      clube: p.data.clube?.trim() || null,
+      clube_id: p.data.clube_id || null,
+      clube,
       posicao: p.data.posicao?.trim() || null,
     };
     // sem foto nova, a antiga fica: editar o clube nao pode apagar o retrato
@@ -246,7 +278,8 @@ export async function salvarJogador(form: FormData): Promise<Resultado<{ id: str
     .from("jogadores")
     .insert({
       nome: p.data.nome.trim(),
-      clube: p.data.clube?.trim() || null,
+      clube_id: p.data.clube_id || null,
+      clube,
       posicao: p.data.posicao?.trim() || null,
       foto_url,
       criado_por: usuario.id,

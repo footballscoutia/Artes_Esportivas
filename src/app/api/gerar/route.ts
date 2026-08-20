@@ -3,7 +3,8 @@ import { z } from "zod";
 import { GenError } from "@/lib/ai";
 import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
-import { BALDE, assinar, subir } from "@/lib/storage";
+import { materiaisDaArte } from "@/lib/materiais";
+import { BALDE, assinar } from "@/lib/storage";
 import { TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -24,6 +25,10 @@ const Corpo = z.object({
   hora_jogo: z.string().max(20).optional().nullable(),
   campeonato: z.string().max(80).optional().nullable(),
   estadio: z.string().max(80).optional().nullable(),
+  /* o atleta e os clubes vem do cadastro: o modelo recebe foto e escudos */
+  jogador_id: z.string().uuid().optional().nullable(),
+  clube_id: z.string().uuid().optional().nullable(),
+  adversario_id: z.string().uuid().optional().nullable(),
 });
 
 /**
@@ -64,6 +69,9 @@ export async function POST(req: Request) {
     hora_jogo: form.get("hora_jogo") || null,
     campeonato: form.get("campeonato") || null,
     estadio: form.get("estadio") || null,
+    jogador_id: form.get("jogador_id") || null,
+    clube_id: form.get("clube_id") || null,
+    adversario_id: form.get("adversario_id") || null,
   });
 
   if (!parsed.success) {
@@ -73,13 +81,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const { tipo, formato, nome, clube, frase, ...jogo } = parsed.data;
+  const { tipo, formato, nome, clube, frase, jogador_id, clube_id, adversario_id, ...jogo } =
+    parsed.data;
 
-  const arquivoFoto = form.get("foto");
-  const foto =
-    arquivoFoto instanceof File && arquivoFoto.size > 0
-      ? Buffer.from(await arquivoFoto.arrayBuffer())
-      : null;
+  /**
+   * A foto e os escudos vem do cadastro, nao do formulario. Foi a mudanca que
+   * tirou o upload de toda geracao: o atleta ja esta no elenco com a foto boa,
+   * e repetir o upload semanal era a chance de subir a foto ruim.
+   */
+  const { foto, clubes } = await materiaisDaArte({ jogador_id, clube_id, adversario_id });
 
   try {
     /**
@@ -87,17 +97,20 @@ export async function POST(req: Request) {
      * e arquivo orfao; a alternativa seria carregar o binario de volta pelo
      * navegador na hora de salvar, o que e bem pior.
      */
-    const [arte, foto_path] = await Promise.all([
-      produzirArte({ tipo: tipo as Tipo, formato: formato as Formato, nome, clube, frase, foto, ...jogo }),
-      foto
-        ? subir(BALDE.fotos, foto, arquivoFoto instanceof File ? arquivoFoto.type : "image/jpeg")
-        : null,
-    ]);
+    const arte = await produzirArte({
+      tipo: tipo as Tipo,
+      formato: formato as Formato,
+      nome,
+      clube,
+      frase,
+      foto,
+      clubes,
+      ...jogo,
+    });
 
     return NextResponse.json({
       // URL assinada, com validade curta — os buckets sao privados
       imagem: await assinar(BALDE.geracoes, arte.arte_path),
-      foto_path,
       ...arte,
     });
   } catch (e) {

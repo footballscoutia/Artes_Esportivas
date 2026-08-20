@@ -6,10 +6,10 @@ import Image from "next/image";
 import { Archive, ImagePlus, Plus, UserRound } from "lucide-react";
 import { Button, BotaoLink } from "@/components/ui/Button";
 import { TituloSecao } from "@/components/ui/Card";
-import { Campo, Input } from "@/components/ui/Field";
+import { Campo, Input, Select } from "@/components/ui/Field";
 import { Drawer } from "@/components/ui/Drawer";
 import { arquivarJogador, salvarJogador } from "@/lib/acoes";
-import type { Jogador } from "@/lib/types";
+import type { Clube, Jogador } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * mesma foto toda semana. A foto e o que mais pesa aqui: e ela que o modelo usa
  * para preservar o rosto, e trocar por uma ruim estraga toda arte seguinte.
  */
-export function Elenco({ jogadores }: { jogadores: Jogador[] }) {
+export function Elenco({ jogadores, clubes }: { jogadores: Jogador[]; clubes: Clube[] }) {
   const router = useRouter();
   const [pendente, comTransicao] = useTransition();
   const [aberto, setAberto] = useState<Jogador | "novo" | null>(null);
@@ -222,8 +222,21 @@ export function Elenco({ jogadores }: { jogadores: Jogador[] }) {
                 placeholder="Rafael Nunes"
               />
             </Campo>
-            <Campo rotulo="Clube" dica="opcional">
-              <Input name="clube" defaultValue={editando?.clube ?? ""} placeholder="Estoril" />
+            <Campo rotulo="Clube" dica="define as cores da arte">
+              <Select name="clube_id" defaultValue={editando?.clube_id ?? ""}>
+                <option value="">Sem clube</option>
+                {clubes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </Select>
+              {clubes.length === 0 && (
+                <p className="mt-2 text-[11px] text-muted-2">
+                  Nenhum clube cadastrado ainda. Sem escudo, a arte sai com cores genéricas —
+                  cadastre em Clubes.
+                </p>
+              )}
             </Campo>
             <Campo rotulo="Posição" dica="opcional">
               <Input name="posicao" defaultValue={editando?.posicao ?? ""} placeholder="Atacante" />
