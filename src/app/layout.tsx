@@ -6,14 +6,13 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 /**
- * Display so para titulo.
+ * Display só para título.
  *
- * As 78 referencias do acervo sao todas tipografia pesada e condensada, e a
- * marca da agencia e um italico squarish. Anton fala essa lingua.
+ * As 78 referências do acervo são todas tipografia pesada e condensada, e a
+ * marca da agência é um itálico squarish. Anton fala essa língua.
  *
- * Fica em h1 e nada mais: numa ferramenta de trabalho, display em rotulo,
- * botao ou dado atrapalha a leitura. Em titulo nao atrapalha nada, e e ali que
- * a personalidade cabe.
+ * Fica em h1 e nada mais: numa ferramenta de trabalho, display em rótulo, botão
+ * ou dado atrapalha a leitura. Em título não atrapalha nada.
  */
 const anton = Anton({ variable: "--fonte-anton", subsets: ["latin"], weight: "400" });
 
@@ -37,15 +36,27 @@ try {
 } catch (e) {}
 `;
 
+/*
+ * As classes de fonte vão no <html>, não no <body>.
+ *
+ * O next/font declara as variáveis no elemento que recebe a classe, e os tokens
+ * do tema vivem no :root. Um var() aninhado se resolve onde a variável é
+ * DECLARADA, não onde é usada: com as fontes no body, o :root não as enxergava,
+ * --font-sans virava inválido e a declaração inteira caía fora.
+ *
+ * O app rodou na fonte do sistema desde o primeiro dia por causa disso.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${anton.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: TEMA_ANTES_DA_PINTURA }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${anton.variable}`}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
