@@ -234,13 +234,17 @@ export function Landing() {
           */}
           <h1 className="sr-only">Escolha o atleta. O post sai pronto.</h1>
 
+          {/* peso 400 porque o Anton só tem esse corte: pedir 800 faria o
+              navegador engordar a letra artificialmente e sujar a textura */}
           <TextoWarp
             texto={"Escolha o atleta.\nO post sai pronto."}
-            className="h-[38vh] max-w-[1100px] lg:h-[34vh]"
-            tamanho="clamp(2.4rem, 6.6vw, 5.2rem)"
+            cor="#EDEEF0"
+            className="h-[40vh] max-w-[1100px] lg:h-[36vh]"
+            tamanho="clamp(2.6rem, 7.4vw, 5.6rem)"
+            peso={400}
             familia="var(--fonte-anton), sans-serif"
-            entrelinha={0.94}
             espacamento="-0.03em"
+            entrelinha={0.94}
           />
 
           <p className="mt-2 max-w-[52ch] text-center text-[15px] leading-relaxed text-muted">
