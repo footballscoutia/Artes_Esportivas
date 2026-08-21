@@ -7,9 +7,9 @@ import * as THREE from "three";
  * O fundo — um plano de tela cheia rodando um shader.
  *
  * Nao ha objeto nenhum na cena: ha luz. Campos de brilho que escorrem devagar,
- * granulacao para o degrade nao faixear, e ondas de choque que abrem quando a
- * pessoa rola ou clica. E o oposto da versao anterior, que tentava explicar o
- * produto com placas voando e ficava literal e dura.
+ * granulacao para o degrade nao faixear, e um halo discreto seguindo o cursor.
+ * E o oposto da versao anterior, que tentava explicar o produto com placas
+ * voando e ficava literal e dura.
  *
  * Toda a animacao vive no fragment shader: um triangulo de tela cheia, zero
  * geometria, zero objeto por quadro. Sai mais barato que qualquer cena com
@@ -32,8 +32,6 @@ const FRAGMENTO = /* glsl */ `
   uniform vec2  uRes;
   uniform float uScroll;
   uniform vec2  uMouse;
-  /** xy = centro em uv, z = instante do nascimento, w = forca */
-  uniform vec4  uOndas[4];
 
   const vec3 AZUL   = vec3(0.180, 0.486, 1.000); // #2E7CFF
   const vec3 FUNDO  = vec3(0.031, 0.035, 0.043);
@@ -104,21 +102,6 @@ const FRAGMENTO = /* glsl */ `
     float dMouse = length(p - uMouse);
     cor += AZUL * 0.10 * smoothstep(0.85, 0.0, dMouse);
 
-    /* Ondas de choque: aneis que abrem e somem. Sao o unico movimento rapido
-       da pagina, e por isso so acontecem quando alguem faz alguma coisa. */
-    for (int i = 0; i < 4; i++) {
-      vec4 onda = uOndas[i];
-      if (onda.w <= 0.0) continue;
-      float idade = uTempo - onda.z;
-      if (idade < 0.0 || idade > 2.6) continue;
-      vec2 centro = (onda.xy - 0.5) * vec2(uRes.x / uRes.y, 1.0);
-      float raio = idade * 0.62;
-      float d = abs(length(p - centro) - raio);
-      float anel = smoothstep(0.055, 0.0, d);
-      float vida = 1.0 - idade / 2.6;
-      cor += AZUL * anel * vida * vida * onda.w * 0.85;
-    }
-
     // vinheta: fecha as bordas para o texto ter chao em qualquer canto
     float vinheta = smoothstep(1.45, 0.15, length(p));
     cor *= mix(0.72, 1.0, vinheta);
@@ -152,7 +135,6 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
       uRes: { value: new THREE.Vector2(1, 1) },
       uScroll: { value: 0 },
       uMouse: { value: new THREE.Vector2(0, 0) },
-      uOndas: { value: Array.from({ length: 4 }, () => new THREE.Vector4(0, 0, -99, 0)) },
     };
 
     const geo = new THREE.PlaneGeometry(2, 2);
@@ -165,25 +147,13 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
     });
     cena.add(new THREE.Mesh(geo, mat));
 
-    let proxima = 0;
-    /** Dispara uma onda a partir de um ponto em coordenadas de tela (0..1). */
-    function onda(x: number, y: number, forca = 1) {
-      const v = uniformes.uOndas.value[proxima];
-      v.set(x, y, uniformes.uTempo.value, forca);
-      proxima = (proxima + 1) % 4;
-    }
-
     const mouse = new THREE.Vector2(0, 0);
     function aoMover(e: PointerEvent) {
       const l = alvo!.clientWidth;
       const a = alvo!.clientHeight;
       mouse.set(((e.clientX / l) - 0.5) * (l / a), -((e.clientY / a) - 0.5));
     }
-    function aoClicar(e: PointerEvent) {
-      onda(e.clientX / alvo!.clientWidth, 1 - e.clientY / alvo!.clientHeight, 1);
-    }
     window.addEventListener("pointermove", aoMover, { passive: true });
-    window.addEventListener("pointerdown", aoClicar, { passive: true });
 
     function medir() {
       const l = alvo!.clientWidth;
@@ -199,9 +169,6 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
     let vivo = true;
     let quadro = 0;
     const nascimento = performance.now();
-    /* Uma onda a cada quinto da pagina rolada: marca a passagem de secao sem
-       precisar de gatilho por secao. */
-    let marcoAnterior = -1;
 
     function laco() {
       if (!vivo) return;
@@ -215,14 +182,6 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
       uniformes.uScroll.value += (pr - uniformes.uScroll.value) * 0.06;
       uniformes.uMouse.value.lerp(mouse, 0.05);
 
-      if (!parado) {
-        const marco = Math.floor(pr * 5);
-        if (marco !== marcoAnterior && marcoAnterior !== -1) {
-          onda(0.5 + (Math.random() - 0.5) * 0.5, 0.5 + (Math.random() - 0.5) * 0.4, 0.7);
-        }
-        marcoAnterior = marco;
-      }
-
       render.render(cena, camera);
     }
     laco();
@@ -232,7 +191,6 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
       cancelAnimationFrame(quadro);
       observador.disconnect();
       window.removeEventListener("pointermove", aoMover);
-      window.removeEventListener("pointerdown", aoClicar);
       render.domElement.remove();
       render.dispose();
       geo.dispose();
