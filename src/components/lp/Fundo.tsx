@@ -7,8 +7,8 @@ import * as THREE from "three";
  * O fundo — um plano de tela cheia rodando um shader.
  *
  * Nao ha objeto nenhum na cena: ha luz. Um campo que escorre devagar por baixo
- * de tudo, e quatro camadas de futebol que se revezam conforme a pagina rola —
- * refletores, escalacao, linhas de campo e a rede do gol.
+ * de tudo, e duas camadas de futebol que se revezam conforme a pagina rola —
+ * refletores no heroi e a constelacao da escalacao no fechamento.
  * Uma por trecho, nunca duas fortes ao mesmo tempo.
  *
  * Todas somam luz e nenhuma desenha objeto solido: foi objeto solido que deixou
@@ -123,28 +123,6 @@ const FRAGMENTO = /* glsl */ `
     return s;
   }
 
-  /* ---- 3. linhas de campo: a geometria do gramado em perspectiva ---- */
-  float campoDeJogo(vec2 p, float t) {
-    float y = p.y + 0.78;               // horizonte um pouco abaixo do centro
-    if (y < 0.02) return 0.0;
-    float z = 1.0 / y;                   // profundidade: perto embaixo, longe em cima
-    float x = p.x * z;
-    // transversais correndo em direcao ao horizonte
-    float tr = smoothstep(0.5, 0.46, abs(fract(z * 0.32 - t * 0.1) - 0.5));
-    // longitudinais fixas
-    float lo = smoothstep(0.5, 0.47, abs(fract(x * 0.22) - 0.5));
-    return (tr + lo) * smoothstep(0.0, 0.55, y) * smoothstep(2.6, 0.7, z);
-  }
-
-  /* ---- 4. rede: a malha do gol, ondulando devagar ---- */
-  float rede(vec2 p, float t) {
-    vec2 q = p * 13.0;
-    q.x += sin(q.y * 0.42 + t * 1.1) * 0.55;
-    q.y += sin(q.x * 0.33 + t * 0.85) * 0.4;
-    vec2 g = abs(fract(q) - 0.5);
-    return smoothstep(0.44, 0.5, max(g.x, g.y));
-  }
-
   void main() {
     // aspecto corrigido: sem isto o brilho vira elipse em tela larga
     vec2 uv = vUv;
@@ -182,32 +160,26 @@ const FRAGMENTO = /* glsl */ `
     cor += AZUL * 0.10 * smoothstep(0.85, 0.0, dMouse);
 
     /**
-     * As quatro camadas, uma por trecho da pagina.
+     * Duas camadas, uma por secao — refletores no heroi, escalacao no
+     * fechamento.
      *
-     * Todas somam luz e nenhuma desenha objeto solido — foi objeto solido que
-     * deixou a versao anterior dura. Os pesos se cruzam de leve nas bordas, o
-     * suficiente para a troca nao ter emenda, e as intensidades sao baixas de
-     * proposito: cada uma tem de ser notada, nunca encarada.
+     * Eram quatro, para uma pagina de seis secoes. Com duas, quatro camadas se
+     * atropelariam: o scroll inteiro passa em pouco mais de uma tela, e cada
+     * troca viraria piscada. Pagina curta pede vocabulario curto.
+     *
+     * As duas somam luz e nenhuma desenha objeto solido, e as larguras sao
+     * generosas de proposito — a troca acontece devagar, sem emenda visivel.
      *
      * O desvio sai barato porque o peso vem de uniform: a ramificacao e a
      * mesma para todos os pixels do quadro, entao a GPU nao diverge.
      */
     float t2 = uTempo * 0.16;
 
-    float wRef = peso(0.02, 0.20) + peso(1.0, 0.13);
+    float wRef = peso(0.0, 0.62);
     if (wRef > 0.004) cor += AZUL * refletores(p, t2) * 0.055 * wRef;
 
-    /* O trecho dos materiais fica so com o campo de luz. Os arcos de passe
-       moravam aqui e sairam: uma curva fina atravessando a tela inteira le
-       como risco solto, nao como trajetoria. Secao quieta tambem e ritmo. */
-    float wEsc = peso(0.42, 0.15);
-    if (wEsc > 0.004) cor += AZUL * escalacao(p, t2) * 0.42 * wEsc;
-
-    float wCam = peso(0.62, 0.15);
-    if (wCam > 0.004) cor += AZUL * campoDeJogo(p, t2) * 0.075 * wCam;
-
-    float wRede = peso(0.81, 0.14);
-    if (wRede > 0.004) cor += AZUL * rede(p, t2) * 0.05 * wRede;
+    float wEsc = peso(1.0, 0.55);
+    if (wEsc > 0.004) cor += AZUL * escalacao(p, t2) * 0.34 * wEsc;
 
     // vinheta: fecha as bordas para o texto ter chao em qualquer canto
     float vinheta = smoothstep(1.45, 0.15, length(p));
