@@ -52,29 +52,35 @@ function Acao({
   children: React.ReactNode;
   className?: string;
 }) {
-  /* Azul claro, nao o acento: a luz corre por cima de um miolo que ja e azul,
-     e acento sobre acento nao aparece. */
-  const mancha = "radial-gradient(circle, #A8C7FF, transparent 12%)";
+  const mancha = "radial-gradient(circle, #7FB0FF, transparent 14%)";
 
   return (
     <Link
       href={href}
-      className={`group relative inline-block overflow-hidden rounded-full p-[1.5px] ${className}`}
+      className={`group relative inline-block overflow-hidden rounded-full p-[2px] ${className}`}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute -bottom-3 -right-[250%] h-1/2 w-[300%] rounded-[50%] opacity-70 motion-reduce:hidden"
+        className="pointer-events-none absolute -bottom-3 -right-[250%] h-1/2 w-[300%] rounded-[50%] motion-reduce:hidden"
         style={{ background: mancha, animation: "luz-borda-baixo 5s linear infinite alternate" }}
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -left-[250%] -top-3 h-1/2 w-[300%] rounded-[50%] opacity-70 motion-reduce:hidden"
+        className="pointer-events-none absolute -left-[250%] -top-3 h-1/2 w-[300%] rounded-[50%] motion-reduce:hidden"
         style={{ background: mancha, animation: "luz-borda-cima 5s linear infinite alternate" }}
       />
-      {/* Miolo no acento, nao escuro. Escuro deixava a acao primaria com a
-          mesma cara do "Entrar" secundario no cabecalho, e a hierarquia da
-          pagina sumia — o botao mais importante nao pode ser o mais discreto. */}
-      <span className="relative block rounded-full bg-accent px-8 py-3.5 text-[14px] font-medium text-accent-texto transition-colors duration-200 group-hover:bg-accent-forte">
+      {/*
+        Miolo escuro, e nao chapado de azul.
+
+        Um bloco azul cheio e o botao que todo produto tem, e foi o que a
+        primeira tentativa reproduziu. Aqui o que chama nao e a cor: e ser o
+        unico lugar da tela onde a luz se move sozinha.
+
+        A hierarquia se resolve do outro lado — o "Entrar" do cabecalho perdeu
+        a pilula e virou texto. Rebaixar o secundario custa menos que inflar o
+        primario, e deixa a pagina com um objeto so.
+      */}
+      <span className="relative block rounded-full border border-white/10 bg-bg-2 px-9 py-4 text-[14px] font-medium text-text transition-colors duration-200 group-hover:bg-surface-2 motion-reduce:border-accent/70">
         {children}
       </span>
     </Link>
@@ -192,9 +198,11 @@ export function Landing() {
       />
       <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 lg:px-10">
         <Marca className="text-[17px]" />
+        {/* texto puro, sem pílula: era ele que empatava com a ação primária e
+            achatava a hierarquia da página */}
         <Link
           href="/login"
-          className="rounded-full border border-line bg-bg/30 px-4 py-2 text-[13px] text-muted backdrop-blur-md transition-colors hover:border-line-2 hover:text-text"
+          className="px-1 py-2 text-[13px] text-muted transition-colors hover:text-text"
         >
           Entrar
         </Link>
