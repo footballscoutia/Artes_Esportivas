@@ -12,10 +12,17 @@ import { Renderer, Program, Mesh, Triangle, Texture } from "ogl";
  * deslocados do G — dai a franja colorida na beirada das letras.
  *
  * ACESSIBILIDADE: o original marca o container com `role="img"` e
- * `aria-label`. Aqui ele vai `aria-hidden`, e o <h1> de verdade fica ao lado,
- * invisivel, no Landing. Motivo: `role="img"` entrega a frase ao leitor de
- * tela mas nao entrega cabecalho nenhum ao buscador, e numa landing o h1 e o
- * que indexa. E o unico desvio do original, e nao toca no efeito.
+ * `aria-label`. Aqui ele vai `aria-hidden`, e o cabecalho de verdade fica ao
+ * lado, invisivel. Motivo: `role="img"` entrega a frase ao leitor de tela mas
+ * nao entrega cabecalho nenhum ao buscador, e numa landing o titulo e o que
+ * indexa.
+ *
+ * DESVIO DO ORIGINAL: o uniforme `uRevelacao`. Sem ele o texto simplesmente
+ * esta la desde sempre, e nao havia como o titulo da vitrine SURGIR com a
+ * rolagem sem trocar este componente por outro — e trocar significaria perder
+ * a lente e a ondulacao. A revelacao acontece no shader, na amostragem: nada
+ * e redesenhado, a textura nao e reenviada, e com o uniforme em 1 (o padrao) o
+ * efeito e byte a byte o do original.
  */
 
 const VERTICE = `#version 300 es
@@ -44,6 +51,7 @@ uniform float uPointerStrength;
 uniform float uRefraction;
 uniform float uRipple;
 uniform float uMotion;
+uniform float uRevelacao;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -111,6 +119,16 @@ void main() {
   pointerWarp += dir * rippleRing * bulge * uPointerStrength * 0.016;
 
   vec2 displaced = uv + ambient + pointerWarp;
+
+  // A revelacao: cada coluna sobe para o lugar, as da direita depois das da
+  // esquerda. Deslocar a AMOSTRAGEM para cima faz o texto aparecer vindo de
+  // baixo, e o sampleText devolve zero fora de [0,1] — entao ele entra
+  // recortado pela borda, como se subisse de dentro do papel.
+  float atraso = vUv.x * 0.55;
+  float rev = clamp(uRevelacao * 1.55 - atraso, 0.0, 1.0);
+  rev = rev * rev * (3.0 - 2.0 * rev);
+  displaced.y += (1.0 - rev) * 0.62;
+
   vec2 splitDir = ambient + pointerWarp;
   float splitLen = length(splitDir);
   splitDir = splitLen > 0.00001 ? splitDir / splitLen : vec2(0.7071, 0.7071);
@@ -123,7 +141,7 @@ void main() {
   float a = max(max(sampleText(displaced + split).a, base.a), sampleText(displaced - split).a);
 
   vec3 color = vec3(r, g, b) + lens * base.a * 0.055;
-  fragColor = vec4(color, a);
+  fragColor = vec4(color, a * rev);
 }
 `;
 
@@ -153,6 +171,15 @@ type Props = {
   entrelinha?: Medida;
   /** Flecha do arco como fracao da largura da linha. 0 = reta. */
   curvatura?: number;
+  /**
+   * Referencia de 0 a 1 dizendo o quanto do texto ja surgiu. Omitida, o texto
+   * esta sempre inteiro — que e o comportamento do original.
+   *
+   * E uma REFERENCIA, e nao uma prop de valor, porque quem a alimenta e o
+   * scroll: como valor, cada pixel rolado remontaria a arvore. Assim o laco de
+   * animacao le o numero direto, sem passar pelo React.
+   */
+  revelacao?: React.RefObject<number>;
   className?: string;
   style?: React.CSSProperties;
 };
@@ -416,10 +443,19 @@ export function TextoWarp({
   espacamento = "-0.06em",
   entrelinha = 0.9,
   curvatura = 0,
+  revelacao,
   className = "",
   style,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  /* Mora numa referencia para o laco enxergar sempre a ultima, sem entrar na
+     lista de dependencias do efeito que monta o contexto WebGL. A escrita vai
+     num efeito, e nao no corpo: mexer em ref durante a renderizacao quebra a
+     garantia de que renderizar nao tem efeito colateral. */
+  const revelacaoRef = useRef(revelacao);
+  useEffect(() => {
+    revelacaoRef.current = revelacao;
+  }, [revelacao]);
   const props = useRef<PropsInternas>({
     texto, cor, forca, escala, velocidade, alcance, pressao, refracao,
     ondulacao, tamanho, peso, familia, espacamento, entrelinha, curvatura,
@@ -509,6 +545,7 @@ export function TextoWarp({
         uRefraction: { value: props.current.refracao },
         uRipple: { value: props.current.ondulacao ? 1 : 0 },
         uMotion: { value: semMovimento ? 0 : 1 },
+        uRevelacao: { value: revelacaoRef.current ? 0 : 1 },
       },
     });
     const malha = new Mesh(gl, { geometry: geometria, program: programa });
@@ -582,10 +619,26 @@ export function TextoWarp({
       desenhar();
     };
 
+    /* A revelacao desenhada PERSEGUE a do scroll. Ligada direto, ela copiava a
+       rolagem quadro a quadro e estancava no meio do movimento assim que a
+       pessoa parava de rolar. O passo usa o tempo do quadro, para a mesma
+       animacao correr igual em 60Hz e em 144Hz. */
+    let revelado = revelacaoRef.current ? 0 : 1;
+    let anterior = performance.now();
+
     function laco(agora: number) {
       if (descartado || perdeuContexto) return;
 
+      const dt = Math.min((agora - anterior) / 1000, 0.1);
+      anterior = agora;
       const s = (agora - inicio) * 0.001;
+
+      const refRevelacao = revelacaoRef.current;
+      if (refRevelacao) {
+        const alvo = Math.min(Math.max(refRevelacao.current ?? 0, 0), 1);
+        revelado += (alvo - revelado) * (1 - Math.pow(0.002, dt));
+        programa.uniforms.uRevelacao.value = semMovimento ? 1 : revelado;
+      }
       /* Sem cursor a lente passeia sozinha: parada, a distorcao vira mancha
          fixa e o efeito parece defeito de renderizacao. */
       const ociosoX = 0.5 + Math.sin(s * 0.33) * 0.12;

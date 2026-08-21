@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { TextoFlutua } from "@/components/lp/TextoFlutua";
+import { TextoWarp } from "@/components/lp/TextoWarp";
 import { CartoesTres, FATIA_ENTRADA } from "@/components/lp/CartoesTres";
 import { TIPOS, TIPO_META } from "@/lib/types";
 
@@ -23,21 +23,48 @@ gsap.registerPlugin(ScrollTrigger);
  * troca "rolar a pagina" por "avancar a cena" pelo tempo que a cena precisa.
  *
  * Este arquivo nao anima nada. Ele so converte scroll em um numero de 0 a 1 e
- * entrega para a cena; quem sabe coreografar cartao e a CartoesTres.
+ * entrega para quem desenha; quem sabe coreografar cartao e a CartoesTres, e
+ * quem sabe revelar o titulo e o TextoWarp.
  */
+
+const FRASE = "Um post vira a semana inteira.";
 
 /** As quatro categorias que a vitrine mostra. */
 const ROTULOS = TIPOS.slice(0, 4).map((t) => TIPO_META[t].titulo);
 
+/**
+ * Em que trecho do progresso o titulo surge.
+ *
+ * Comeca depois de a secao ja ter entrado — antes ele se montava com a secao
+ * ainda no pe da tela, e quando chegava a vez de olhar ja estava tudo escrito.
+ * E termina com a secao PRESA, entao o texto acaba de se formar parado no meio
+ * da tela, que e onde a pessoa esta olhando.
+ */
+const REVELA_DE = 0.06;
+const REVELA_ATE = 0.42;
+
+function fatia(p: number, a: number, b: number) {
+  return Math.min(Math.max((p - a) / (b - a), 0), 1);
+}
+
 export function Vitrine() {
   const secao = useRef<HTMLElement>(null);
   const progresso = useRef(0);
+  const revelacao = useRef(0);
 
   useEffect(() => {
     const el = secao.current;
     if (!el) return;
     const palco = el.querySelector<HTMLElement>("[data-palco]");
     if (!palco) return;
+
+    /* Um so lugar escreve os dois numeros: a revelacao do titulo e uma fatia do
+       mesmo progresso que move os cartoes, e nao um gatilho a parte. Assim as
+       duas animacoes nao tem como sair de sincronia. */
+    const aplicar = (p: number) => {
+      progresso.current = p;
+      revelacao.current = fatia(p, REVELA_DE, REVELA_ATE);
+    };
 
     const mm = gsap.matchMedia(el);
 
@@ -51,8 +78,8 @@ export function Vitrine() {
         const { amplo, estreito } = contexto.conditions as Record<string, boolean>;
 
         if (!amplo && !estreito) {
-          // movimento reduzido: a fileira ja nasce montada
-          progresso.current = 1;
+          // movimento reduzido: a fileira ja nasce montada e o titulo inteiro
+          aplicar(1);
           return;
         }
 
@@ -60,9 +87,11 @@ export function Vitrine() {
            prender a tela no celular custa caro em confianca. Os quatro so
            aparecem, no compasso de quem rola. */
         if (estreito) {
-          gsap.to(progresso, {
-            current: 1,
+          const passo = { valor: 0 };
+          gsap.to(passo, {
+            valor: 1,
             ease: "none",
+            onUpdate: () => aplicar(passo.valor),
             scrollTrigger: { trigger: palco, start: "top 88%", end: "top 30%", scrub: 0.6 },
           });
           return;
@@ -83,9 +112,7 @@ export function Vitrine() {
          */
         let entrada = 0;
         let presa = 0;
-        const juntar = () => {
-          progresso.current = entrada * FATIA_ENTRADA + presa * (1 - FATIA_ENTRADA);
-        };
+        const juntar = () => aplicar(entrada * FATIA_ENTRADA + presa * (1 - FATIA_ENTRADA));
 
         ScrollTrigger.create({
           trigger: el,
@@ -138,42 +165,43 @@ export function Vitrine() {
       className="relative z-10 flex min-h-dvh flex-col overflow-hidden px-6 py-16 lg:px-10"
     >
       {/*
-        O palco toma a altura que SOBRA, em vez de ter altura propria.
-        Com uma proporcao fixa a secao ficava mais alta que a tela — e, presa no
-        topo, o cartao aumentado saia cortado por baixo. Aqui o titulo pega o
-        que precisa e o resto e do palco, entao a cena cabe em qualquer janela.
+        O grupo inteiro fica centrado, e o palco tem TETO de altura.
+        Com o palco livre para crescer, ele engolia toda a folga da tela e
+        empurrava o titulo para longe dos cartoes. Limitado, a sobra se reparte
+        em volta do grupo e o titulo desce para perto do que ele nomeia.
       */}
       <div className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col justify-center">
         {/*
-          O tamanho da fonte vive AQUI, no elemento que tambem carrega o
-          `max-w`. Estando so no span de dentro, o `22ch` era resolvido com a
-          fonte herdada de 16px — dava 271px de caixa para um titulo desenhado a
-          ~49px, e ele se espremia em quatro linhas. `ch` so mede certo se o
-          elemento que o usa ja estiver no tamanho final.
+          O titulo e desenhado dentro de um canvas, entao ele deixa de existir
+          como texto: buscador nao indexa pixel e leitor de tela nao le WebGL.
+          Estes dois blocos invisiveis devolvem o cabecalho e os nomes das
+          categorias; as duas cenas ficam `aria-hidden` para nao duplicar.
         */}
-        <TextoFlutua
-          className="display mx-auto max-w-[22ch] text-center text-[clamp(1.9rem,5.2vw,3.6rem)] leading-[1.06] tracking-[-0.03em]"
-          escalonamento={0.022}
-        >
-          Um post vira a semana inteira.
-        </TextoFlutua>
-
-        {/*
-          Os rotulos das categorias viraram pixel dentro do canvas, entao aqui
-          eles voltam a existir como texto: buscador nao indexa textura e leitor
-          de tela nao le WebGL. A cena fica `aria-hidden` para nao duplicar.
-        */}
+        <h2 className="sr-only">{FRASE}</h2>
         <ul className="sr-only">
           {ROTULOS.map((r) => (
             <li key={r}>{r}</li>
           ))}
         </ul>
 
+        <TextoWarp
+          texto={FRASE}
+          cor="#EDEEF0"
+          className="h-[clamp(88px,14vh,152px)] w-full shrink-0"
+          tamanho="clamp(1.7rem, 4.4vw, 3.2rem)"
+          peso={700}
+          familia="var(--fonte-display), sans-serif"
+          espacamento="-0.02em"
+          entrelinha={1}
+          curvatura={0.028}
+          revelacao={revelacao}
+        />
+
         {/* a proporcao do palco e o que decide o arranjo la dentro: larga vira
             fileira de quatro, estreita vira 2x2. `min-h-0` porque um filho de
             flex nao encolhe abaixo do conteudo sem isso, e o palco voltaria a
             estourar a tela. */}
-        <div data-palco className="mt-8 min-h-0 w-full flex-1 md:mt-10">
+        <div data-palco className="mt-2 max-h-[58vh] min-h-0 w-full flex-1 md:mt-3">
           <CartoesTres rotulos={ROTULOS} progresso={progresso} />
         </div>
       </div>
