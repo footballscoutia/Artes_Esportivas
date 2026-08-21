@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -51,19 +51,26 @@ export function TextoFlutua({
    * produziu "Um p / ost vi / ra a s". Cada palavra vira um `inline-block`
    * com `whitespace-nowrap`: as letras de dentro nao se separam, e a quebra
    * volta a acontecer so entre palavras, como em qualquer texto.
+   *
+   * O espaco fica FORA do bloco da palavra, como irmao dele. Dentro, ele
+   * sumia: espaco no fim do conteudo de um inline-block e descartado no
+   * processamento de espaco em branco, e por isso "Um post vira a" saiu
+   * "Umpost viraa". Entre dois blocos irmaos ele sobrevive — e e ali, de todo
+   * jeito, que a linha deve quebrar.
    */
   const palavras = useMemo(() => {
     const partes = children.split(" ");
     return partes.map((palavra, i) => (
-      <span key={i} className="inline-block whitespace-nowrap">
-        {Array.from(palavra).map((c, j) => (
-          <span key={j} data-letra className="inline-block">
-            {c}
-          </span>
-        ))}
-        {/* o espaco fica fora do bloco da palavra: e ali que a linha quebra */}
+      <Fragment key={i}>
+        <span className="inline-block whitespace-nowrap">
+          {Array.from(palavra).map((c, j) => (
+            <span key={j} data-letra className="inline-block">
+              {c}
+            </span>
+          ))}
+        </span>
         {i < partes.length - 1 ? " " : null}
-      </span>
+      </Fragment>
     ));
   }, [children]);
 

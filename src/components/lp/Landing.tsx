@@ -127,12 +127,31 @@ export function Landing() {
        * O momento autoral da pagina: a fusao das tres placas, dirigida pelo
        * scroll enquanto o palco fica preso. E o unico efeito com escala aqui.
        */
+      /**
+       * `refreshPriority` alto porque este pin move TODO o resto da pagina.
+       *
+       * Prender por 140% da tela insere um espacador dessa altura no fluxo, e
+       * tudo abaixo desce mais de mil pixels. Na hora de remedir, o ScrollTrigger
+       * percorre os gatilhos na ordem em que foram CRIADOS — e os efeitos dos
+       * filhos rodam antes do efeito do pai, entao a vitrine se media primeiro,
+       * numa pagina que ainda nao tinha o espacador. Ela concluia que comecava
+       * em 761 quando comeca em 1826.
+       *
+       * O sintoma nao e "nao anima": e animar cedo demais, inteiro, acima da
+       * area visivel. Quando a secao aparece, ja acabou, e o que se ve e o
+       * quadro montado e parado — indistinguivel de um gatilho quebrado.
+       *
+       * Prioridade maior manda remedir este primeiro; ai os de baixo ja medem
+       * sobre a pagina com o espacador. A vitrine usa 1 pela mesma razao, para
+       * vir antes do que esta abaixo dela.
+       */
       ScrollTrigger.create({
         trigger: palco.current,
         start: "top top",
         end: "+=140%",
         pin: true,
         scrub: 0.6,
+        refreshPriority: 2,
         onUpdate: (t) => {
           progresso.current = t.progress;
         },
@@ -177,6 +196,17 @@ export function Landing() {
         },
       });
     }, pagina);
+
+    /**
+     * Remedir quando a fonte chegar.
+     *
+     * A ordem ja esta certa pelos `refreshPriority`; o que falta aqui e o
+     * momento. Os titulos sao Chakra Petch e ate ela carregar a pagina esta
+     * desenhada com a fonte substituta, de metrica diferente: as alturas mudam
+     * na troca, e com elas o inicio de cada gatilho.
+     */
+    const remedir = () => ScrollTrigger.refresh();
+    document.fonts?.ready.then(remedir).catch(() => {});
 
     return () => {
       contexto.revert();
