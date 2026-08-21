@@ -34,6 +34,29 @@ const PASSO = LARG + VAO;
 /** quanto o cartao solitario cresce enquanto esta sozinho no meio da tela */
 const ESCALA_SOZINHO = 1.5;
 
+/**
+ * Quanto do progresso acontece ANTES da secao prender, enquanto ela ainda sobe.
+ *
+ * Sem isso a cena comecava vazia no exato instante em que a pagina para de
+ * rolar: chegar na secao era ver o scroll travar e nada acontecer. Com um
+ * pedaco da chegada acontecendo na subida, no momento em que ela prende o
+ * cartao ja esta em voo — a pessoa nunca ve o quadro parado.
+ *
+ * Quem alimenta essa fatia e a Vitrine, com um gatilho proprio. O numero mora
+ * aqui porque e aqui que as etapas da coreografia sao medidas.
+ */
+export const FATIA_ENTRADA = 0.18;
+
+/**
+ * Quanto do caminho que falta sobra depois de um segundo de aproximacao.
+ *
+ * Menor = mais rapido e mais colado no scroll; maior = mais preguicoso. O valor
+ * da uma constante de tempo perto de 150ms: rapido o bastante para nao parecer
+ * atrasado, lento o bastante para a cena desacelerar sozinha quando a rolagem
+ * para, em vez de estancar no meio do movimento.
+ */
+const SUAVIDADE = 0.0015;
+
 /** Desaceleracao exponencial — a mesma curva do resto da pagina. */
 function suave(t: number) {
   return 1 - Math.pow(1 - t, 3);
@@ -248,8 +271,28 @@ export function CartoesTres({
     let vivo = true;
     let quadro = 0;
 
+    /**
+     * O progresso desenhado PERSEGUE o do scroll, nao e igual a ele.
+     *
+     * Ligado direto, a cena copiava a rolagem quadro a quadro: parou de rolar,
+     * parou no lugar, no meio do movimento. E a aproximacao usa o tempo do
+     * quadro, e nao um passo fixo — com passo fixo a mesma animacao corre em
+     * velocidades diferentes num monitor de 60Hz e num de 144Hz.
+     */
+    let suavizado = parado ? 1 : 0;
+    let ultimo = performance.now();
+
     function desenhar() {
-      const p = parado ? 1 : Math.min(Math.max(progresso.current ?? 0, 0), 1);
+      const agora = performance.now();
+      const dt = Math.min((agora - ultimo) / 1000, 0.1);
+      ultimo = agora;
+
+      const alvo = parado ? 1 : Math.min(Math.max(progresso.current ?? 0, 0), 1);
+      suavizado += (alvo - suavizado) * (1 - Math.pow(SUAVIDADE, dt));
+      const p = suavizado;
+      /* respiracao lenta: a cena nunca fica completamente imovel, nem quando a
+         rolagem para. E o que separa "pausa" de "travou". */
+      const tempo = parado ? 0 : agora * 0.0004;
 
       /* Qual cartao esta sob o cursor, e em que ponto da face. O `uv` do
          cruzamento ja vem em coordenada local (0 a 1), o que dispensa converter
@@ -284,23 +327,30 @@ export function CartoesTres({
           giro = 0;
           opacidade = fatia(p, i * 0.1, 0.3 + i * 0.1);
         } else if (i === 0) {
-          // 1. chega da direita, grande, e para no meio  2. encolhe e recua
+          /* 1. chega da direita, grande, e para no meio  2. encolhe e recua.
+             O recuo comeca em 0.36 e a chegada acaba em 0.30: a folga entre as
+             duas e curta de proposito. Antes eram 0.30 e 0.42, e nesse intervalo
+             NADA se movia — doze por cento da rolagem presa em que a cena ficava
+             literalmente congelada. Era isso que parecia travamento. */
           const chega = suave(fatia(p, 0, 0.3));
-          const recua = suave(fatia(p, 0.42, 0.72));
+          const recua = suave(fatia(p, 0.36, 0.66));
           x = entre(entre(alturaVisivel * 1.6, 0, chega), l.x, recua);
           esc = entre(ESCALA_SOZINHO, 1, recua);
           giro = entre(-0.5, 0, chega);
-          opacidade = fatia(p, 0, 0.22);
+          opacidade = fatia(p, 0, 0.12);
           /* enquanto esta grande ele passa na frente dos outros; ao pousar na
              fileira volta ao mesmo plano */
           frente = (1 - recua) * 0.5;
         } else {
-          // 3. os outros tres entram, um atras do outro, com o lugar ja livre
-          const e = suave(fatia(p, 0.52 + (i - 1) * 0.08, 0.82 + (i - 1) * 0.08));
+          /* 3. os outros tres entram, um atras do outro. O primeiro deles parte
+             em 0.46, com o solitario ainda encolhendo: as duas etapas se
+             sobrepoem, e nunca ha um momento sem nada acontecendo. */
+          const parte = 0.46 + (i - 1) * 0.08;
+          const e = suave(fatia(p, parte, parte + 0.3));
           x = entre(l.x + PASSO * 1.1, l.x, e);
           esc = entre(0.88, 1, e);
           giro = entre(-0.28, 0, e);
-          opacidade = fatia(p, 0.52 + (i - 1) * 0.08, 0.74 + (i - 1) * 0.08);
+          opacidade = fatia(p, parte, parte + 0.14);
         }
 
         /* A placa se vira PARA o cursor: o ponto tocado vem para frente. Vai
@@ -314,8 +364,14 @@ export function CartoesTres({
         c.incY += (incAlvoY - c.incY) * 0.12;
         c.salto += (saltoAlvo - c.salto) * 0.12;
 
-        c.grupo.position.set(x, l.y, frente + c.salto);
-        c.grupo.rotation.set(c.incX, giro + c.incY, 0);
+        /* A respiracao: um flutuar lento e dessincronizado entre os cartoes,
+           com amplitude pequena. Nao e enfeite — e o que garante que, parada a
+           rolagem, a cena continue viva em vez de virar uma imagem estatica. */
+        const sobe = Math.sin(tempo * 1.6 + i * 1.7) * 0.05;
+        const gingado = Math.sin(tempo * 1.1 + i * 2.3) * 0.02;
+
+        c.grupo.position.set(x, l.y + sobe, frente + c.salto);
+        c.grupo.rotation.set(c.incX, giro + gingado + c.incY, 0);
         c.grupo.scale.setScalar(esc);
 
         c.materiais.forEach((m) => {

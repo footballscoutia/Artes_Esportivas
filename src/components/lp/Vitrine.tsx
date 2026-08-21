@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { TextoFlutua } from "@/components/lp/TextoFlutua";
-import { CartoesTres } from "@/components/lp/CartoesTres";
+import { CartoesTres, FATIA_ENTRADA } from "@/components/lp/CartoesTres";
 import { TIPOS, TIPO_META } from "@/lib/types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -69,20 +69,61 @@ export function Vitrine() {
         }
 
         /**
+         * Dois gatilhos alimentam UM progresso.
+         *
+         * O primeiro roda enquanto a secao ainda sobe pela tela; o segundo,
+         * enquanto ela esta presa. Emendados, a coreografia atravessa o momento
+         * em que a pagina prende sem nenhuma juncao: quando o scroll para, o
+         * cartao ja esta em voo ha um tempo.
+         *
+         * Com um gatilho so — comecando exatamente no pin — chegar na secao era
+         * ver a rolagem travar diante de um palco vazio, e o movimento comecar
+         * depois. Duas coisas erradas ao mesmo tempo: a pagina parava e a cena
+         * nao tinha comecado.
+         */
+        let entrada = 0;
+        let presa = 0;
+        const juntar = () => {
+          progresso.current = entrada * FATIA_ENTRADA + presa * (1 - FATIA_ENTRADA);
+        };
+
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 60%",
+          end: "top top",
+          onUpdate: (t) => {
+            entrada = t.progress;
+            juntar();
+          },
+          onRefresh: (t) => {
+            entrada = t.progress;
+            juntar();
+          },
+        });
+
+        /**
          * `refreshPriority` porque este pin empurra tudo que vem depois: na
          * hora de remedir ele precisa vir antes dos gatilhos de baixo, senao
          * eles se medem numa pagina que ainda nao tem o espacador. Fica abaixo
          * da prioridade do heroi, que por sua vez empurra esta secao.
+         *
+         * Sem `anticipatePin`: com a rolagem suave do Lenis ele adiantava o pin
+         * por conta propria e produzia justamente o solavanco que esta secao
+         * inteira existe para evitar.
          */
         ScrollTrigger.create({
           trigger: el,
           start: "top top",
-          end: "+=2100",
+          end: "+=1700",
           pin: true,
-          anticipatePin: 1,
           refreshPriority: 1,
           onUpdate: (t) => {
-            progresso.current = t.progress;
+            presa = t.progress;
+            juntar();
+          },
+          onRefresh: (t) => {
+            presa = t.progress;
+            juntar();
           },
         });
       },
