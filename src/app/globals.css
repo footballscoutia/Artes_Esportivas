@@ -154,6 +154,38 @@
   }
 }
 
+/**
+ * Luz correndo pela borda — tecnica do "Star Border" do React Bits.
+ *
+ * Duas manchas radiais bem maiores que o botao passeiam atras dele; como o pai
+ * tem `overflow: hidden` e so 1px de folga, o que escapa e a fatia que toca a
+ * borda. O brilho parece percorrer o contorno sem nenhum caminho desenhado.
+ *
+ * `alternate` no lugar de repetir do zero: a luz vai e volta, sem o salto que
+ * um ciclo reiniciando produz.
+ */
+@keyframes luz-borda-baixo {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-100%, 0%);
+    opacity: 0;
+  }
+}
+
+@keyframes luz-borda-cima {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(100%, 0%);
+    opacity: 0;
+  }
+}
+
 @layer components {
   /* Anton e condensada e so tem um peso: o tracking abre um pouco e a caixa
      alta fica confortavel. Sem peso 600 porque a familia nao tem. */

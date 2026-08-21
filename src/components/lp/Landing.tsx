@@ -30,20 +30,18 @@ import { Painel } from "@/components/lp/Painel";
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * A acao primaria — o bloco da marca, nao uma pilula.
+ * A acao primaria — luz correndo pela borda.
  *
- * A forma sai da propria logo: o "POST" vive num paralelogramo inclinado a
- * -9deg, e o botao e esse bloco. A palavra recebe a inclinacao contraria para
- * ficar reta, exatamente como no componente `Marca`. Nada mais na internet tem
- * essa forma, e ela ja e nossa.
+ * Referencia: o "Star Border" do React Bits. Duas manchas radiais bem maiores
+ * que o botao passeiam atras dele; o pai corta tudo menos a fatia que toca a
+ * borda, e o brilho parece percorrer o contorno sem nenhum caminho desenhado.
  *
- * O gesto e um CARIMBO, e isso nao e enfeite: o produto aplica a marca do
- * cliente por codigo, carimbada por cima da arte. Ao apontar, uma segunda
- * chapa sai de tras, como registro de impressao que nao casou; ao apertar, as
- * duas se juntam e o bloco afunda. E a mesma acao que o produto executa.
+ * O miolo fica escuro, nao chapado de azul. Numa pagina que ja e escura com
+ * luz azul, um bloco azul solido era so mais um bloco — assim o botao e o
+ * unico lugar da tela onde a luz se move sozinha, e e isso que puxa o olho.
  *
- * Sem `transition` de cor no fundo: escurecer no hover era o que fazia isto
- * parecer botao de qualquer lugar.
+ * A luz corre o tempo todo, nao so no hover: parada, ela seria decoracao que
+ * ninguem descobre. Ao apontar, o miolo clareia e a borda firma.
  */
 function Acao({
   href,
@@ -54,17 +52,30 @@ function Acao({
   children: React.ReactNode;
   className?: string;
 }) {
+  /* Azul claro, nao o acento: a luz corre por cima de um miolo que ja e azul,
+     e acento sobre acento nao aparece. */
+  const mancha = "radial-gradient(circle, #A8C7FF, transparent 12%)";
+
   return (
-    <Link href={href} className={`group relative inline-block ${className}`}>
-      {/* a chapa de tras: o registro deslocado */}
+    <Link
+      href={href}
+      className={`group relative inline-block overflow-hidden rounded-full p-[1.5px] ${className}`}
+    >
       <span
         aria-hidden
-        className="absolute inset-0 -skew-x-[9deg] border border-accent/55 transition-transform duration-[280ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:translate-x-[6px] group-hover:translate-y-[6px] group-active:translate-x-0 group-active:translate-y-0 motion-reduce:transition-none"
+        className="pointer-events-none absolute -bottom-3 -right-[250%] h-1/2 w-[300%] rounded-[50%] opacity-70 motion-reduce:hidden"
+        style={{ background: mancha, animation: "luz-borda-baixo 5s linear infinite alternate" }}
       />
-      <span className="relative block -skew-x-[9deg] bg-accent px-8 py-3.5 transition-transform duration-150 group-active:translate-y-[2px] motion-reduce:transition-none">
-        <span className="block skew-x-[9deg] text-[14px] font-medium tracking-[0.01em] text-[#050608]">
-          {children}
-        </span>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -left-[250%] -top-3 h-1/2 w-[300%] rounded-[50%] opacity-70 motion-reduce:hidden"
+        style={{ background: mancha, animation: "luz-borda-cima 5s linear infinite alternate" }}
+      />
+      {/* Miolo no acento, nao escuro. Escuro deixava a acao primaria com a
+          mesma cara do "Entrar" secundario no cabecalho, e a hierarquia da
+          pagina sumia — o botao mais importante nao pode ser o mais discreto. */}
+      <span className="relative block rounded-full bg-accent px-8 py-3.5 text-[14px] font-medium text-accent-texto transition-colors duration-200 group-hover:bg-accent-forte">
+        {children}
       </span>
     </Link>
   );
