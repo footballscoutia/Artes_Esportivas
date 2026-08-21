@@ -193,7 +193,9 @@ export function Vitrine() {
           familia="var(--fonte-display), sans-serif"
           espacamento="-0.02em"
           entrelinha={1}
-          curvatura={0.028}
+          /* reto, ao contrario do heroi: o arco e a assinatura da abertura, e
+             repetido aqui viraria maneirismo em vez de gesto */
+          curvatura={0}
           revelacao={revelacao}
         />
 

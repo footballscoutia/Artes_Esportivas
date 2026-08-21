@@ -324,7 +324,11 @@ export function Landing() {
             uma segunda faixa escura no meio da página, sem nada para separar. */}
         <section
           ref={fechamento}
-          className="relative flex min-h-[86vh] items-center px-6 pb-24 pt-10 lg:px-10"
+          /* `overflow-hidden` por causa da entrada do texto: ele comeca 28px a
+             direita do lugar, e enquanto nao chega esses 28px sao conteudo
+             fora da tela — a pagina inteira ganhava uma barra de rolagem
+             horizontal que aparecia e sumia durante o scroll. */
+          className="relative flex min-h-[86vh] items-center overflow-hidden px-6 pb-24 pt-10 lg:px-10"
         >
           {/* separa em duas colunas ja no `md`: em `lg` a maioria das telas de
               trabalho ainda caia na versao empilhada, com o painel gigante */}
