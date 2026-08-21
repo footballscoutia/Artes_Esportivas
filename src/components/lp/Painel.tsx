@@ -143,10 +143,20 @@ export function Painel() {
         </div>
 
         {/* painel do resultado */}
-        <div className="flex min-h-0 flex-col rounded-[9px] border border-line bg-bg-2/60 p-2.5">
+        <div className="flex min-h-0 flex-col justify-center rounded-[9px] border border-line bg-bg-2/60 p-2.5">
           <span className="mb-2 text-[9px] text-muted">Resultado</span>
 
-          <div className="relative grid flex-1 place-items-center overflow-hidden rounded-[6px] bg-bg-2" style={{ aspectRatio: "4 / 5" }}>
+          {/*
+            `flex-1` e proporcao 4:5 juntos brigavam: o `flex-1` mandava a caixa
+            crescer, a proporcao mandava ela ficar alta na mesma medida, e o
+            resultado esticava o painel inteiro — sobrava um vazio embaixo da
+            coluna da esquerda e nada centralizava. Agora a proporcao manda, com
+            teto de altura: 4:5 continua verdadeiro (e o formato feed real) e a
+            caixa para de puxar o layout.
+          */}
+          <div
+            className="relative mx-auto grid aspect-[4/5] max-h-[260px] w-full place-items-center overflow-hidden rounded-[6px] bg-bg-2"
+          >
             <div data-vazio className="flex flex-col items-center gap-1 px-3 text-center">
               <span className="text-[9px] text-muted-2">Escolha a categoria</span>
             </div>

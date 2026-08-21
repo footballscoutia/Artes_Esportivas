@@ -188,6 +188,20 @@ export function Landing() {
           style={{ background: "color-mix(in srgb, var(--color-bg) 52%, transparent)" }}
         />
 
+        {/*
+          A emenda entre as duas seções.
+
+          O herói tem fundo opaco e esta seção é transparente, então o campo de
+          luz aparecia de uma vez numa linha reta atravessando a tela. Este
+          degradê começa exatamente na cor do herói e abre até o transparente:
+          a luz entra crescendo, e o corte deixa de existir.
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-52"
+          style={{ background: "linear-gradient(var(--color-bg), transparent)" }}
+        />
+
         <section
           ref={fechamento}
           className="relative flex min-h-[86vh] items-center px-6 pb-24 pt-10 lg:px-10"
