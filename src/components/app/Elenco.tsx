@@ -9,6 +9,7 @@ import { TituloSecao } from "@/components/ui/Card";
 import { Campo, Input, Select } from "@/components/ui/Field";
 import { Drawer } from "@/components/ui/Drawer";
 import { arquivarJogador, salvarJogador } from "@/lib/acoes";
+import { encolherCampo } from "@/lib/encolher";
 import type { Clube, Jogador } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,9 @@ export function Elenco({ jogadores, clubes }: { jogadores: Jogador[]; clubes: Cl
 
     setErro(null);
     comTransicao(async () => {
+      /* encolhe antes de enviar: acima do teto de corpo a requisição morre
+         durante a leitura e a pessoa vê "server error", não uma mensagem */
+      await encolherCampo(dados, "foto", "foto");
       const r = await salvarJogador(dados);
       if (!r.ok) {
         setErro(r.erro);
