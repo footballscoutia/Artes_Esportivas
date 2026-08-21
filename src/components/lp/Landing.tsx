@@ -27,6 +27,7 @@ import { Mesa } from "@/components/lp/Mesa";
 import { TextoWarp } from "@/components/lp/TextoWarp";
 import { Fundo } from "@/components/lp/Fundo";
 import { Painel } from "@/components/lp/Painel";
+import { Vitrine } from "@/components/lp/Vitrine";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -262,6 +263,23 @@ export function Landing() {
         </div>
       </section>
 
+      {/* ---- vitrine: o que sai do outro lado ---- */}
+      <div className="relative z-10">
+        {/* mesma emenda do fechamento: o herói é opaco, e sem degradê o campo
+            de luz apareceria numa linha reta cortando a tela */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-52"
+          style={{ background: "linear-gradient(var(--color-bg), transparent)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "color-mix(in srgb, var(--color-bg) 52%, transparent)" }}
+        />
+        <Vitrine />
+      </div>
+
       {/* ---- cadastro ---- */}
       <div className="relative z-10">
         {/* véu de leitura: aqui o campo de luz aparece, e texto sobre luz precisa de chão */}
@@ -271,20 +289,9 @@ export function Landing() {
           style={{ background: "color-mix(in srgb, var(--color-bg) 52%, transparent)" }}
         />
 
-        {/*
-          A emenda entre as duas seções.
-
-          O herói tem fundo opaco e esta seção é transparente, então o campo de
-          luz aparecia de uma vez numa linha reta atravessando a tela. Este
-          degradê começa exatamente na cor do herói e abre até o transparente:
-          a luz entra crescendo, e o corte deixa de existir.
-        */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-52"
-          style={{ background: "linear-gradient(var(--color-bg), transparent)" }}
-        />
-
+        {/* Sem degradê de emenda aqui: quem faz a passagem do herói opaco para
+            o campo de luz agora é a vitrine, logo acima. Manter os dois punha
+            uma segunda faixa escura no meio da página, sem nada para separar. */}
         <section
           ref={fechamento}
           className="relative flex min-h-[86vh] items-center px-6 pb-24 pt-10 lg:px-10"
