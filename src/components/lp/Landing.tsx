@@ -29,6 +29,47 @@ import { Painel } from "@/components/lp/Painel";
 
 gsap.registerPlugin(ScrollTrigger);
 
+/**
+ * A acao primaria — o bloco da marca, nao uma pilula.
+ *
+ * A forma sai da propria logo: o "POST" vive num paralelogramo inclinado a
+ * -9deg, e o botao e esse bloco. A palavra recebe a inclinacao contraria para
+ * ficar reta, exatamente como no componente `Marca`. Nada mais na internet tem
+ * essa forma, e ela ja e nossa.
+ *
+ * O gesto e um CARIMBO, e isso nao e enfeite: o produto aplica a marca do
+ * cliente por codigo, carimbada por cima da arte. Ao apontar, uma segunda
+ * chapa sai de tras, como registro de impressao que nao casou; ao apertar, as
+ * duas se juntam e o bloco afunda. E a mesma acao que o produto executa.
+ *
+ * Sem `transition` de cor no fundo: escurecer no hover era o que fazia isto
+ * parecer botao de qualquer lugar.
+ */
+function Acao({
+  href,
+  children,
+  className = "",
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link href={href} className={`group relative inline-block ${className}`}>
+      {/* a chapa de tras: o registro deslocado */}
+      <span
+        aria-hidden
+        className="absolute inset-0 -skew-x-[9deg] border border-accent/55 transition-transform duration-[280ms] ease-[cubic-bezier(.22,1,.36,1)] group-hover:translate-x-[6px] group-hover:translate-y-[6px] group-active:translate-x-0 group-active:translate-y-0 motion-reduce:transition-none"
+      />
+      <span className="relative block -skew-x-[9deg] bg-accent px-8 py-3.5 transition-transform duration-150 group-active:translate-y-[2px] motion-reduce:transition-none">
+        <span className="block skew-x-[9deg] text-[14px] font-medium tracking-[0.01em] text-[#050608]">
+          {children}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export function Landing() {
   const progresso = useRef(0);
   const palco = useRef<HTMLDivElement>(null);
@@ -171,12 +212,9 @@ export function Landing() {
               O MatchPost gera as artes promocionais do seu elenco no padrão da sua marca. Você
               escolhe a categoria e o atleta — não escreve prompt nenhum.
             </p>
-            <Link
-              href="/login?criar=1"
-              className="pointer-events-auto mt-8 inline-flex h-12 items-center rounded-full bg-accent px-7 text-[14px] font-medium text-accent-texto transition-colors hover:bg-accent-forte"
-            >
+            <Acao href="/login?criar=1" className="pointer-events-auto mt-8">
               Criar conta
-            </Link>
+            </Acao>
           </div>
         </div>
       </section>
@@ -224,13 +262,8 @@ export function Landing() {
               <h2 className="display max-w-[15ch] text-[clamp(2rem,4.6vw,3.2rem)] leading-[1.02] tracking-[-0.028em]">
                 Cadastre a sua agência e gere a primeira.
               </h2>
-              <div className="mt-8 flex flex-wrap items-center gap-5">
-                <Link
-                  href="/login?criar=1"
-                  className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-[14px] font-medium text-accent-texto transition-colors hover:bg-accent-forte"
-                >
-                  Criar conta
-                </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-6">
+                <Acao href="/login?criar=1">Criar conta</Acao>
                 <span className="text-[13px] text-muted-2">Leva um minuto</span>
               </div>
             </div>
