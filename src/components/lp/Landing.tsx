@@ -103,9 +103,11 @@ export function Landing() {
         },
       });
 
+      /* Entra pelo lado em que ele vive: o texto esta a direita, entao vem de
+         la. Vindo da esquerda, ele atravessaria o painel no caminho. */
       gsap.from("[data-texto]", {
         opacity: 0,
-        x: -28,
+        x: 28,
         ease: "none",
         scrollTrigger: {
           trigger: fechamento.current,
@@ -208,8 +210,17 @@ export function Landing() {
         >
           {/* separa em duas colunas ja no `md`: em `lg` a maioria das telas de
               trabalho ainda caia na versao empilhada, com o painel gigante */}
-          <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 md:grid-cols-[0.8fr_1.2fr] md:gap-12 lg:gap-16">
-            <div data-texto>
+          {/*
+            O painel fica à esquerda e o texto à direita, mas a ORDEM no HTML é
+            a inversa — título primeiro, painel depois.
+
+            Quem lê por leitor de tela ou navega por teclado recebe o cabeçalho
+            antes da ilustração, que é a ordem que faz sentido; empilhado no
+            celular, o texto também vem primeiro. Só a posição visual troca, e
+            ela troca por `order`.
+          */}
+          <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 md:grid-cols-[1.2fr_0.8fr] md:gap-12 lg:gap-16">
+            <div data-texto className="md:order-2">
               <h2 className="display max-w-[15ch] text-[clamp(2rem,4.6vw,3.2rem)] leading-[1.02] tracking-[-0.028em]">
                 Cadastre a sua agência e gere a primeira.
               </h2>
@@ -227,7 +238,7 @@ export function Landing() {
             {/* a interface do produto, encenada — é a prova que a página não tinha */}
             {/* teto de largura: empilhado, sem ele o painel vira um cartaz e a
                 tipografia miuda dele fica desproporcional */}
-            <div data-painel className="mx-auto w-full min-w-0 max-w-[620px] md:mx-0 md:max-w-none">
+            <div data-painel className="mx-auto w-full min-w-0 max-w-[620px] md:mx-0 md:max-w-none md:order-1">
               <Painel />
             </div>
           </div>
