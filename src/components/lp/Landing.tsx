@@ -71,7 +71,6 @@ function Linha({ children }: { children: React.ReactNode }) {
 }
 
 export function Landing() {
-  const progresso = useRef(0);
   const pagina = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,16 +84,6 @@ export function Landing() {
     gsap.ticker.lagSmoothing(0);
 
     const contexto = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: pagina.current,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 0.7,
-        onUpdate: (t) => {
-          progresso.current = t.progress;
-        },
-      });
-
       /* Abertura: as linhas do titulo sobem em cascata. E o unico momento
          coreografado da pagina — o resto responde ao scroll. */
       gsap.from("[data-heroi] [data-linha]", {
@@ -145,7 +134,7 @@ export function Landing() {
 
   return (
     <div ref={pagina} className="relative text-text">
-      <Fundo progresso={progresso} />
+      <Fundo />
 
       {/*
         Véu de leitura: uma lâmina uniforme, não um radial.

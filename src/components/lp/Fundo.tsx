@@ -6,10 +6,13 @@ import * as THREE from "three";
 /**
  * O fundo — um plano de tela cheia rodando um shader.
  *
- * Nao ha objeto nenhum na cena: ha luz. Campos de brilho que escorrem devagar,
- * granulacao para o degrade nao faixear, e um halo discreto seguindo o cursor.
- * E o oposto da versao anterior, que tentava explicar o produto com placas
- * voando e ficava literal e dura.
+ * Nao ha objeto nenhum na cena: ha luz. Um campo que escorre devagar por baixo
+ * de tudo, e cinco camadas de futebol que se revezam conforme a pagina rola —
+ * refletores, trajetorias de passe, escalacao, linhas de campo e a rede do gol.
+ * Uma por trecho, nunca duas fortes ao mesmo tempo.
+ *
+ * Todas somam luz e nenhuma desenha objeto solido: foi objeto solido que deixou
+ * a versao anterior literal e dura.
  *
  * Toda a animacao vive no fragment shader: um triangulo de tela cheia, zero
  * geometria, zero objeto por quadro. Sai mais barato que qualquer cena com
@@ -66,6 +69,107 @@ const FRAGMENTO = /* glsl */ `
     return v / 0.875; // renormaliza: tres oitavas somam menos que cinco
   }
 
+  /**
+   * Peso de uma camada ao longo da pagina.
+   *
+   * Cada uma nasce e morre em volta do seu trecho, e por isso nunca ha duas
+   * fortes ao mesmo tempo — e o que impede a soma de virar sopa. O centro e a
+   * posicao no scroll (0 a 1); a largura, o quanto ela demora para sumir.
+   */
+  float peso(float centro, float largura) {
+    return smoothstep(largura, 0.0, abs(uScroll - centro));
+  }
+
+  /* ---- 1. refletores: feixes descendo do alto, como holofote de estadio ---- */
+  float refletores(vec2 p, float t) {
+    float s = 0.0;
+    for (int i = 0; i < 3; i++) {
+      float f = float(i);
+      float base = -0.62 + f * 0.62;
+      float inclina = 0.2 * (f - 1.0);
+      // distancia ao eixo do feixe, que e uma reta inclinada
+      float d = abs(p.x - base - p.y * inclina + sin(t * 0.5 + f) * 0.06);
+      float feixe = smoothstep(0.24, 0.0, d);
+      // forte em cima, morrendo antes do rodape: luz vem de cima
+      feixe *= smoothstep(-0.55, 0.62, p.y);
+      s += feixe;
+    }
+    return s;
+  }
+
+  /* ---- 2. trajetorias de passe: arcos que se desenham e somem ---- */
+  float arco(vec2 p, vec2 c, float r, float ini, float fim, float larg) {
+    vec2 v = p - c;
+    float ang = atan(v.y, v.x);
+    float dentro = step(ini, ang) * step(ang, fim);
+    return dentro * smoothstep(larg, 0.0, abs(length(v) - r));
+  }
+
+  float passes(vec2 p, float t) {
+    float s = 0.0;
+    for (int i = 0; i < 3; i++) {
+      float f = float(i);
+      // cada arco tem o seu proprio ciclo, defasado
+      float ciclo = fract(t * 0.22 + f * 0.37);
+      // desenha ate a metade do ciclo, some na outra metade
+      float desenho = smoothstep(0.0, 0.45, ciclo);
+      float some = 1.0 - smoothstep(0.55, 1.0, ciclo);
+      vec2 centro = vec2(-0.7 + f * 0.7, -0.55 + f * 0.2);
+      float raio = 0.62 + f * 0.18;
+      float ini = 0.35 + f * 0.5;
+      s += arco(p, centro, raio, ini, ini + desenho * 1.5, 0.012) * some;
+    }
+    return s;
+  }
+
+  /* ---- 3. escalacao: oito pontos, um por categoria, se rearranjando ---- */
+  vec2 pontoA(float f) { return vec2(cos(f * 2.39) * 0.95, sin(f * 1.71) * 0.44); }
+  vec2 pontoB(float f) { return vec2(-0.92 + f * 0.263, sin(f * 2.11) * 0.36); }
+
+  /** Distancia de p ao segmento ab — e o que desenha a linha de ligacao. */
+  float segmento(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a;
+    vec2 ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+  }
+
+  float escalacao(vec2 p, float t) {
+    float m = smoothstep(0.0, 1.0, 0.5 + 0.5 * sin(t * 0.35));
+    float s = 0.0;
+    vec2 ant = vec2(0.0);
+    for (int i = 0; i < 8; i++) {
+      float f = float(i);
+      vec2 q = mix(pontoA(f), pontoB(f), m);
+      s += smoothstep(0.028, 0.0, length(p - q)) * 0.9;          // o ponto
+      if (i > 0) s += smoothstep(0.0035, 0.0, segmento(p, ant, q)) * 0.32; // a ligacao
+      ant = q;
+    }
+    return s;
+  }
+
+  /* ---- 4. linhas de campo: a geometria do gramado em perspectiva ---- */
+  float campoDeJogo(vec2 p, float t) {
+    float y = p.y + 0.78;               // horizonte um pouco abaixo do centro
+    if (y < 0.02) return 0.0;
+    float z = 1.0 / y;                   // profundidade: perto embaixo, longe em cima
+    float x = p.x * z;
+    // transversais correndo em direcao ao horizonte
+    float tr = smoothstep(0.5, 0.46, abs(fract(z * 0.32 - t * 0.1) - 0.5));
+    // longitudinais fixas
+    float lo = smoothstep(0.5, 0.47, abs(fract(x * 0.22) - 0.5));
+    return (tr + lo) * smoothstep(0.0, 0.55, y) * smoothstep(2.6, 0.7, z);
+  }
+
+  /* ---- 5. rede: a malha do gol, ondulando devagar ---- */
+  float rede(vec2 p, float t) {
+    vec2 q = p * 13.0;
+    q.x += sin(q.y * 0.42 + t * 1.1) * 0.55;
+    q.y += sin(q.x * 0.33 + t * 0.85) * 0.4;
+    vec2 g = abs(fract(q) - 0.5);
+    return smoothstep(0.44, 0.5, max(g.x, g.y));
+  }
+
   void main() {
     // aspecto corrigido: sem isto o brilho vira elipse em tela larga
     vec2 uv = vUv;
@@ -102,6 +206,34 @@ const FRAGMENTO = /* glsl */ `
     float dMouse = length(p - uMouse);
     cor += AZUL * 0.10 * smoothstep(0.85, 0.0, dMouse);
 
+    /**
+     * As cinco camadas, uma por trecho da pagina.
+     *
+     * Todas somam luz e nenhuma desenha objeto solido — foi objeto solido que
+     * deixou a versao anterior dura. Os pesos se cruzam de leve nas bordas, o
+     * suficiente para a troca nao ter emenda, e as intensidades sao baixas de
+     * proposito: cada uma tem de ser notada, nunca encarada.
+     *
+     * O desvio sai barato porque o peso vem de uniform: a ramificacao e a
+     * mesma para todos os pixels do quadro, entao a GPU nao diverge.
+     */
+    float t2 = uTempo * 0.16;
+
+    float wRef = peso(0.02, 0.20) + peso(1.0, 0.13);
+    if (wRef > 0.004) cor += AZUL * refletores(p, t2) * 0.055 * wRef;
+
+    float wPas = peso(0.22, 0.15);
+    if (wPas > 0.004) cor += AZUL * passes(p, t2) * 0.5 * wPas;
+
+    float wEsc = peso(0.42, 0.15);
+    if (wEsc > 0.004) cor += AZUL * escalacao(p, t2) * 0.42 * wEsc;
+
+    float wCam = peso(0.62, 0.15);
+    if (wCam > 0.004) cor += AZUL * campoDeJogo(p, t2) * 0.075 * wCam;
+
+    float wRede = peso(0.81, 0.14);
+    if (wRede > 0.004) cor += AZUL * rede(p, t2) * 0.05 * wRede;
+
     // vinheta: fecha as bordas para o texto ter chao em qualquer canto
     float vinheta = smoothstep(1.45, 0.15, length(p));
     cor *= mix(0.72, 1.0, vinheta);
@@ -115,7 +247,7 @@ const FRAGMENTO = /* glsl */ `
   }
 `;
 
-export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
+export function Fundo() {
   const caixa = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -177,9 +309,18 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
       const agora = (performance.now() - nascimento) / 1000;
       uniformes.uTempo.value = parado ? 0 : agora;
 
-      const pr = Math.min(Math.max(progresso.current ?? 0, 0), 1);
-      // o valor persegue o alvo: rolagem brusca nao vira salto no fundo
-      uniformes.uScroll.value += (pr - uniformes.uScroll.value) * 0.06;
+      /**
+       * O progresso vem do proprio scroll, nao do ScrollTrigger.
+       *
+       * Passar pelo GSAP somava o scrub do gatilho a este lerp, e a defasagem
+       * ficava grande o bastante para uma camada aparecer no trecho da outra —
+       * a escalacao surgia onde a rede deveria estar. Lendo a posicao direto,
+       * o que o shader ve e o que a pagina esta mostrando.
+       */
+      const alcance = document.body.scrollHeight - window.innerHeight;
+      const pr = alcance > 0 ? Math.min(Math.max(window.scrollY / alcance, 0), 1) : 0;
+      // ainda persegue o alvo, so que de perto: rolagem brusca nao vira salto
+      uniformes.uScroll.value += (pr - uniformes.uScroll.value) * 0.14;
       uniformes.uMouse.value.lerp(mouse, 0.05);
 
       render.render(cena, camera);
@@ -196,7 +337,7 @@ export function Fundo({ progresso }: { progresso: React.RefObject<number> }) {
       geo.dispose();
       mat.dispose();
     };
-  }, [progresso]);
+  }, []);
 
   return <div ref={caixa} aria-hidden className="fixed inset-0 z-0" />;
 }
