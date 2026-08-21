@@ -147,17 +147,28 @@ export function Landing() {
     <div ref={pagina} className="relative text-text">
       <Fundo progresso={progresso} />
 
-      {/* o campo de luz é bonito, mas texto precisa de chão: um véu constante */}
+      {/*
+        Véu de leitura: uma lâmina uniforme, não um radial.
+
+        O radial deixava o centro descoberto — justo onde o texto mora — então
+        um núcleo de luz que passasse por ali derrubava o contraste do
+        parágrafo. Uma lâmina constante rebaixa o campo inteiro de forma
+        previsível, e a vinheta que fecha as bordas já vive no shader.
+      */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 z-[5]"
-        style={{
-          background:
-            "radial-gradient(115% 80% at 50% 45%, color-mix(in srgb, var(--color-bg) 34%, transparent), color-mix(in srgb, var(--color-bg) 88%, transparent) 100%)",
-        }}
+        style={{ background: "color-mix(in srgb, var(--color-bg) 52%, transparent)" }}
       />
 
       <div className="relative z-10">
+        {/* O cabeçalho é fixo e o conteúdo passa por baixo: sem um degradê
+            próprio, a logo se sobrepõe ao texto da seção durante a rolagem. */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 top-0 z-40 h-24"
+          style={{ background: "linear-gradient(var(--color-bg), transparent)" }}
+        />
         <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 lg:px-10">
           <Marca className="text-[17px]" />
           <Link

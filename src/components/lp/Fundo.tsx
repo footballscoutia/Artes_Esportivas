@@ -54,15 +54,18 @@ const FRAGMENTO = /* glsl */ `
     );
   }
 
+  /* Tres oitavas, nao cinco. Cada oitava a mais acrescenta detalhe fino, e
+     detalhe fino em campo de luz le como FUMACA. O que se quer aqui e massa
+     grande e macia, entao o ruido para cedo. */
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       v += a * ruido(p);
       p *= 2.03;
       a *= 0.5;
     }
-    return v;
+    return v / 0.875; // renormaliza: tres oitavas somam menos que cinco
   }
 
   void main() {
@@ -74,18 +77,27 @@ const FRAGMENTO = /* glsl */ `
 
     /* Duas camadas de fbm correndo em sentidos diferentes. E o que faz a luz
        parecer liquida em vez de um degrade parado com opacidade animada. */
-    vec2 desloc = vec2(fbm(p * 1.6 + vec2(t, -t * 0.7)), fbm(p * 1.6 + vec2(-t * 0.8, t)));
-    float campo = fbm(p * 2.1 + desloc * 1.4 - vec2(0.0, t * 1.2));
+    vec2 desloc = vec2(fbm(p * 0.85 + vec2(t, -t * 0.7)), fbm(p * 0.85 + vec2(-t * 0.8, t)));
+    float campo = fbm(p * 1.05 + desloc * 0.9 - vec2(0.0, t * 1.1 + uScroll * 1.6));
 
-    // o campo sobe conforme a pagina rola: o fundo acompanha a leitura
-    campo += uScroll * 0.16;
+    /* O scroll DESLOCA o campo, nao o clareia. Somar ao campo (era +0.16 *
+       uScroll) fazia a pagina inteira ficar progressivamente mais clara: no
+       meio da leitura o fundo ja tinha virado fumaca luminosa por cima do
+       texto. Agora ele viaja, e o brilho fica constante do topo ao rodape. */
 
-    float brilho = smoothstep(0.42, 0.92, campo);
-    float nucleo = smoothstep(0.62, 1.0, campo);
+    /* Os limiares moram em volta de 0.5 porque e ali que o fbm vive: cinco
+       oitavas somadas com amplitude decrescente se concentram no meio da
+       faixa. Com 0.42 e 0.62 o brilho quase nao acendia e o nucleo azul nunca
+       acendia — o fundo saia preto. */
+    float brilho = smoothstep(0.26, 0.68, campo);
+    float nucleo = smoothstep(0.46, 0.88, campo);
 
+    /* Ambiente, nao assunto — mas presente. O ajuste que importou nao foi este
+       numero e sim tirar a rampa de brilho por scroll: era ela que fazia o
+       miolo da pagina estourar enquanto o topo parecia certo. */
     vec3 cor = FUNDO;
-    cor = mix(cor, VIOLETA * 0.5, brilho * 0.34);
-    cor = mix(cor, AZUL, nucleo * 0.55);
+    cor = mix(cor, VIOLETA * 0.60, brilho * 0.46);
+    cor = mix(cor, AZUL * 0.92, nucleo * 0.56);
 
     /* Halo do cursor: presenca discreta, so o suficiente para a pagina
        responder ao mouse sem virar lanterna. */
@@ -108,8 +120,8 @@ const FRAGMENTO = /* glsl */ `
     }
 
     // vinheta: fecha as bordas para o texto ter chao em qualquer canto
-    float vinheta = smoothstep(1.25, 0.25, length(p));
-    cor *= mix(0.55, 1.0, vinheta);
+    float vinheta = smoothstep(1.45, 0.15, length(p));
+    cor *= mix(0.72, 1.0, vinheta);
 
     /* Granulacao. Sem ela um degrade escuro faixeia em tela OLED, e o fundo
        inteiro ganha aquelas listras horizontais. */
