@@ -18,9 +18,7 @@ gsap.registerPlugin(ScrollTrigger);
  * do papel, e nao surgirem do nada — sem ele o efeito perde metade da graca.
  *
  * ACESSIBILIDADE: o original devolve um <h2> fixo. Aqui a tag e escolhivel,
- * porque o titulo desta secao pode nao ser o segundo nivel da pagina; e o texto
- * fica num <span> continuo para o leitor de tela ler a frase inteira, em vez de
- * soletrar as letras separadas.
+ * porque o nivel do titulo depende de onde a secao entra na pagina.
  */
 export function TextoFlutua({
   children,
@@ -45,15 +43,29 @@ export function TextoFlutua({
 }) {
   const caixa = useRef<HTMLElement>(null);
 
-  const letras = useMemo(
-    () =>
-      Array.from(children).map((c, i) => (
-        <span key={i} data-letra className="inline-block">
-          {c === " " ? " " : c}
-        </span>
-      )),
-    [children],
-  );
+  /**
+   * Divide por PALAVRA e, dentro dela, por letra.
+   *
+   * O original manda cada caractere num `inline-block` solto, e assim o
+   * navegador pode quebrar a linha entre duas letras quaisquer — foi o que
+   * produziu "Um p / ost vi / ra a s". Cada palavra vira um `inline-block`
+   * com `whitespace-nowrap`: as letras de dentro nao se separam, e a quebra
+   * volta a acontecer so entre palavras, como em qualquer texto.
+   */
+  const palavras = useMemo(() => {
+    const partes = children.split(" ");
+    return partes.map((palavra, i) => (
+      <span key={i} className="inline-block whitespace-nowrap">
+        {Array.from(palavra).map((c, j) => (
+          <span key={j} data-letra className="inline-block">
+            {c}
+          </span>
+        ))}
+        {/* o espaco fica fora do bloco da palavra: e ali que a linha quebra */}
+        {i < partes.length - 1 ? " " : null}
+      </span>
+    ));
+  }, [children]);
 
   useEffect(() => {
     const el = caixa.current;
@@ -89,7 +101,7 @@ export function TextoFlutua({
   return (
     <Tag ref={caixa as React.Ref<never>} className={`overflow-hidden ${className}`.trim()}>
       {/* a frase inteira num span: o leitor de tela le o texto, nao as letras */}
-      <span className={`inline-block ${classeTexto}`.trim()}>{letras}</span>
+      <span className={`inline-block ${classeTexto}`.trim()}>{palavras}</span>
     </Tag>
   );
 }

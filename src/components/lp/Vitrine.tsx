@@ -82,18 +82,23 @@ export function Vitrine() {
       }
 
       /**
-       * Uma linha do tempo unica presa ao scroll.
+       * Uma linha do tempo unica, presa a GRADE dos cartoes.
        *
-       * As tres etapas — chegar, encolher e ir para a esquerda, os outros
-       * aparecerem — precisam acontecer NA ORDEM e no compasso do dedo de quem
-       * rola. Tres gatilhos separados nao dariam isso: cada um comecaria por
-       * conta propria e a historia perderia a sequencia.
+       * Unica porque as tres etapas — chegar, encolher e ceder o lugar, os
+       * outros aparecerem — precisam acontecer NA ORDEM e no compasso de quem
+       * rola; tres gatilhos separados comecariam cada um por conta propria.
+       *
+       * Presa a grade e nao a secao porque o gatilho no topo da secao disparava
+       * quando o TITULO entrava, e terminava antes de os cartoes chegarem a
+       * tela — eles ficam centenas de pixels abaixo. A coreografia inteira
+       * corria fora do campo de visao, e quando os cartoes surgiam ja estava
+       * tudo no lugar final: parecia que nada tinha animado.
        */
       const linha = gsap.timeline({
         scrollTrigger: {
-          trigger: el,
-          start: "top 78%",
-          end: "top 5%",
+          trigger: "[data-grade]",
+          start: "top 92%",
+          end: "top 28%",
           scrub: 0.9,
         },
       });
@@ -187,7 +192,7 @@ export function Vitrine() {
     <section ref={secao} className="relative z-10 px-6 py-28 lg:px-10 lg:py-36">
       <div className="mx-auto max-w-[1400px]">
         <TextoFlutua
-          className="display mx-auto max-w-[16ch] text-center tracking-[-0.03em]"
+          className="display mx-auto max-w-[26ch] text-center tracking-[-0.03em]"
           classeTexto="text-[clamp(1.9rem,5.2vw,3.6rem)] leading-[1.06]"
           escalonamento={0.022}
         >
@@ -204,6 +209,7 @@ export function Vitrine() {
             caiam na versao empilhada e a coreografia perdia o sentido — o card
             grande nao tem para onde "ir para a esquerda" numa coluna so */}
         <div
+          data-grade
           className="mt-16 grid items-center gap-6 md:grid-cols-[1.15fr_1.6fr] md:gap-8 lg:gap-10"
           style={{ perspective: "1400px" }}
         >
