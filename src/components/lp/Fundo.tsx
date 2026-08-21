@@ -7,8 +7,8 @@ import * as THREE from "three";
  * O fundo — um plano de tela cheia rodando um shader.
  *
  * Nao ha objeto nenhum na cena: ha luz. Um campo que escorre devagar por baixo
- * de tudo, e cinco camadas de futebol que se revezam conforme a pagina rola —
- * refletores, trajetorias de passe, escalacao, linhas de campo e a rede do gol.
+ * de tudo, e quatro camadas de futebol que se revezam conforme a pagina rola —
+ * refletores, escalacao, linhas de campo e a rede do gol.
  * Uma por trecho, nunca duas fortes ao mesmo tempo.
  *
  * Todas somam luz e nenhuma desenha objeto solido: foi objeto solido que deixou
@@ -97,32 +97,7 @@ const FRAGMENTO = /* glsl */ `
     return s;
   }
 
-  /* ---- 2. trajetorias de passe: arcos que se desenham e somem ---- */
-  float arco(vec2 p, vec2 c, float r, float ini, float fim, float larg) {
-    vec2 v = p - c;
-    float ang = atan(v.y, v.x);
-    float dentro = step(ini, ang) * step(ang, fim);
-    return dentro * smoothstep(larg, 0.0, abs(length(v) - r));
-  }
-
-  float passes(vec2 p, float t) {
-    float s = 0.0;
-    for (int i = 0; i < 3; i++) {
-      float f = float(i);
-      // cada arco tem o seu proprio ciclo, defasado
-      float ciclo = fract(t * 0.22 + f * 0.37);
-      // desenha ate a metade do ciclo, some na outra metade
-      float desenho = smoothstep(0.0, 0.45, ciclo);
-      float some = 1.0 - smoothstep(0.55, 1.0, ciclo);
-      vec2 centro = vec2(-0.7 + f * 0.7, -0.55 + f * 0.2);
-      float raio = 0.62 + f * 0.18;
-      float ini = 0.35 + f * 0.5;
-      s += arco(p, centro, raio, ini, ini + desenho * 1.5, 0.012) * some;
-    }
-    return s;
-  }
-
-  /* ---- 3. escalacao: oito pontos, um por categoria, se rearranjando ---- */
+  /* ---- 2. escalacao: oito pontos, um por categoria, se rearranjando ---- */
   vec2 pontoA(float f) { return vec2(cos(f * 2.39) * 0.95, sin(f * 1.71) * 0.44); }
   vec2 pontoB(float f) { return vec2(-0.92 + f * 0.263, sin(f * 2.11) * 0.36); }
 
@@ -148,7 +123,7 @@ const FRAGMENTO = /* glsl */ `
     return s;
   }
 
-  /* ---- 4. linhas de campo: a geometria do gramado em perspectiva ---- */
+  /* ---- 3. linhas de campo: a geometria do gramado em perspectiva ---- */
   float campoDeJogo(vec2 p, float t) {
     float y = p.y + 0.78;               // horizonte um pouco abaixo do centro
     if (y < 0.02) return 0.0;
@@ -161,7 +136,7 @@ const FRAGMENTO = /* glsl */ `
     return (tr + lo) * smoothstep(0.0, 0.55, y) * smoothstep(2.6, 0.7, z);
   }
 
-  /* ---- 5. rede: a malha do gol, ondulando devagar ---- */
+  /* ---- 4. rede: a malha do gol, ondulando devagar ---- */
   float rede(vec2 p, float t) {
     vec2 q = p * 13.0;
     q.x += sin(q.y * 0.42 + t * 1.1) * 0.55;
@@ -207,7 +182,7 @@ const FRAGMENTO = /* glsl */ `
     cor += AZUL * 0.10 * smoothstep(0.85, 0.0, dMouse);
 
     /**
-     * As cinco camadas, uma por trecho da pagina.
+     * As quatro camadas, uma por trecho da pagina.
      *
      * Todas somam luz e nenhuma desenha objeto solido — foi objeto solido que
      * deixou a versao anterior dura. Os pesos se cruzam de leve nas bordas, o
@@ -222,9 +197,9 @@ const FRAGMENTO = /* glsl */ `
     float wRef = peso(0.02, 0.20) + peso(1.0, 0.13);
     if (wRef > 0.004) cor += AZUL * refletores(p, t2) * 0.055 * wRef;
 
-    float wPas = peso(0.22, 0.15);
-    if (wPas > 0.004) cor += AZUL * passes(p, t2) * 0.5 * wPas;
-
+    /* O trecho dos materiais fica so com o campo de luz. Os arcos de passe
+       moravam aqui e sairam: uma curva fina atravessando a tela inteira le
+       como risco solto, nao como trajetoria. Secao quieta tambem e ritmo. */
     float wEsc = peso(0.42, 0.15);
     if (wEsc > 0.004) cor += AZUL * escalacao(p, t2) * 0.42 * wEsc;
 
