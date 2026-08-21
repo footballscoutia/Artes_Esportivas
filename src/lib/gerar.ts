@@ -238,9 +238,16 @@ export async function produzirArte({
    * conferir depois se um problema veio do modelo ou do acabamento — e e o
    * unico jeito de reaproveitar a arte se a logo mudar de lugar.
    */
+  /**
+   * A arte final e sempre PNG — quem a produz e o `compor`, com sharp. Ja o
+   * FUNDO e o que o modelo devolveu, e o Nano Banana 2 devolve JPEG. Guardar
+   * esses bytes com o padrao `image/png` e extensao `.png` gravava um arquivo
+   * mentindo sobre o proprio formato: o navegador ate adivinha pelo conteudo e
+   * mostra, mas quem baixasse levava um `.png` que e JPEG por dentro.
+   */
   const [arte_path, fundo_path] = await Promise.all([
     subir(BALDE.geracoes, final),
-    subir(BALDE.geracoes, gerado.imagem),
+    subir(BALDE.geracoes, gerado.imagem, gerado.mime, extensaoDe(gerado.mime)),
   ]);
 
   return {
@@ -253,4 +260,11 @@ export async function produzirArte({
     referencia_id: referencia.id,
     referencia_versao: referencia.versao,
   };
+}
+
+/** Extensao coerente com o que o modelo devolveu, para o arquivo nao mentir. */
+function extensaoDe(mime: string) {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  return "png";
 }
