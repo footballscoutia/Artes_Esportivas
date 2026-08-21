@@ -259,18 +259,18 @@ export function Landing() {
       {/* ---- ato 6: por que não é só um chat ---- */}
       <Ato lado="direita">
         <h2 className="display text-[clamp(1.9rem,4.4vw,3.2rem)] leading-[1.02] tracking-[-0.025em]">
-          Por que não é só pedir a um chat.
+          Cem posts, um padrão só.
         </h2>
         <div className="mt-6 space-y-5">
           <p className="text-[15px] leading-relaxed text-muted">
-            Num chat, o resultado depende de quem escreveu o pedido. Aqui, cada categoria já tem o
-            estilo definido por quem entende do assunto — o mesmo pedido feito por qualquer pessoa da
-            equipe volta no mesmo padrão.
+            Num chat, o resultado depende de quem escreveu o pedido — e no mês seguinte o mesmo
+            pedido volta diferente. Aqui o estilo de cada categoria já está definido, então o post
+            que a sua equipe gera hoje conversa com o que ela gerou em março.
           </p>
           <p className="text-[15px] leading-relaxed text-muted">
-            E o que não pode dar errado não fica por conta do modelo: o escudo vai como imagem para
-            ser copiado, não descrito; a sua marca é aplicada por código, no canto que você escolher
-            depois de ver a arte pronta.
+            O que não pode dar errado também não fica por conta do modelo: o escudo vai como imagem
+            para ser copiado, não descrito; a sua marca é aplicada por código, no canto que você
+            escolher depois de ver a arte pronta.
           </p>
         </div>
       </Ato>
