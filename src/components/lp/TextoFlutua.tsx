@@ -84,6 +84,17 @@ export function TextoFlutua({
         {
           willChange: "opacity, transform",
           opacity: 0,
+          /**
+           * `y: 0` explicito nos DOIS lados, e nao so `yPercent`.
+           *
+           * Numa remontagem (StrictMode em dev, ou voltar para esta rota) o
+           * `transform` da montagem anterior ainda esta no elemento. O GSAP le
+           * `translate(0px, 73px)` como um `y` de partida e passa a animar
+           * `yPercent` EM CIMA dele: no fim, `yPercent` chega a 0 e o `y`
+           * residual continua la, com o titulo parado fora do `overflow:hidden`
+           * — invisivel, sem erro nenhum no console.
+           */
+          y: 0,
           yPercent: 120,
           scaleY: 2.3,
           scaleX: 0.7,
@@ -93,6 +104,7 @@ export function TextoFlutua({
           duration: duracao,
           ease,
           opacity: 1,
+          y: 0,
           yPercent: 0,
           scaleY: 1,
           scaleX: 1,
