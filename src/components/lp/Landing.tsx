@@ -25,12 +25,14 @@ import Lenis from "lenis";
 import { Marca } from "@/components/app/Marca";
 import { Mesa } from "@/components/lp/Mesa";
 import { Fundo } from "@/components/lp/Fundo";
+import { Painel } from "@/components/lp/Painel";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function Landing() {
   const progresso = useRef(0);
   const palco = useRef<HTMLDivElement>(null);
+  const fechamento = useRef<HTMLElement>(null);
   const pagina = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,16 +61,41 @@ export function Landing() {
         },
       });
 
-      /* `from` roda em tempo de execucao, entao sem JS o conteudo continua
-         visivel. Nunca esconder texto esperando animacao. */
-      gsap.utils.toArray<HTMLElement>("[data-entra]").forEach((el) => {
-        gsap.from(el, {
-          opacity: 0,
-          y: 24,
-          duration: 0.9,
-          ease: "expo.out",
-          scrollTrigger: { trigger: el, start: "top 88%" },
-        });
+      /**
+       * A costura entre as duas secoes.
+       *
+       * O painel comeca a subir e a se endireitar ENQUANTO o heroi ainda esta
+       * preso, terminando so depois que ele solta. E o que liga uma secao a
+       * outra: sem essa sobreposicao, a pagina tem um corte seco no ponto em
+       * que o pin acaba, e as duas parecem dois sites colados.
+       *
+       * `from` roda em tempo de execucao: sem JS o painel fica no lugar,
+       * visivel e reto.
+       */
+      gsap.from("[data-painel]", {
+        yPercent: 26,
+        scale: 0.9,
+        opacity: 0,
+        rotateX: 12,
+        ease: "none",
+        scrollTrigger: {
+          trigger: fechamento.current,
+          start: "top bottom",
+          end: "top 32%",
+          scrub: 0.8,
+        },
+      });
+
+      gsap.from("[data-texto]", {
+        opacity: 0,
+        x: -28,
+        ease: "none",
+        scrollTrigger: {
+          trigger: fechamento.current,
+          start: "top 88%",
+          end: "top 45%",
+          scrub: 0.8,
+        },
       });
     }, pagina);
 
@@ -84,6 +111,13 @@ export function Landing() {
       {/* o campo de luz fica atrás de tudo; o herói o cobre com fundo opaco */}
       <Fundo />
 
+      {/* o cabeçalho é fixo e o conteúdo passa por baixo: sem degradê próprio,
+          a logo se sobrepõe ao título da segunda seção durante a rolagem */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-40 h-24"
+        style={{ background: "linear-gradient(var(--color-bg), transparent)" }}
+      />
       <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 lg:px-10">
         <Marca className="text-[17px]" />
         <Link
@@ -136,19 +170,33 @@ export function Landing() {
           style={{ background: "color-mix(in srgb, var(--color-bg) 52%, transparent)" }}
         />
 
-        <section className="relative flex min-h-[78vh] items-center px-6 pb-24 lg:px-10">
-          <div data-entra className="mx-auto w-full max-w-[1400px]">
-            <h2 className="display max-w-[15ch] text-[clamp(2rem,5vw,3.4rem)] leading-[1.02] tracking-[-0.028em]">
-              Cadastre a sua agência e gere a primeira.
-            </h2>
-            <div className="mt-9 flex flex-wrap items-center gap-5">
-              <Link
-                href="/login?criar=1"
-                className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-[14px] font-medium text-accent-texto transition-colors hover:bg-accent-forte"
-              >
-                Criar conta
-              </Link>
-              <span className="text-[13px] text-muted-2">Leva um minuto</span>
+        <section
+          ref={fechamento}
+          className="relative flex min-h-[86vh] items-center px-6 pb-24 pt-10 lg:px-10"
+        >
+          {/* separa em duas colunas ja no `md`: em `lg` a maioria das telas de
+              trabalho ainda caia na versao empilhada, com o painel gigante */}
+          <div className="mx-auto grid w-full max-w-[1400px] items-center gap-10 md:grid-cols-[0.8fr_1.2fr] md:gap-12 lg:gap-16">
+            <div data-texto>
+              <h2 className="display max-w-[15ch] text-[clamp(2rem,4.6vw,3.2rem)] leading-[1.02] tracking-[-0.028em]">
+                Cadastre a sua agência e gere a primeira.
+              </h2>
+              <div className="mt-8 flex flex-wrap items-center gap-5">
+                <Link
+                  href="/login?criar=1"
+                  className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-[14px] font-medium text-accent-texto transition-colors hover:bg-accent-forte"
+                >
+                  Criar conta
+                </Link>
+                <span className="text-[13px] text-muted-2">Leva um minuto</span>
+              </div>
+            </div>
+
+            {/* a interface do produto, encenada — é a prova que a página não tinha */}
+            {/* teto de largura: empilhado, sem ele o painel vira um cartaz e a
+                tipografia miuda dele fica desproporcional */}
+            <div data-painel className="mx-auto w-full min-w-0 max-w-[620px] md:mx-0 md:max-w-none">
+              <Painel />
             </div>
           </div>
         </section>
