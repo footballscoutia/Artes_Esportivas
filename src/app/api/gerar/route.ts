@@ -56,6 +56,27 @@ export async function POST(req: Request) {
     );
   }
 
+  /**
+   * A trava do saldo, no ponto onde o dinheiro sai.
+   *
+   * Cadastro e aberto: qualquer pessoa cria conta em segundos. Sem esta linha,
+   * criar conta e chamar o modelo sao a mesma coisa, e a fatura e de quem
+   * mantem a chave. Esconder o botao na tela nao resolveria nada — quem chama
+   * esta rota por fetch nunca ve tela.
+   *
+   * 403 e nao 401 de proposito: a sessao esta boa, a conta e que nao tem
+   * liberacao. Mandar para o login faria a pessoa tentar de novo achando que
+   * era senha.
+   */
+  if (!usuario.podeGerar) {
+    return NextResponse.json(
+      {
+        erro: "Esta conta ainda não está liberada para gerar arte. Fale com quem administra o MatchPost.",
+      },
+      { status: 403 },
+    );
+  }
+
   const form = await req.formData();
 
   const parsed = Corpo.safeParse({

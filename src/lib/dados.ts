@@ -4,7 +4,7 @@ import * as mock from "./mock";
 import { BALDE, assinar, assinarVarios } from "./storage";
 import type {
   Clube,
-  Convite,
+  Acesso,
   Formato,
   Geracao,
   Jogador,
@@ -255,22 +255,17 @@ export async function listarClubes(): Promise<Clube[]> {
  * so responde para quem aprova, entao para os demais a lista volta vazia e a
  * tela some com a secao — nao ha filtro de permissao escrito aqui.
  */
-export async function listarEquipe(): Promise<{ contas: Usuario[]; convites: Convite[] }> {
-  if (!LIGADO) return { contas: [], convites: [] };
+export async function listarAcessos(): Promise<Acesso[]> {
+  if (!LIGADO) return [];
 
-  const sb = await criarClienteServidor();
-  const [perfis, convites] = await Promise.all([
-    sb.from("perfis").select("id, nome, email, papel").order("criado_em"),
-    sb.from("convites").select("email, criado_em, usado_em").order("criado_em", { ascending: false }),
-  ]);
-
-  estourar("listar a equipe", perfis.error);
-  return {
-    contas: (perfis.data ?? []) as Usuario[],
-    /* erro aqui e quase sempre RLS negando para quem nao aprova: lista vazia,
-       nao tela quebrada */
-    convites: (convites.data ?? []) as Convite[],
-  };
+  /* Uma funcao no banco, e nao um select: ler os perfis de TODAS as
+     organizacoes e o oposto do que a RLS faz o dia inteiro, e concentrar a
+     travessia num lugar so deixa auditavel quem enxerga o que. A propria
+     funcao recusa quem nao e administrador — o erro vira lista vazia, nao
+     tela quebrada, porque para quem nao e admin a tela nem existe. */
+  const { data, error } = await (await criarClienteServidor()).rpc("painel_de_acessos");
+  if (error) return [];
+  return (data ?? []) as Acesso[];
 }
 
 /** Quem esta logado. `null` quando nao ha sessao — o proxy ja tratou disso. */
@@ -285,7 +280,7 @@ export async function usuarioAtual(): Promise<Usuario | null> {
 
   const { data: perfil } = await sb
     .from("perfis")
-    .select("nome, email, papel")
+    .select("nome, email, papel, pode_gerar, admin_plataforma")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -295,5 +290,10 @@ export async function usuarioAtual(): Promise<Usuario | null> {
     nome: perfil?.nome || (perfil?.email ?? user.email ?? "").split("@")[0],
     email: perfil?.email ?? user.email ?? "",
     papel: perfil?.papel ?? "submete",
+    /* Sem perfil legivel, os dois caem em falso. E de proposito: o que se perde
+       e a tela mostrar um botao; o que se ganha e nunca gastar saldo por causa
+       de uma consulta que falhou. */
+    podeGerar: perfil?.pode_gerar ?? false,
+    ehAdmin: perfil?.admin_plataforma ?? false,
   };
 }

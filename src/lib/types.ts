@@ -243,17 +243,36 @@ export type Jogador = {
   criado_em: string;
 };
 
-/** E-mail liberado a criar conta. `usado_em` marca quando virou conta. */
-export type Convite = {
-  email: string;
-  criado_em: string;
-  usado_em: string | null;
-};
-
 /** Quem esta usando o sistema. Sai do join de auth.users com perfis. */
 export type Usuario = {
   id: string;
   nome: string;
   email: string;
   papel: Papel;
+  /**
+   * `papel` e `podeGerar` respondem coisas diferentes e nao se substituem.
+   *
+   * `papel` e da ORGANIZACAO: quem, dentro da agencia, aprova uma arte. Quem
+   * cria a agencia nasce aprovando a propria — e por isso o papel nao serve
+   * para segurar gasto: seria a permissao se autoconcedendo no cadastro.
+   *
+   * `podeGerar` e da PLATAFORMA: se esta conta pode chamar o modelo e gastar
+   * saldo. So o dono do saldo (`ehAdmin`) muda esse valor, e ninguem nasce com
+   * ele ligado.
+   */
+  podeGerar: boolean;
+  ehAdmin: boolean;
+};
+
+/** Uma linha do painel de acessos — so o administrador da plataforma ve. */
+export type Acesso = {
+  id: string;
+  nome: string;
+  email: string;
+  organizacao: string;
+  pode_gerar: boolean;
+  admin_plataforma: boolean;
+  criado_em: string;
+  geracoes_da_org: number;
+  gasto_da_org_usd: number;
 };

@@ -23,17 +23,17 @@ export function TopNav({ usuario }: { usuario: Usuario | null }) {
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <Tema />
         {/*
-          O avatar era um <div> com title e mais nada. Agora leva à Equipe, que
-          é onde se libera acesso — a tela existe e não tinha porta de entrada,
-          e um item a mais na navegação seria peso permanente por uma tarefa
-          que acontece de mês em mês.
+          O avatar era um <div> com title e mais nada. Agora leva à Conta, que
+          é onde ficam a saída e — para quem administra — a liberação de quem
+          pode gerar. Um item a mais na navegação seria peso permanente por uma
+          tarefa que acontece de mês em mês.
         */}
         <Link
-          href="/equipe"
+          href="/conta"
           className="grid size-11 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-[12px] font-semibold transition-colors hover:border-line-2 hover:bg-surface-3 md:size-9"
           title={
             usuario
-              ? `${usuario.email} — sua conta, a equipe e a saída`
+              ? `${usuario.email} — sua conta e a saída`
               : "Sem sessão"
           }
         >

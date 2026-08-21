@@ -13,6 +13,11 @@ export const USUARIO_ATUAL = {
   nome: "Você",
   email: "marketing@mbsports.com.br",
   papel: "aprova" as const,
+  /* Liberado nos dois: sem Supabase o projeto roda de mentira inteiro, e travar
+     a geracao aqui tiraria justamente a tela que quem clona o repositorio quer
+     ver. Nao ha saldo em risco — sem banco nao ha o que gravar. */
+  podeGerar: true,
+  ehAdmin: true,
 };
 
 const PROMPT_BASE = `Arte promocional esportiva vertical, o atleta da foto de referencia em destaque

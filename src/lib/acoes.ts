@@ -146,6 +146,12 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
 export async function gerarOutra(pedidoId: string): Promise<Resultado> {
   const usuario = await usuarioAtual();
   if (!usuario) return falha("Sessão expirada. Entre de novo.");
+  /* O segundo lugar onde o modelo e chamado — e portanto o segundo lugar onde
+     o saldo sai. A rota /api/gerar tem a mesma trava; sao dois caminhos, e
+     travar so um deixaria a porta dos fundos aberta. */
+  if (!usuario.podeGerar) {
+    return falha("Esta conta ainda não está liberada para gerar arte.");
+  }
 
   const sb = await criarClienteServidor();
   const { data: pedido } = await sb
@@ -541,44 +547,26 @@ export async function arquivarClube(id: string): Promise<Resultado> {
 }
 
 /**
- * Libera um e-mail a criar conta.
+ * Liga e desliga a liberacao de gerar arte de uma conta.
  *
- * Quem barra de verdade e o gatilho `exigir_convite()` em auth.users, nao esta
- * acao: conta criada pela API do Supabase, por OAuth ou pelo painel nao passa
- * por aqui, e uma checagem que so existe na aplicacao protege so a aplicacao.
- * Aqui a RLS decide quem pode convidar; o banco decide quem pode entrar.
+ * Quem decide de verdade e a funcao `liberar_geracao()` no banco: ela recusa
+ * quem nao e administrador da plataforma e so deixa a coluna `pode_gerar` se
+ * mover. Se a checagem morasse aqui, valeria so para quem passa por esta acao
+ * — e a API do Supabase esta aberta para qualquer sessao.
  */
-export async function convidar(form: FormData): Promise<Resultado<{ email: string }>> {
+export async function liberarGeracao(perfilId: string, pode: boolean): Promise<Resultado> {
   const usuario = await usuarioAtual();
   if (!usuario) return falha("Sessão expirada. Entre de novo.");
 
-  const bruto = String(form.get("email") ?? "").trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bruto)) return falha("Confira o e-mail digitado.");
-
   const sb = await criarClienteServidor();
-  const { error } = await sb.from("convites").insert({ email: bruto, criado_por: usuario.id });
+  const { error } = await sb.rpc("liberar_geracao", { p_perfil: perfilId, p_pode: pode });
 
   if (error) {
-    // chave primaria e o proprio e-mail: repetir nao e erro, ja esta liberado
-    if (error.code === "23505") return { ok: true, dados: { email: bruto } };
-    if (error.code === "42501") return falha("Só quem aprova pode convidar.");
-    return falha(`Não consegui convidar: ${error.message}`);
+    if (error.code === "42501") return falha("Só quem administra o MatchPost libera geração.");
+    return falha(`Não consegui salvar: ${error.message}`);
   }
 
-  revalidatePath("/equipe");
-  return { ok: true, dados: { email: bruto } };
-}
-
-/** Tira o convite. Quem ja criou conta continua entrando: a conta e que vale. */
-export async function retirarConvite(email: string): Promise<Resultado> {
-  const usuario = await usuarioAtual();
-  if (!usuario) return falha("Sessão expirada. Entre de novo.");
-
-  const sb = await criarClienteServidor();
-  const { error } = await sb.from("convites").delete().eq("email", email.toLowerCase());
-  if (error) return falha(`Não consegui retirar: ${error.message}`);
-
-  revalidatePath("/equipe");
+  revalidatePath("/conta");
   return { ok: true, dados: undefined };
 }
 
