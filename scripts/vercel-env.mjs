@@ -34,6 +34,18 @@ const ENVIAR = [
   { chave: "NEXT_PUBLIC_SUPABASE_ANON_KEY", tipo: "encrypted", alvos: TODOS },
   { chave: "SUPABASE_SERVICE_ROLE_KEY", tipo: "sensitive", alvos: SEM_DEV },
   { chave: "IMAGE_PROVIDER", tipo: "encrypted", alvos: TODOS },
+  /**
+   * A chave do Gemini sobe como `sensitive`, igual a service_role: a Vercel
+   * grava e nunca mais devolve o valor, nem pela API nem pelo painel. E uma
+   * chave que gasta dinheiro de verdade — se um dia vazar, o prejuizo nao e
+   * dado exposto, e saldo queimado.
+   *
+   * O nome do modelo nao e segredo e vai como as outras: precisa existir em
+   * `development` tambem para o `vercel env pull` continuar montando um
+   * .env.local que roda.
+   */
+  { chave: "GEMINI_API_KEY", tipo: "sensitive", alvos: SEM_DEV },
+  { chave: "GEMINI_IMAGE_MODEL", tipo: "encrypted", alvos: TODOS },
 ];
 
 /** Nunca sobem: sao ferramentas locais e na Vercel so aumentariam o estrago. */
