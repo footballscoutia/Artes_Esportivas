@@ -151,6 +151,8 @@ type Props = {
   familia?: string;
   espacamento?: Medida;
   entrelinha?: Medida;
+  /** Flecha do arco como fracao da largura da linha. 0 = reta. */
+  curvatura?: number;
   className?: string;
   style?: React.CSSProperties;
 };
@@ -172,6 +174,7 @@ type PropsInternas = Required<
     | "familia"
     | "espacamento"
     | "entrelinha"
+    | "curvatura"
   >
 >;
 
@@ -184,19 +187,116 @@ function larguraDaLinha(ctx: CanvasRenderingContext2D, linha: string, espacament
   return soma + Math.max(0, letras.length - 1) * espacamento;
 }
 
+/**
+ * Desenha a linha sobre um arco raso — pontas para cima, meio embaixo.
+ *
+ * `curvatura` e a flecha do arco como fracao da largura da linha: 0.03 quer
+ * dizer que as pontas sobem 3% da largura em relacao ao centro. Vem dai o raio,
+ * pela relacao da sagitta (s = L² / 8R), e cada letra e posicionada pelo
+ * angulo correspondente ao seu centro.
+ *
+ * Cada letra tambem GIRA para acompanhar a tangente. Sem isso as letras ficam
+ * de pe sobre uma linha curva, que le como erro de alinhamento e nao como
+ * curva. O giro e `-theta` porque no canvas o angulo positivo desce.
+ *
+ * Com `curvatura` em 0 volta a ser uma linha reta, identica ao original.
+ */
 function desenharLinha(
   ctx: CanvasRenderingContext2D,
   linha: string,
   x: number,
   y: number,
   espacamento: number,
+  curvatura: number,
 ) {
   const letras = Array.from(linha);
-  let cursor = x - larguraDaLinha(ctx, linha, espacamento) / 2;
+  const largura = larguraDaLinha(ctx, linha, espacamento);
+
+  if (curvatura <= 0 || largura <= 0) {
+    let cursor = x - largura / 2;
+    letras.forEach((c, i) => {
+      ctx.fillText(c, cursor, y);
+      cursor += ctx.measureText(c).width + (i === letras.length - 1 ? 0 : espacamento);
+    });
+    return;
+  }
+
+  const flecha = curvatura * largura;
+  const raio = (largura * largura) / (8 * flecha);
+
+  let percorrido = -largura / 2;
   letras.forEach((c, i) => {
-    ctx.fillText(c, cursor, y);
-    cursor += ctx.measureText(c).width + (i === letras.length - 1 ? 0 : espacamento);
+    const larguraChar = ctx.measureText(c).width;
+    const theta = (percorrido + larguraChar / 2) / raio;
+
+    ctx.save();
+    ctx.translate(x + raio * Math.sin(theta), y - raio * (1 - Math.cos(theta)));
+    ctx.rotate(-theta);
+    ctx.fillText(c, -larguraChar / 2, 0);
+    ctx.restore();
+
+    percorrido += larguraChar + (i === letras.length - 1 ? 0 : espacamento);
   });
+}
+
+/**
+ * Quebra o texto para caber na largura, sem cortar palavra.
+ *
+ * O titulo e uma linha so por natureza; em tela estreita ela nao cabe, e a
+ * alternativa a quebrar seria encolher a fonte ate ficar ilegivel. As linhas
+ * resultantes curvam todas, cada uma no seu arco.
+ */
+function quebrarEmLinhas(
+  ctx: CanvasRenderingContext2D,
+  texto: string,
+  espacamento: number,
+  larguraMax: number,
+) {
+  const cabe = (s: string) => larguraDaLinha(ctx, s, espacamento) <= larguraMax;
+
+  const linhas: string[] = [];
+
+  // \n continua sendo quebra obrigatoria; dentro de cada trecho, quebra sozinho
+  for (const trecho of String(texto || "").split("\n")) {
+    const limpo = trecho.trim();
+    if (!limpo) {
+      linhas.push("");
+      continue;
+    }
+    if (cabe(limpo)) {
+      linhas.push(limpo);
+      continue;
+    }
+
+    /**
+     * Primeiro tenta cortar entre FRASES.
+     *
+     * O titulo sao duas oracoes, e a quebra por palavra deixava "pronto."
+     * sozinho numa linha — orfa, e cortando a frase no meio. Se cada frase
+     * couber inteira, esse e o corte que o texto ja pedia.
+     */
+    const frases = limpo.match(/[^.!?]+[.!?]*\s*/g)?.map((f) => f.trim()).filter(Boolean) ?? [];
+    if (frases.length > 1 && frases.every(cabe)) {
+      linhas.push(...frases);
+      continue;
+    }
+
+    // nao deu: volta para a quebra gulosa por palavra
+    const palavras = limpo.split(/\s+/);
+    let atual = palavras[0];
+    for (let i = 1; i < palavras.length; i++) {
+      const tentativa = `${atual} ${palavras[i]}`;
+      if (cabe(tentativa)) {
+        atual = tentativa;
+      } else {
+        linhas.push(atual);
+        atual = palavras[i];
+      }
+    }
+    linhas.push(atual);
+  }
+
+  return linhas;
 }
 
 function montarCanvasDoTexto(
@@ -249,16 +349,23 @@ function montarCanvasDoTexto(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  const linhas = String(p.texto || "").split("\n");
   const aplicarFonte = () => {
     ctx.font = `${peso} ${corpo}px ${familia}`;
   };
   aplicarFonte();
 
-  const larguraMax = largura * 0.86;
+  const larguraMax = largura * 0.94;
   const alturaMax = altura * 0.78;
+
+  /* Quebra primeiro, encolhe depois. Na ordem inversa a fonte encolheria para
+     caber numa linha so, e em celular o titulo viraria um fio ilegivel. */
+  let linhas = quebrarEmLinhas(ctx, p.texto, espacamento, larguraMax);
+
   const maisLarga = Math.max(...linhas.map((l) => larguraDaLinha(ctx, l, espacamento)), 1);
-  const alturaBloco = Math.max(alturaLinha * linhas.length, 1);
+  /* A flecha do arco soma altura ao bloco: sem contar isso, as pontas das
+     linhas curvas encostam na borda do canvas e ficam cortadas. */
+  const flecha = p.curvatura * maisLarga;
+  const alturaBloco = Math.max(alturaLinha * linhas.length + flecha, 1);
   const cabe = Math.min(1, larguraMax / maisLarga, alturaMax / alturaBloco);
 
   if (cabe < 1) {
@@ -266,11 +373,17 @@ function montarCanvasDoTexto(
     espacamento *= cabe;
     alturaLinha *= cabe;
     aplicarFonte();
+    // com a fonte menor, mais palavras cabem por linha: refaz a quebra
+    linhas = quebrarEmLinhas(ctx, p.texto, espacamento, larguraMax);
   }
 
-  const y0 = altura / 2 - (alturaLinha * (linhas.length - 1)) / 2;
+  /* O centro desce metade da flecha: como as pontas sobem, o bloco desenhado
+     fica com o peso visual acima do meio se ele nao for compensado. */
+  const y0 =
+    altura / 2 + (p.curvatura * maisLarga * cabe) / 2 - (alturaLinha * (linhas.length - 1)) / 2;
+
   linhas.forEach((linha, i) =>
-    desenharLinha(ctx, linha, largura / 2, y0 + i * alturaLinha, espacamento),
+    desenharLinha(ctx, linha, largura / 2, y0 + i * alturaLinha, espacamento, p.curvatura),
   );
 
   return canvas;
@@ -302,13 +415,14 @@ export function TextoWarp({
   familia = "inherit",
   espacamento = "-0.06em",
   entrelinha = 0.9,
+  curvatura = 0,
   className = "",
   style,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const props = useRef<PropsInternas>({
     texto, cor, forca, escala, velocidade, alcance, pressao, refracao,
-    ondulacao, tamanho, peso, familia, espacamento, entrelinha,
+    ondulacao, tamanho, peso, familia, espacamento, entrelinha, curvatura,
   });
   const contexto = useRef<{ program: Program; rasterizar: () => void } | null>(null);
 
@@ -317,14 +431,14 @@ export function TextoWarp({
   useEffect(() => {
     props.current = {
       texto, cor, forca, escala, velocidade, alcance, pressao, refracao,
-      ondulacao, tamanho, peso, familia, espacamento, entrelinha,
+      ondulacao, tamanho, peso, familia, espacamento, entrelinha, curvatura,
     };
     if (contexto.current) {
       sincronizar(contexto.current.program, props.current);
       contexto.current.rasterizar();
     }
   }, [texto, cor, forca, escala, velocidade, alcance, pressao, refracao,
-      ondulacao, tamanho, peso, familia, espacamento, entrelinha]);
+      ondulacao, tamanho, peso, familia, espacamento, entrelinha, curvatura]);
 
   useEffect(() => {
     const container = containerRef.current;

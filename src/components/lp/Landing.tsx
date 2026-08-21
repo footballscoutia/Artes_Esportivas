@@ -243,22 +243,24 @@ export function Landing() {
             o efeito ficava só na ondulação de repouso. É preciso devolver o
             ponteiro AQUI, e nada além daqui.
           */}
+          {/*
+            Uma linha só, sem `\n`: a quebra agora é do componente, por largura
+            disponível. Em tela estreita ele reparte em mais linhas e todas
+            curvam — melhor que encolher a fonte até o título virar um fio.
+          */}
           <TextoWarp
-            texto={"Escolha o atleta.\nO post sai pronto."}
+            texto="Escolha o atleta. O post sai pronto."
             cor="#EDEEF0"
-            className="pointer-events-auto h-[40vh] max-w-[1100px] lg:h-[36vh]"
-            tamanho="clamp(2.6rem, 7.4vw, 5.6rem)"
+            className="pointer-events-auto h-[34vh] w-full max-w-[1250px]"
+            tamanho="clamp(2.1rem, 5.6vw, 4.4rem)"
             peso={700}
             familia="var(--fonte-display), sans-serif"
-            espacamento="-0.03em"
-            entrelinha={0.94}
+            espacamento="-0.02em"
+            entrelinha={1}
+            curvatura={0.028}
           />
 
-          <p className="mt-2 max-w-[52ch] text-center text-[15px] leading-relaxed text-muted">
-            O MatchPost gera as artes promocionais do seu elenco no padrão da sua marca. Você
-            escolhe a categoria e o atleta — não escreve prompt nenhum.
-          </p>
-          <Acao href="/login?criar=1" className="pointer-events-auto mt-8">
+          <Acao href="/login?criar=1" className="pointer-events-auto mt-6">
             Criar conta
           </Acao>
         </div>
