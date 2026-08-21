@@ -222,8 +222,8 @@ export function Landing() {
           }}
         />
 
-        {/* bloco central: o título ondulando, e sob ele o texto e a ação */}
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end px-6 pb-16 lg:pb-24">
+        {/* o título ondulando, sozinho — a ação vive na segunda seção */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end px-6 pb-10 lg:pb-14">
           {/*
             O <h1> de verdade, invisível.
 
@@ -251,18 +251,14 @@ export function Landing() {
           <TextoWarp
             texto="Escolha o atleta. O post sai pronto."
             cor="#EDEEF0"
-            className="pointer-events-auto h-[34vh] w-full max-w-[1250px]"
-            tamanho="clamp(2.1rem, 5.6vw, 4.4rem)"
+            className="pointer-events-auto h-[34vh] w-full max-w-[1400px]"
+            tamanho="clamp(2.4rem, 6.6vw, 5.4rem)"
             peso={700}
             familia="var(--fonte-display), sans-serif"
             espacamento="-0.02em"
             entrelinha={1}
             curvatura={0.028}
           />
-
-          <Acao href="/login?criar=1" className="pointer-events-auto mt-6">
-            Criar conta
-          </Acao>
         </div>
       </section>
 
