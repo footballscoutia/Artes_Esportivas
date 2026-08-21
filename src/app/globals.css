@@ -45,7 +45,7 @@
   --radius-panel: 16px;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--fonte-anton), "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-display: var(--fonte-display), "Arial Narrow", ui-sans-serif, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 /**
@@ -187,12 +187,13 @@
 }
 
 @layer components {
-  /* Anton e condensada e so tem um peso: o tracking abre um pouco e a caixa
-     alta fica confortavel. Sem peso 600 porque a familia nao tem. */
+  /* Peso 700 porque agora HA peso: o Anton so tinha o 400, e o `.display`
+     ficou travado nele por falta de opcao, nao por escolha. Chakra Petch e
+     mais larga que o Anton, entao o tracking fecha em vez de abrir. */
   .display {
     font-family: var(--font-display), var(--font-sans);
-    font-weight: 400;
-    letter-spacing: -0.005em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     line-height: 1.04;
   }
 

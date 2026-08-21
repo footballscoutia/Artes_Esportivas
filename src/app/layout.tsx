@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Geist, Geist_Mono } from "next/font/google";
+import { Chakra_Petch, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -8,13 +8,24 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 /**
  * Display só para título.
  *
- * As 78 referências do acervo são todas tipografia pesada e condensada, e a
- * marca da agência é um itálico squarish. Anton fala essa língua.
+ * Era Anton, escolhido quando o produto ainda era um estúdio de cartazes. O
+ * mundo visual mudou — fundo em shader, borda que corre luz, título que ondula
+ * — e o Anton ficou falando outra língua: ele é cartaz esportivo IMPRESSO, e
+ * isso já não é o que a tela mostra. Some a isso que é a face que quase todo
+ * material de futebol usa, então não distinguia nada.
  *
- * Fica em h1 e nada mais: numa ferramenta de trabalho, display em rótulo, botão
- * ou dado atrapalha a leitura. Em título não atrapalha nada.
+ * Chakra Petch tem cantos cortados e hastes retas: vocabulário de esporte
+ * técnico, que é onde o produto foi parar. E, ao contrário do Anton, tem mais
+ * de um peso — o 700 aqui é escolha, não a única opção disponível.
+ *
+ * Fica em h1 e nada mais: numa ferramenta de trabalho, display em rótulo,
+ * botão ou dado atrapalha a leitura. Em título não atrapalha nada.
  */
-const anton = Anton({ variable: "--fonte-anton", subsets: ["latin"], weight: "400" });
+const display = Chakra_Petch({
+  variable: "--fonte-display",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "MatchPost",
@@ -51,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${anton.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: TEMA_ANTES_DA_PINTURA }} />

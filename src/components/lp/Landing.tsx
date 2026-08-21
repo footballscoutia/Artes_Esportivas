@@ -6,11 +6,11 @@
  * arte real para exibir (IMAGE_PROVIDER=mock, e o acervo veio do Pinterest),
  * pagina comprida nao fica cheia, fica vazia.
  * OWN-WORLD: mesa escura vista de cima com aresta acesa em #2E7CFF no heroi,
- * campo de luz escorrendo no fechamento, Anton nos titulos.
+ * campo de luz escorrendo no fechamento, Chakra Petch nos titulos.
  * STORY: o visitante ve o mecanismo acontecer, entende em uma tela, cria a
  * conta.
  * FIRST VIEWPORT: cena 3D ocupando a tela, tres placas separadas sobre a mesa;
- * titulo em Anton no terco inferior esquerdo, acao primaria abaixo dele.
+ * titulo ondulando no centro, acao primaria abaixo dele.
  * FORM: mesa do analista, indice 7 da lista ordenada, seed 73b72703.
  * FINISH: unreviewed and undocumented is unfinished; this build ends with the
  * finish review, the verdict, DESIGN.md, and every shipping raster carrying its
@@ -234,15 +234,22 @@ export function Landing() {
           */}
           <h1 className="sr-only">Escolha o atleta. O post sai pronto.</h1>
 
-          {/* peso 400 porque o Anton só tem esse corte: pedir 800 faria o
-              navegador engordar a letra artificialmente e sujar a textura */}
+          {/*
+            `pointer-events-auto` é o que faz a lente do cursor existir.
+
+            O wrapper deste bloco é `pointer-events-none` para o clique passar
+            até a cena 3D atrás. Só que isso engolia o `pointermove` do canvas
+            também: o shader estava certo, o mouse é que nunca chegava nele, e
+            o efeito ficava só na ondulação de repouso. É preciso devolver o
+            ponteiro AQUI, e nada além daqui.
+          */}
           <TextoWarp
             texto={"Escolha o atleta.\nO post sai pronto."}
             cor="#EDEEF0"
-            className="h-[40vh] max-w-[1100px] lg:h-[36vh]"
+            className="pointer-events-auto h-[40vh] max-w-[1100px] lg:h-[36vh]"
             tamanho="clamp(2.6rem, 7.4vw, 5.6rem)"
-            peso={400}
-            familia="var(--fonte-anton), sans-serif"
+            peso={700}
+            familia="var(--fonte-display), sans-serif"
             espacamento="-0.03em"
             entrelinha={0.94}
           />

@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 export function Marca({ className }: { className?: string }) {
   return (
     <span
-      style={{ fontFamily: "var(--fonte-anton)" }}
+      style={{ fontFamily: "var(--fonte-display)" }}
       className={cn("inline-flex items-center leading-none tracking-[0.01em]", className)}
     >
       <span className="text-text">MATCH</span>
