@@ -125,7 +125,11 @@ export function Mesa({ progresso }: { progresso: React.RefObject<number> }) {
       /* Em tela estreita a camera recua: com o mesmo enquadramento as placas
          saem pelas laterais e a fusao acontece fora do campo de visao. */
       camera.position.set(0, l < 720 ? 9.6 : 7.4, l < 720 ? 4.1 : 3.1);
-      camera.lookAt(0, 0, 0);
+      /* Olha ABAIXO do centro da mesa, e por isso as placas sobem na tela.
+         Mover a camera para cima em vez disso mudaria o angulo e achataria a
+         perspectiva; girar o olhar preserva o enquadramento e so reposiciona.
+         O terco de baixo fica livre para o titulo e a acao. */
+      camera.lookAt(0, l < 720 ? -1.6 : -2.1, 0);
       camera.updateProjectionMatrix();
       render.setSize(l, a);
     }

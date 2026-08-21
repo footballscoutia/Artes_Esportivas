@@ -24,6 +24,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { Marca } from "@/components/app/Marca";
 import { Mesa } from "@/components/lp/Mesa";
+import { TextoWarp } from "@/components/lp/TextoWarp";
 import { Fundo } from "@/components/lp/Fundo";
 import { Painel } from "@/components/lp/Painel";
 
@@ -221,20 +222,34 @@ export function Landing() {
           }}
         />
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-14 lg:px-10 lg:pb-20">
-          <div className="mx-auto max-w-[1400px]">
-            <h1 className="display max-w-[13ch] text-[clamp(2.6rem,7.4vw,5.6rem)] leading-[0.94] tracking-[-0.03em]">
-              Escolha o atleta.
-              <br />O post sai pronto.
-            </h1>
-            <p className="mt-6 max-w-[46ch] text-[15px] leading-relaxed text-muted">
-              O MatchPost gera as artes promocionais do seu elenco no padrão da sua marca. Você
-              escolhe a categoria e o atleta — não escreve prompt nenhum.
-            </p>
-            <Acao href="/login?criar=1" className="pointer-events-auto mt-8">
-              Criar conta
-            </Acao>
-          </div>
+        {/* bloco central: o título ondulando, e sob ele o texto e a ação */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-end px-6 pb-16 lg:pb-24">
+          {/*
+            O <h1> de verdade, invisível.
+
+            O título é desenhado dentro de um canvas pelo TextoWarp, então ele
+            deixa de existir como texto: buscador não indexa pixel e leitor de
+            tela não lê. Este h1 devolve as duas coisas, e o canvas fica
+            `aria-hidden` para a frase não ser anunciada em dobro.
+          */}
+          <h1 className="sr-only">Escolha o atleta. O post sai pronto.</h1>
+
+          <TextoWarp
+            texto={"Escolha o atleta.\nO post sai pronto."}
+            className="h-[38vh] max-w-[1100px] lg:h-[34vh]"
+            tamanho="clamp(2.4rem, 6.6vw, 5.2rem)"
+            familia="var(--fonte-anton), sans-serif"
+            entrelinha={0.94}
+            espacamento="-0.03em"
+          />
+
+          <p className="mt-2 max-w-[52ch] text-center text-[15px] leading-relaxed text-muted">
+            O MatchPost gera as artes promocionais do seu elenco no padrão da sua marca. Você
+            escolhe a categoria e o atleta — não escreve prompt nenhum.
+          </p>
+          <Acao href="/login?criar=1" className="pointer-events-auto mt-8">
+            Criar conta
+          </Acao>
         </div>
       </section>
 
