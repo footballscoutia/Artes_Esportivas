@@ -36,6 +36,23 @@ export function Landing() {
   const pagina = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    /**
+     * Recarregar volta ao topo.
+     *
+     * O padrao do navegador e restaurar onde a pessoa estava, o que ajuda numa
+     * pagina de texto. Aqui atrapalha: o heroi e preso e a cena depende do
+     * progresso do scroll, entao recarregar no meio devolve as placas
+     * congeladas na metade da fusao, sem o titulo e sem explicacao. Como o
+     * `pin` remede a pagina ao montar, a posicao restaurada tambem cai em
+     * lugar diferente do que estava antes.
+     *
+     * O valor anterior volta na limpeza: fora da landing, restaurar posicao e
+     * o comportamento certo.
+     */
+    const restauracaoAnterior = history.scrollRestoration;
+    history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+
     const suave = new Lenis({ duration: 1.05, smoothWheel: true });
     suave.on("scroll", ScrollTrigger.update);
     const tick = (t: number) => {
@@ -103,6 +120,7 @@ export function Landing() {
       contexto.revert();
       gsap.ticker.remove(tick);
       suave.destroy();
+      history.scrollRestoration = restauracaoAnterior;
     };
   }, []);
 
