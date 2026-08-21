@@ -140,6 +140,35 @@ export function Landing() {
           ease: "none",
           scrollTrigger: { trigger: el, start: "bottom 40%", end: "bottom 5%", scrub: 0.6 },
         });
+
+        /**
+         * Parallax: o texto sobe mais devagar que a pagina.
+         *
+         * Sem isto o bloco fica cravado no pixel enquanto a camera viaja atras
+         * dele, e a pagina se parte em duas — uma parte em movimento e um
+         * cartaz parado colado por cima. Vinte por cento de atraso e o
+         * suficiente para os dois lerem como um sistema so.
+         */
+        gsap.fromTo(
+          el,
+          { yPercent: 9 },
+          {
+            yPercent: -9,
+            ease: "none",
+            immediateRender: false,
+            scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: 1.1 },
+          },
+        );
+      });
+
+      /* O titulo do primeiro ato acompanha a abertura da camera: ele encolhe de
+         leve enquanto a cena se afasta, em vez de ficar do mesmo tamanho o
+         tempo todo. */
+      gsap.to("[data-heroi]", {
+        scale: 0.94,
+        opacity: 0.35,
+        ease: "none",
+        scrollTrigger: { trigger: pagina.current, start: "top top", end: "40% top", scrub: 0.8 },
       });
     }, pagina);
 
@@ -154,13 +183,29 @@ export function Landing() {
     <div ref={pagina} className="relative bg-bg text-text">
       <Cena progresso={progresso} />
 
-      {/* véu de leitura: a cena é luz, e texto sobre luz precisa de chão */}
+      {/*
+        Véu de leitura, com lado.
+
+        No desktop a cena vive na direita e o texto na esquerda, então o véu é
+        direcional: firme onde as letras estão, transparente onde a cena
+        acontece. Um véu radial uniforme escureceria a cena junto e apagaria o
+        que ela tem de bom.
+      */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-[5]"
+        className="pointer-events-none fixed inset-0 z-[5] hidden lg:block"
         style={{
           background:
-            "radial-gradient(130% 80% at 50% 50%, transparent 30%, color-mix(in srgb, var(--color-bg) 82%, transparent) 100%)",
+            "linear-gradient(100deg, var(--color-bg) 4%, color-mix(in srgb, var(--color-bg) 88%, transparent) 30%, transparent 62%)",
+        }}
+      />
+      {/* no celular a cena fica atrás do texto: aí o véu precisa cobrir tudo */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[5] lg:hidden"
+        style={{
+          background:
+            "radial-gradient(120% 75% at 50% 50%, color-mix(in srgb, var(--color-bg) 62%, transparent) 20%, color-mix(in srgb, var(--color-bg) 90%, transparent) 100%)",
         }}
       />
 
@@ -176,7 +221,10 @@ export function Landing() {
 
       {/* ---- ato 1: a mesa ---- */}
       <Ato>
-        <h1 className="display max-w-[13ch] text-[clamp(2.6rem,7.4vw,5.6rem)] leading-[0.94] tracking-[-0.03em]">
+        <h1
+          data-heroi
+          className="display max-w-[13ch] origin-left text-[clamp(2.6rem,7.4vw,5.6rem)] leading-[0.94] tracking-[-0.03em]"
+        >
           Escolha o atleta.
           <br />O post sai pronto.
         </h1>

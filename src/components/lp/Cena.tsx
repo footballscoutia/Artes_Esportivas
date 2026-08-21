@@ -56,8 +56,10 @@ const p = (o: Partial<Pose>): Pose => ({ ...NADA, s: 1, ...o });
 
 /** Onde cada PECA (a arte) fica em cada ato. */
 const ATOS_PECA: Array<(i: number, largura: number) => Pose> = [
-  // 0 — os materiais: so o retrato, a esquerda. Escudo e marca sao objetos proprios.
-  (i, largura) => (i === 0 ? p({ x: largura < 720 ? 0 : -2.7, y: 0, ry: 0.14 }) : NADA),
+  // 0 — os materiais: a arte e o objeto principal, e o escudo e a marca sao
+  //     ingredientes flutuando na frente dela. A hierarquia de tamanho e o que
+  //     diz quem e o assunto.
+  (i) => (i === 0 ? p({ x: 0.55, y: 0, ry: -0.12 }) : NADA),
   // 1 — a fusao: a peca vem ao centro e recebe tudo
   (i) => (i === 0 ? p({ x: 0, y: 0, ry: 0 }) : NADA),
   // 2 — as categorias: oito pecas num arco raso em volta da camera
@@ -108,8 +110,11 @@ const ATOS_PECA: Array<(i: number, largura: number) => Pose> = [
 
 /** O escudo: existe nos dois primeiros atos, depois afunda na peca. */
 const ATOS_ESCUDO: Array<(largura: number) => Pose> = [
-  (largura) => p({ x: largura < 720 ? 0 : 1.5, y: 0.6, z: 1.2, s: 0.9 }),
-  () => p({ x: 0, y: 0, z: 0.1, s: 0.22 }), // afunda, pequeno, dentro da arte
+  /* Pequeno de proposito: o escudo e um ingrediente que vai DENTRO da arte,
+     nao um monumento ao lado dela. Na primeira versao ele saiu do tamanho da
+     peca inteira e virou o assunto da tela. */
+  () => p({ x: -0.72, y: 0.82, z: 1.6, s: 0.34 }),
+  () => p({ x: 0, y: 0, z: 0.1, s: 0.2 }), // afunda, pequeno, dentro da arte
   () => NADA,
   () => NADA,
   () => NADA,
@@ -119,8 +124,8 @@ const ATOS_ESCUDO: Array<(largura: number) => Pose> = [
 
 /** A marca: barra horizontal que carimba o canto. */
 const ATOS_MARCA: Array<(largura: number) => Pose> = [
-  (largura) => p({ x: largura < 720 ? 0 : 3.1, y: -1.1, z: 0.9, s: 1 }),
-  () => p({ x: 0.62, y: -1.28, z: 0.09, s: 0.52 }), // canto inferior direito da arte
+  () => p({ x: -0.5, y: -1.02, z: 1.6, s: 0.42 }),
+  () => p({ x: 0.6, y: -1.24, z: 0.09, s: 0.44 }), // carimba o canto inferior direito
   () => NADA,
   () => NADA,
   () => NADA,
@@ -168,24 +173,26 @@ function desenharFace(indice: number, cor: string, comTexto: boolean) {
   g.fillRect(0, 0, 540, 675);
 
   /* A silhueta do atleta: um vulto de luz, nao um desenho de pessoa. Desenhar
-     uma figura seria inventar um atleta — e o produto nunca inventa atleta. */
-  const vulto = g.createRadialGradient(270, 430, 20, 270, 430, 260);
-  vulto.addColorStop(0, "rgba(255,255,255,0.16)");
-  vulto.addColorStop(1, "rgba(255,255,255,0)");
+     uma figura seria inventar um atleta — e o produto nunca inventa atleta.
+     Fraco de proposito: em 0.16 o bloom transformava isso num borrao branco. */
+  const vulto = g.createRadialGradient(270, 470, 30, 270, 470, 240);
+  vulto.addColorStop(0, "rgba(190,214,255,0.075)");
+  vulto.addColorStop(1, "rgba(190,214,255,0)");
   g.fillStyle = vulto;
-  g.fillRect(0, 200, 540, 475);
+  g.fillRect(0, 240, 540, 435);
 
   if (comTexto) {
     // etiqueta da categoria
     g.fillStyle = cor;
-    g.globalAlpha = 0.95;
-    g.fillRect(52, 452, 104, 12);
-    // nome do atleta, em duas linhas pesadas
-    g.globalAlpha = 0.92;
-    g.fillStyle = "#ffffff";
-    g.fillRect(52, 486, 250 + ((indice * 31) % 90), 26);
-    g.globalAlpha = 0.75;
-    g.fillRect(52, 522, 170 + ((indice * 19) % 70), 26);
+    g.globalAlpha = 0.8;
+    g.fillRect(52, 452, 96, 10);
+    /* As barras do nome sao CINZA, nao branco. Branco puro atravessa o bloom e
+       vira mancha luminosa — foi o que deixou a peca com cara de borrao. */
+    g.fillStyle = "#c8ccd4";
+    g.globalAlpha = 0.5;
+    g.fillRect(52, 486, 230 + ((indice * 31) % 80), 20);
+    g.globalAlpha = 0.3;
+    g.fillRect(52, 516, 156 + ((indice * 19) % 60), 20);
     g.globalAlpha = 1;
   }
 
@@ -257,6 +264,17 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
     );
     cena.add(poeira);
 
+    /**
+     * O palco: tudo que e objeto entra aqui, e o grupo inteiro desliza para a
+     * direita no desktop.
+     *
+     * Sem isto a cena nasce centrada e passa POR TRAS do texto — foi o que fez
+     * o retrato colidir com "Escolha o atleta" e deixar os dois ilegiveis. A
+     * poeira fica de fora: ela e ambiente e deve continuar cobrindo a tela.
+     */
+    const palco = new THREE.Group();
+    cena.add(palco);
+
     const descartaveis: Array<{ dispose(): void }> = [];
 
     /* --- as pecas (a arte) --- */
@@ -281,7 +299,7 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
       );
       grupo.add(borda);
 
-      cena.add(grupo);
+      palco.add(grupo);
       return { grupo, face, borda, mat: face.material as THREE.MeshBasicMaterial, tex };
     });
 
@@ -304,13 +322,13 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
         emissiveIntensity: 0.35,
       }),
     );
-    cena.add(escudo);
+    palco.add(escudo);
 
     const contornoEscudo = new THREE.LineSegments(
       new THREE.EdgesGeometry(geoEscudo),
       new THREE.LineBasicMaterial({ color: 0x9dc0ff, transparent: true, opacity: 0.9 }),
     );
-    cena.add(contornoEscudo);
+    palco.add(contornoEscudo);
 
     /* --- a marca: a barra que carimba o canto --- */
     const grupoMarca = new THREE.Group();
@@ -325,7 +343,7 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
     );
     barraAcesa.position.x = 0.44;
     grupoMarca.add(barraAcesa);
-    cena.add(grupoMarca);
+    palco.add(grupoMarca);
 
     const compositor = new EffectComposer(render);
     compositor.addPass(new RenderPass(cena, camera));
@@ -347,6 +365,9 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
       camera.updateProjectionMatrix();
       render.setSize(l, a);
       compositor.setSize(l, a);
+      /* No desktop o texto ocupa a metade esquerda: o palco sai de baixo dele.
+         No celular o texto fica por cima com veu, entao a cena volta ao centro. */
+      palco.position.x = l >= 1024 ? 2.6 : l >= 720 ? 1.5 : 0;
     }
     medir();
     const observador = new ResizeObserver(medir);
@@ -406,7 +427,9 @@ export function Cena({ progresso }: { progresso: React.RefObject<number> }) {
       aplicar(contornoEscudo, poseEscudo);
       escudo.rotation.y += Math.sin(t * 1.2) * 0.14;
       contornoEscudo.rotation.y = escudo.rotation.y;
-      (escudo.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.35 + inundacao * 1.4;
+      /* Emissivo baixo: com 0.35 + 1.4 o escudo virava uma chapa de luz e
+         puxava toda a atencao da tela para ele. */
+      (escudo.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.14 + inundacao * 0.5;
 
       aplicar(grupoMarca, misturar(ATOS_MARCA[ato](largura), ATOS_MARCA[ato + 1](largura), dentro));
 
