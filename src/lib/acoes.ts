@@ -80,6 +80,7 @@ const Novo = z.object({
     .nullish(),
   /** Quem posicionou a logo nesta geracao. Vem do /api/gerar, nao e escolha nova aqui. */
   logo_modo: z.enum(LOGO_MODOS).nullish(),
+  logo_cor: z.string().max(20).nullish(),
 });
 
 /** Grava o pedido e a primeira geracao. E o "Salvar na biblioteca" do /novo. */
@@ -136,6 +137,7 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
     marca_id: p.data.marca_id || null,
     posicao_logo: p.data.posicao_logo || null,
     logo_modo: p.data.logo_modo || "nenhuma",
+    logo_cor: p.data.logo_cor || null,
   });
 
   if (erroGeracao) {
@@ -193,7 +195,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
      */
     const { data: anterior } = await sb
       .from("geracoes")
-      .select("marca_id, logo_modo, posicao_logo")
+      .select("marca_id, logo_modo, posicao_logo, logo_cor")
       .eq("pedido_id", pedidoId)
       .order("criado_em", { ascending: false })
       .limit(1)
@@ -233,6 +235,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       marcaLogo: marca?.bytes ?? null,
       logoModo,
       posicaoLogo,
+      logoCor: anterior?.logo_cor ?? null,
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
@@ -247,6 +250,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       marca_id: marca?.id ?? null,
       logo_modo: marca ? logoModo : "nenhuma",
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
+      logo_cor: marca ? (anterior?.logo_cor ?? null) : null,
     });
 
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);

@@ -8,6 +8,7 @@ import { BALDE, assinar } from "@/lib/storage";
 import {
   TIPOS,
   FORMATOS,
+  LOGO_COR_HEX,
   LOGO_MODOS,
   POSICOES_LOGO,
   type Formato,
@@ -42,6 +43,12 @@ const Corpo = z.object({
   marca_id: z.string().uuid().optional().nullable(),
   logo_modo: z.enum(LOGO_MODOS).optional().nullable(),
   posicao_logo: z.enum(POSICOES_LOGO).optional().nullable(),
+  /* preset ("original"/"auto"/"branca"/"preta") ou hex escolhido na tela */
+  logo_cor: z
+    .string()
+    .regex(/^(original|auto|branca|preta|#[0-9a-fA-F]{6})$/)
+    .optional()
+    .nullable(),
 });
 
 /**
@@ -109,6 +116,7 @@ export async function POST(req: Request) {
     marca_id: form.get("marca_id") || null,
     logo_modo: form.get("logo_modo") || null,
     posicao_logo: form.get("posicao_logo") || null,
+    logo_cor: form.get("logo_cor") || null,
   });
 
   if (!parsed.success) {
@@ -121,12 +129,16 @@ export async function POST(req: Request) {
   const {
     tipo, formato, nome, clube, frase,
     jogador_id, clube_id, adversario_id,
-    marca_id, logo_modo, posicao_logo,
+    marca_id, logo_modo, posicao_logo, logo_cor,
     ...jogo
   } = parsed.data;
 
   const logoModo: LogoModo = logo_modo ?? "ia";
   const posicaoLogo: PosicaoLogo = posicao_logo ?? "inferior-direito";
+  /* os presets nomeados viram hex aqui; "auto" e "original" seguem como estao,
+     porque quem sabe resolve-los e a composicao, com a arte na mao */
+  const logoCor =
+    logo_cor === "branca" || logo_cor === "preta" ? LOGO_COR_HEX[logo_cor] : (logo_cor ?? null);
 
   /**
    * A foto e os escudos vem do cadastro, nao do formulario. Foi a mudanca que
@@ -157,6 +169,7 @@ export async function POST(req: Request) {
       marcaLogo: marca?.bytes ?? null,
       logoModo,
       posicaoLogo,
+      logoCor,
       ...jogo,
     });
 
@@ -170,6 +183,7 @@ export async function POST(req: Request) {
          'nenhuma' por mais que a tela tenha pedido outra coisa */
       logo_modo: marca ? logoModo : "nenhuma",
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
+      logo_cor: marca ? (logo_cor ?? "original") : null,
     });
   } catch (e) {
     if (e instanceof SemReferencia) {

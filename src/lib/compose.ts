@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import type { OverlayOptions } from "sharp";
+import { corQueContrasta, pintarLogo } from "./logo-cor";
 import { FORMATO_META, type Formato, type PosicaoLogo } from "./types";
 
 /**
@@ -35,6 +36,14 @@ export type ComposeInput = {
    * depois de ver a arte pronta.
    */
   posicaoLogo?: PosicaoLogo;
+  /**
+   * Cor pedida para a logo: "auto", um hex, ou nada para deixar como veio.
+   *
+   * Existe porque o arquivo da logo foi feito para um fundo que nao e o desta
+   * arte: logo escura sobre arte escura some, e a assinatura da agencia e
+   * justamente o elemento que nao pode sumir.
+   */
+  logoCor?: string | null;
 };
 
 const MARGEM = 0.07;
@@ -56,11 +65,22 @@ export async function compor({
   formato,
   logo,
   posicaoLogo = "inferior-direito",
+  logoCor = null,
 }: ComposeInput): Promise<Buffer> {
   const { w, h } = FORMATO_META[formato];
 
-  // corta para o formato final ancorando no topo, para nao decepar cabeca
-  const base = sharp(fundo).resize(w, h, { fit: "cover", position: "top" });
+  /**
+   * O corte vira BUFFER aqui, e nao segue como pipeline ate o fim.
+   *
+   * A cor automatica precisa medir a luminancia do pedaco da arte onde a logo
+   * vai cair, e nao da para medir o que ainda nao foi renderizado. O preco e
+   * uma codificacao a mais; a alternativa seria adivinhar a cor sem olhar a
+   * imagem, que e exatamente o problema que esta opcao existe para resolver.
+   */
+  const base = await sharp(fundo)
+    .resize(w, h, { fit: "cover", position: "top" })
+    .png()
+    .toBuffer();
 
   const camadas: OverlayOptions[] = [];
 
@@ -77,13 +97,27 @@ export async function compor({
 
   if (logo) {
     const larguraLogo = Math.round(w * 0.3);
-    const marca = await sharp(logo).resize({ width: larguraLogo }).png().toBuffer();
+    let marca = await sharp(logo).resize({ width: larguraLogo }).png().toBuffer();
     const metaMarca = await sharp(marca).metadata();
-    camadas.push({
-      input: marca,
-      ...posicaoDaLogo(posicaoLogo, w, h, larguraLogo, metaMarca.height ?? 0),
-    });
+    const onde = posicaoDaLogo(posicaoLogo, w, h, larguraLogo, metaMarca.height ?? 0);
+
+    if (logoCor && logoCor !== "original") {
+      /* "auto" so se resolve aqui, com a arte pronta e o lugar ja conhecido —
+         antes disso nao ha o que medir. */
+      const cor =
+        logoCor === "auto"
+          ? await corQueContrasta(base, {
+              left: onde.left,
+              top: onde.top,
+              width: larguraLogo,
+              height: metaMarca.height ?? 0,
+            })
+          : logoCor;
+      marca = await pintarLogo(marca, cor);
+    }
+
+    camadas.push({ input: marca, ...onde });
   }
 
-  return base.composite(camadas).png({ compressionLevel: 8 }).toBuffer();
+  return sharp(base).composite(camadas).png({ compressionLevel: 8 }).toBuffer();
 }

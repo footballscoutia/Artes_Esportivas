@@ -19,10 +19,13 @@ import { Campo, Input, Select, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
 import { criarPedido } from "@/lib/acoes";
 import {
+  LOGO_CORES,
+  LOGO_COR_META,
   LOGO_MODOS,
   LOGO_MODO_META,
   POSICOES_LOGO,
   POSICAO_LOGO_ROTULO,
+  type LogoCorPreset,
   type LogoModo,
   type Marca,
   type PosicaoLogo,
@@ -55,6 +58,7 @@ type Resultado = {
   /* o que a geracao REALMENTE fez com a logo — pode diferir do pedido, porque
      sem marca cadastrada o servidor rebaixa o modo para "nenhuma" */
   logo_modo: LogoModo;
+  logo_cor: string | null;
 };
 
 /* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
@@ -92,6 +96,9 @@ export function NovaArte({
   const [marcaId, setMarcaId] = useState<string | null>(marcas[0]?.id ?? null);
   const [logoModo, setLogoModo] = useState<LogoModo>(marcas.length ? "ia" : "nenhuma");
   const [posicaoLogo, setPosicaoLogo] = useState<PosicaoLogo>("inferior-direito");
+  /* preset nomeado, ou "hex" quando a pessoa abre o seletor de cor */
+  const [logoCor, setLogoCor] = useState<LogoCorPreset | "hex">("original");
+  const [logoHex, setLogoHex] = useState("#FFFFFF");
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
@@ -173,6 +180,9 @@ export function NovaArte({
     body.set("logo_modo", logoModo);
     if (marcaId && logoModo !== "nenhuma") body.set("marca_id", marcaId);
     if (logoModo === "carimbo") body.set("posicao_logo", posicaoLogo);
+    if (logoModo !== "nenhuma") {
+      body.set("logo_cor", logoCor === "hex" ? logoHex : logoCor);
+    }
 
     try {
       const r = await fetch("/api/gerar", { method: "POST", body });
@@ -217,6 +227,7 @@ export function NovaArte({
       marca_id: resultado.marca_id,
       posicao_logo: resultado.posicao_logo,
       logo_modo: resultado.logo_modo,
+      logo_cor: resultado.logo_cor,
     });
 
     if (!r.ok) {
@@ -372,6 +383,65 @@ export function NovaArte({
                         ))}
                       </Select>
                     </Campo>
+                  </div>
+                )}
+
+                {logoModo !== "nenhuma" && (
+                  <div className="mt-3">
+                    <p className="mb-2 text-[12px] font-medium">
+                      Cor da logo{" "}
+                      <span className="text-muted-2">a forma continua a mesma</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {LOGO_CORES.map((c) => {
+                        const ativo = logoCor === c;
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setLogoCor(c)}
+                            title={LOGO_COR_META[c].dica}
+                            className={cn(
+                              "rounded-field border px-3 py-2 text-[12px] transition-colors",
+                              ativo
+                                ? "border-accent bg-accent/10 text-accent"
+                                : "border-line bg-surface-2/40 hover:border-line-2",
+                            )}
+                          >
+                            {LOGO_COR_META[c].titulo}
+                          </button>
+                        );
+                      })}
+                      <label
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-field border px-3 py-2 text-[12px] transition-colors",
+                          logoCor === "hex"
+                            ? "border-accent bg-accent/10 text-accent"
+                            : "border-line bg-surface-2/40 hover:border-line-2",
+                        )}
+                      >
+                        <span
+                          className="size-3.5 rounded-full border border-line-2"
+                          style={{ background: logoHex }}
+                        />
+                        Escolher
+                        <input
+                          type="color"
+                          value={logoHex}
+                          onChange={(e) => {
+                            setLogoHex(e.target.value.toUpperCase());
+                            setLogoCor("hex");
+                          }}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+                    {logoCor === "auto" && logoModo === "ia" && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-muted-2">
+                        Com a IA posicionando, a automática vira branca: ela mede o lugar onde a
+                        logo cai, e aqui o lugar só existe depois da arte pronta.
+                      </p>
+                    )}
                   </div>
                 )}
 

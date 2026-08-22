@@ -215,6 +215,30 @@ export const LOGO_MODO_META: Record<LogoModo, { titulo: string; dica: string }> 
   nenhuma: { titulo: "Sem logo", dica: "A arte sai limpa." },
 };
 
+/**
+ * Cor pedida para a logo.
+ *
+ * A forma vem sempre do alfa do arquivo — so o RGB e trocado, entao um PNG com
+ * recorte limpo continua com o mesmo recorte. Logo com fundo branco chapado nao
+ * ganha nada aqui: o que muda de cor e o desenho, e o retangulo branco e parte
+ * do desenho para quem so olha o alfa.
+ */
+export const LOGO_CORES = ["original", "auto", "branca", "preta"] as const;
+export type LogoCorPreset = (typeof LOGO_CORES)[number];
+
+export const LOGO_COR_META: Record<LogoCorPreset, { titulo: string; dica: string }> = {
+  original: { titulo: "Original", dica: "As cores do arquivo" },
+  auto: { titulo: "Automática", dica: "Clara ou escura, pelo lugar onde ela cai" },
+  branca: { titulo: "Branca", dica: "Para artes escuras" },
+  preta: { titulo: "Preta", dica: "Para artes claras" },
+};
+
+/** O que os presets viram na hora de pintar. `auto` e decidido na composicao. */
+export const LOGO_COR_HEX: Record<"branca" | "preta", string> = {
+  branca: "#FFFFFF",
+  preta: "#0B0D10",
+};
+
 export const POSICAO_LOGO_ROTULO: Record<PosicaoLogo, string> = {
   "inferior-direito": "Inferior direito",
   "inferior-esquerdo": "Inferior esquerdo",

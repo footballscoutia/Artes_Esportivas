@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
+import { pintarLogo } from "./logo-cor";
 import { sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
 import {
   FORMATO_META,
+  LOGO_COR_HEX,
   POSICAO_LOGO_ROTULO,
   TIPO_META,
   type Formato,
@@ -202,6 +204,7 @@ export async function produzirArte({
   marcaLogo = null,
   posicaoLogo = "inferior-direito",
   logoModo = "ia",
+  logoCor = null,
   ...jogo
 }: {
   tipo: Tipo;
@@ -217,6 +220,8 @@ export async function produzirArte({
   posicaoLogo?: PosicaoLogo;
   /** Quem posiciona a logo: o modelo ('ia'), o codigo ('carimbo'), ou ninguem. */
   logoModo?: LogoModo;
+  /** Cor pedida: "auto", um hex, ou nulo para as cores do arquivo. */
+  logoCor?: string | null;
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
@@ -247,9 +252,26 @@ export async function produzirArte({
   const logoParaOModelo = usaLogo && logoModo === "ia" ? marcaLogo : null;
   const logoParaCarimbar = usaLogo && logoModo === "carimbo" ? marcaLogo : null;
 
+  /**
+   * No modo IA a logo e repintada ANTES de ir ao modelo.
+   *
+   * Repintar depois seria impossivel: a logo estaria dentro dos pixels da arte,
+   * misturada com o resto. Entao a cor entra na referencia — o modelo recebe a
+   * logo ja na cor pedida e a instrucao de reproduzi-la como esta.
+   *
+   * O "auto" nao existe aqui, e nao por esquecimento: ele mede a luminancia do
+   * lugar onde a logo cai, e nesse modo o lugar so se conhece depois de a arte
+   * existir. Quem pedir "auto" com a IA posicionando recebe branco, que e o que
+   * acerta mais sobre arte de estadio.
+   */
+  const logoPintada =
+    logoParaOModelo && logoCor && logoCor !== "original"
+      ? await pintarLogo(logoParaOModelo, logoCor === "auto" ? LOGO_COR_HEX.branca : logoCor)
+      : logoParaOModelo;
+
   const gerado = await provider.gerar({
     referencia: refBuffer,
-    logo: logoParaOModelo,
+    logo: logoPintada,
     foto: foto ?? null,
     prompt: montarPrompt(referencia.prompt_mae, {
       nome,
@@ -273,6 +295,7 @@ export async function produzirArte({
     formato,
     logo: logoParaCarimbar,
     posicaoLogo,
+    logoCor,
   });
 
   /**
