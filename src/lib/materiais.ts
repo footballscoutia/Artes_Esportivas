@@ -7,8 +7,8 @@ import type { ClubeNaArte } from "./gerar";
  * Junta o que o modelo precisa VER: a foto do atleta e os escudos dos clubes.
  *
  * O pedido guarda ids; o modelo precisa de bytes. Esta e a ponte, e ela mora
- * fora da rota porque tres caminhos passam por aqui — a previa em `/api/gerar`,
- * o `criarPedido` e o `gerarOutra`. Antes cada um baixava o que sabia baixar, e
+ * fora da rota porque dois caminhos passam por aqui — a geracao em `/api/gerar`
+ * e o `gerarOutra`. Antes cada um baixava o que sabia baixar, e
  * o `gerarOutra` acabou nascendo sem a foto: gerava um jogador inventado a
  * dez centavos o clique.
  *

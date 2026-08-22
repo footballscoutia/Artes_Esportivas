@@ -3,6 +3,7 @@ import { z } from "zod";
 import { GenError } from "@/lib/ai";
 import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
+import { registrarGeracao } from "@/lib/registro";
 import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "@/lib/materiais";
 import { BALDE, assinar } from "@/lib/storage";
 import {
@@ -45,6 +46,8 @@ const Corpo = z.object({
   posicao_logo: z.enum(POSICOES_LOGO).optional().nullable(),
   /* qual manto o atleta veste; nulo = a camisa vem da foto dele */
   uniforme_id: z.string().uuid().optional().nullable(),
+  /* tentativa nova do MESMO pedido; ausente = pedido novo */
+  pedido_id: z.string().uuid().optional().nullable(),
   /* preset ("original"/"auto"/"branca"/"preta") ou hex escolhido na tela */
   logo_cor: z
     .string()
@@ -54,8 +57,10 @@ const Corpo = z.object({
 });
 
 /**
- * Previa: gera a arte e devolve para o /novo mostrar, ANTES de o pedido existir.
- * Quem grava no banco e a acao `criarPedido`, no "Enviar para aprovacao".
+ * Gera a arte, GRAVA, e devolve para o /novo mostrar.
+ *
+ * A gravacao mora aqui e nao num botao da tela porque e aqui que o dinheiro
+ * sai: quem trocasse de aba antes de clicar em salvar perdia o que pagou.
  */
 export async function POST(req: Request) {
   /**
@@ -120,6 +125,7 @@ export async function POST(req: Request) {
     posicao_logo: form.get("posicao_logo") || null,
     logo_cor: form.get("logo_cor") || null,
     uniforme_id: form.get("uniforme_id") || null,
+    pedido_id: form.get("pedido_id") || null,
   });
 
   if (!parsed.success) {
@@ -132,7 +138,7 @@ export async function POST(req: Request) {
   const {
     tipo, formato, nome, clube, frase,
     jogador_id, clube_id, adversario_id,
-    marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id,
+    marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id, pedido_id,
     ...jogo
   } = parsed.data;
 
@@ -178,10 +184,42 @@ export async function POST(req: Request) {
       ...jogo,
     });
 
+    /**
+     * Grava ANTES de responder.
+     *
+     * A arte ja custou; deixar a gravacao para um botao na tela fazia quem
+     * trocasse de aba perder o que pagou. Se o registro falhar, a resposta
+     * ainda sai com a previa — arte na tela e melhor que erro, e os caminhos
+     * ficam no bucket para nao sumir. So o reaproveitamento se perde.
+     */
+    const salvo = await registrarGeracao({
+      pedidoId: pedido_id,
+      usuarioId: usuario.id,
+      tipo: tipo as Tipo,
+      formato: formato as Formato,
+      nome,
+      clube,
+      frase,
+      jogador_id,
+      clube_id,
+      adversario_id,
+      arte,
+      marca_id: marca?.id ?? null,
+      logo_modo: marca ? logoModo : "nenhuma",
+      posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
+      logo_cor: marca ? (logo_cor ?? "original") : null,
+      uniforme_id: uniforme ? (uniforme_id ?? null) : null,
+      ...jogo,
+    }).catch((e) => {
+      console.error("[gerar] nao gravei a geracao:", e);
+      return null;
+    });
+
     return NextResponse.json({
       // URL assinada, com validade curta — os buckets sao privados
       imagem: await assinar(BALDE.geracoes, arte.arte_path),
       ...arte,
+      pedido_id: salvo,
       // a org ainda pode nao ter cadastrado marca nenhuma: nulo e valido
       marca_id: marca?.id ?? null,
       /* o que a previa REALMENTE fez: sem marca nenhuma, o modo cai para

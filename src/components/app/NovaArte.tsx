@@ -17,7 +17,6 @@ import { Button, BotaoIcone, BotaoLink } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Campo, Input, Select, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
-import { criarPedido } from "@/lib/acoes";
 import {
   LOGO_CORES,
   LOGO_COR_META,
@@ -61,6 +60,8 @@ type Resultado = {
   logo_modo: LogoModo;
   logo_cor: string | null;
   uniforme_id: string | null;
+  /* nulo se a gravacao falhou: a arte aparece na tela mesmo assim */
+  pedido_id: string | null;
 };
 
 /* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
@@ -104,6 +105,21 @@ export function NovaArte({
   const [logoCor, setLogoCor] = useState<LogoCorPreset | "hex">("original");
   const [logoHex, setLogoHex] = useState("#FFFFFF");
   const [uniformeId, setUniformeId] = useState<string | null>(null);
+  /**
+   * O pedido que as geracoes desta tela estao alimentando, guardado JUNTO da
+   * chave do formulario que o criou.
+   *
+   * Nasce na primeira geracao, no servidor, e volta na resposta. Enquanto a
+   * chave nao muda, "gerar outra" pendura a tentativa no MESMO pedido — que e
+   * o que ele significa: um pedido, varias tentativas.
+   *
+   * A chave anda junto de proposito. A primeira versao zerava o id num efeito
+   * disparado pelos campos, e o proprio linter do React reclamou: setState
+   * dentro de efeito e render em cascata, e ainda deixava uma janela em que o
+   * id sobrevivia ao campo que ele descrevia. Comparar na hora de usar nao tem
+   * janela nenhuma.
+   */
+  const [pedido, setPedido] = useState<{ id: string; chave: string } | null>(null);
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
@@ -119,7 +135,6 @@ export function NovaArte({
   const [etapa, setEtapa] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
 
   /**
@@ -148,6 +163,14 @@ export function NovaArte({
   const jogador = jogadores.find((j) => j.id === jogadorId) ?? null;
   const clubeDoAtleta = clubes.find((c) => c.id === jogador?.clube_id) ?? null;
   const uniformesDoClube = uniformes.filter((u) => u.clube_id === clubeDoAtleta?.id);
+
+  /* O que DEFINE o pedido. A logo, o uniforme e o canto ficam de fora: sao
+     escolhas da tentativa, e trocar a cor da logo e gerar de novo continua
+     sendo o mesmo post. */
+  const chaveDoPedido = JSON.stringify([
+    tipo, formato, jogadorId, adversarioId, nome.trim(), clube.trim(), frase.trim(), jogo,
+  ]);
+  const pedidoId = pedido?.chave === chaveDoPedido ? pedido.id : null;
   // matchday sem adversario e data faria o modelo inventar a partida
   const jogoOk = !meta?.exigeJogo || Boolean(jogo.adversario.trim() && jogo.data_jogo);
   /**
@@ -195,12 +218,17 @@ export function NovaArte({
     if (uniformeId && uniformesDoClube.some((u) => u.id === uniformeId)) {
       body.set("uniforme_id", uniformeId);
     }
+    if (pedidoId) body.set("pedido_id", pedidoId);
 
     try {
       const r = await fetch("/api/gerar", { method: "POST", body });
       const json = await r.json();
       if (!r.ok) throw new Error(json.erro ?? "Falha na geração");
-      setResultado(json as Resultado);
+      const arte = json as Resultado;
+      setResultado(arte);
+      /* o servidor devolve o pedido que acabou de gravar; guardar aqui e o que
+         faz a proxima tentativa cair no mesmo pedido em vez de criar outro */
+      if (arte.pedido_id) setPedido({ id: arte.pedido_id, chave: chaveDoPedido });
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha na geração");
     } finally {
@@ -208,47 +236,13 @@ export function NovaArte({
     }
   }
 
-  /** So aqui o pedido passa a existir no banco. Gerar sozinho nao grava nada. */
-  async function salvarNaBiblioteca() {
-    if (!resultado || !tipo) return;
-    setErro(null);
-    setSalvando(true);
-
-    const r = await criarPedido({
-      tipo,
-      formato,
-      nome: nome.trim(),
-      clube: clube.trim() || null,
-      jogador_id: jogadorId,
-      clube_id: clubeDoAtleta?.id ?? null,
-      adversario_id: adversarioId,
-      frase: frase.trim() || null,
-      adversario: jogo.adversario.trim() || null,
-      data_jogo: jogo.data_jogo || null,
-      hora_jogo: jogo.hora_jogo.trim() || null,
-      campeonato: jogo.campeonato.trim() || null,
-      estadio: jogo.estadio.trim() || null,
-      referencia_id: resultado.referencia_id,
-      referencia_versao: resultado.referencia_versao,
-      arte_path: resultado.arte_path,
-      fundo_path: resultado.fundo_path,
-      modelo: resultado.modelo,
-      provider: resultado.provider,
-      custo_usd: resultado.custo_usd,
-      duracao_ms: Math.round(resultado.duracao_ms),
-      marca_id: resultado.marca_id,
-      posicao_logo: resultado.posicao_logo,
-      logo_modo: resultado.logo_modo,
-      logo_cor: resultado.logo_cor,
-      uniforme_id: resultado.uniforme_id,
-    });
-
-    if (!r.ok) {
-      setErro(r.erro);
-      setSalvando(false);
-      return;
-    }
-    router.push(`/pedido/${r.dados.id}`);
+  /**
+   * Nao salva mais nada — quem salva e o servidor, na hora de gerar. Isto aqui
+   * so leva para a arte que ja esta guardada.
+   */
+  function abrirNaBiblioteca() {
+    if (!pedidoId) return;
+    router.push(`/pedido/${pedidoId}`);
   }
 
   function baixar() {
@@ -789,9 +783,10 @@ export function NovaArte({
 
             {resultado ? (
               <div className="mt-5 space-y-2">
-                <Button className="w-full" disabled={salvando} onClick={salvarNaBiblioteca}>
+                {/* já está salva: o botão abre, não grava */}
+                <Button className="w-full" disabled={!pedidoId} onClick={abrirNaBiblioteca}>
                   <Send size={15} />
-                  {salvando ? "Salvando…" : "Salvar na biblioteca"}
+                  Abrir na biblioteca
                 </Button>
                 <div className="flex gap-2">
                   <Button variante="sutil" className="flex-1" onClick={gerar}>
