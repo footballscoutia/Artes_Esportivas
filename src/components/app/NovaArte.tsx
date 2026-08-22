@@ -164,7 +164,34 @@ export function NovaArte({
   const meta = tipo ? TIPO_META[tipo] : null;
   const jogador = jogadores.find((j) => j.id === jogadorId) ?? null;
   const clubeDoAtleta = clubes.find((c) => c.id === jogador?.clube_id) ?? null;
-  const uniformesDoClube = uniformes.filter((u) => u.clube_id === clubeDoAtleta?.id);
+  /**
+   * TODOS os mantos ficam escolhiveis, agrupados por clube.
+   *
+   * Antes a lista era so a do clube do atleta, para nao oferecer a camisa do
+   * adversario por engano. So que isso travava um caso legitimo: atleta
+   * cadastrado sem clube ficava sem seletor nenhum, e nao havia como escolher
+   * uniforme para ele.
+   *
+   * A protecao contra o manto errado nao precisava do bloqueio. Com os grupos
+   * nomeados e o clube do atleta na frente, o certo esta a um clique e o errado
+   * exige atravessar um cabecalho com o nome de outro time — errar deixa de ser
+   * acidente e passa a ser escolha.
+   */
+  const gruposDeUniforme = (() => {
+    const porClube = new Map<string, Uniforme[]>();
+    for (const u of uniformes) {
+      porClube.set(u.clube_id, [...(porClube.get(u.clube_id) ?? []), u]);
+    }
+    const nomeDe = (id: string) => {
+      const c = clubes.find((x) => x.id === id);
+      return c ? (c.nome_curto ?? c.nome) : "Clube arquivado";
+    };
+    return [...porClube.entries()]
+      .map(([clubeId, lista]) => ({ clubeId, nome: nomeDe(clubeId), lista }))
+      .sort((a, b) =>
+        a.clubeId === clubeDoAtleta?.id ? -1 : b.clubeId === clubeDoAtleta?.id ? 1 : 0,
+      );
+  })();
 
   /* O que DEFINE o pedido. A logo, o uniforme e o canto ficam de fora: sao
      escolhas da tentativa, e trocar a cor da logo e gerar de novo continua
@@ -191,6 +218,13 @@ export function NovaArte({
   }
   if (!clube.trim()) avisos.push({ texto: "Clube do atleta", inventa: false });
 
+  if (jogadorId && !clubeDoAtleta) {
+    avisos.push({
+      texto: "Atleta sem clube no cadastro — sem escudo e sem cores para a arte",
+      inventa: true,
+    });
+  }
+
   const clubesNaArte = [clubeDoAtleta, clubes.find((c) => c.id === adversarioId)].filter(
     (c): c is Clube => Boolean(c),
   );
@@ -203,13 +237,23 @@ export function NovaArte({
       avisos.push({ texto: `Cores do ${nomeCurto} não cadastradas`, inventa: true });
     }
   }
-  if (clubeDoAtleta && !uniformeId) {
+  /**
+   * Sem manto escolhido, o modelo redesenha a camisa — e isso vale mesmo com o
+   * atleta tendo clube, e mesmo com a foto do elenco sendo boa.
+   *
+   * O aviso antigo dizia "a camisa virá da foto do elenco" e tratava o caso
+   * como inofensivo. As artes do Coutinho mostraram que nao e: ele aparece de
+   * Bayern na foto, e o modelo trocou por camisas do Vasco inventadas, cada
+   * uma diferente. Ele nao copia o manto da foto quando o contexto pede outro;
+   * ele desenha o que acha que deveria estar ali.
+   */
+  if (!uniformeId) {
     avisos.push({
       texto:
-        uniformesDoClube.length === 0
-          ? `Nenhum uniforme do ${clubeDoAtleta.nome_curto ?? clubeDoAtleta.nome} cadastrado`
-          : "Uniforme não escolhido — a camisa virá da foto do elenco",
-      inventa: uniformesDoClube.length === 0,
+        uniformes.length === 0
+          ? "Nenhum uniforme cadastrado — o modelo desenha a camisa por conta própria"
+          : "Uniforme não escolhido — o modelo desenha a camisa por conta própria",
+      inventa: true,
     });
   }
   const inventaAlgo = avisos.some((a) => a.inventa);
@@ -262,7 +306,10 @@ export function NovaArte({
     /* So manda se o manto for MESMO do clube em campo: trocar de atleta depois
        de escolher deixaria o id apontando para a camisa de outro time, e o
        modelo obedeceria sem reclamar. */
-    if (uniformeId && uniformesDoClube.some((u) => u.id === uniformeId)) {
+    /* Valida contra a lista INTEIRA, e nao contra a do clube: qualquer manto e
+       escolhivel agora, e o que precisa ser barrado e id de uniforme arquivado
+       entre a escolha e o envio. */
+    if (uniformeId && uniformes.some((u) => u.id === uniformeId)) {
       body.set("uniforme_id", uniformeId);
     }
     if (pedidoId) body.set("pedido_id", pedidoId);
@@ -519,52 +566,72 @@ export function NovaArte({
             )}
 
             {/*
-              Só os mantos do clube do atleta: uniforme do adversário aqui seria
-              oferecer o erro. Some quando o clube não tem nenhum cadastrado —
-              não há escolha a fazer, e a camisa continua vindo da foto.
+              Todos os mantos, agrupados por clube, com o do atleta na frente.
+              Filtrar pelo clube do atleta parecia proteger contra escolher a
+              camisa do adversário, mas travava um caso legítimo: atleta
+              cadastrado sem clube ficava sem seletor nenhum. Com o grupo
+              nomeado, errar deixa de ser acidente e passa a ser escolha.
             */}
-            {uniformesDoClube.length > 0 && (
+            {uniformes.length > 0 && (
               <div>
                 <p className="mb-3 text-[13px] font-medium">
                   Uniforme <span className="text-muted-2">o manto desta arte</span>
                 </p>
-                <div className="grid gap-3 min-[420px]:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={() => setUniformeId(null)}
-                    onMouseMove={seguirCursor}
-                    className={cn(
-                      "lift holofote rounded-card border p-4 text-left",
-                      uniformeId === null
-                        ? "border-accent bg-accent/10"
-                        : "border-line bg-surface/70 hover:border-line-2",
-                    )}
-                  >
-                    <span className="block text-[14px] font-medium">Da foto</span>
-                    <span className="mt-1 block text-[11px] leading-relaxed text-muted">
-                      A camisa que o atleta veste na foto do elenco.
-                    </span>
-                  </button>
-                  {uniformesDoClube.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => setUniformeId(u.id)}
-                      onMouseMove={seguirCursor}
-                      className={cn(
-                        "lift holofote flex items-center gap-3 rounded-card border p-3 text-left",
-                        uniformeId === u.id
-                          ? "border-accent bg-accent/10"
-                          : "border-line bg-surface/70 hover:border-line-2",
-                      )}
-                    >
-                      {u.imagem_url && (
-                        <span className="relative size-12 shrink-0 overflow-hidden rounded-[8px]">
-                          <Image src={u.imagem_url} alt="" fill sizes="48px" className="object-cover" />
-                        </span>
-                      )}
-                      <span className="min-w-0 text-[13px] font-medium">{u.nome}</span>
-                    </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUniformeId(null)}
+                  onMouseMove={seguirCursor}
+                  className={cn(
+                    "lift holofote mb-4 block w-full rounded-card border p-4 text-left",
+                    uniformeId === null
+                      ? "border-accent bg-accent/10"
+                      : "border-line bg-surface/70 hover:border-line-2",
+                  )}
+                >
+                  <span className="block text-[14px] font-medium">Da foto</span>
+                  <span className="mt-1 block text-[11px] leading-relaxed text-muted">
+                    A camisa que o atleta veste na foto do elenco.
+                  </span>
+                </button>
+
+                <div className="space-y-4">
+                  {gruposDeUniforme.map((g) => (
+                    <div key={g.clubeId}>
+                      <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">
+                        {g.nome}
+                        {g.clubeId === clubeDoAtleta?.id && " · clube do atleta"}
+                      </p>
+                      <div className="grid gap-3 min-[420px]:grid-cols-3">
+                        {g.lista.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => setUniformeId(u.id)}
+                            onMouseMove={seguirCursor}
+                            className={cn(
+                              "lift holofote flex items-center gap-3 rounded-card border p-3 text-left",
+                              uniformeId === u.id
+                                ? "border-accent bg-accent/10"
+                                : "border-line bg-surface/70 hover:border-line-2",
+                            )}
+                          >
+                            {u.imagem_url && (
+                              <span className="relative size-12 shrink-0 overflow-hidden rounded-[8px]">
+                                <Image
+                                  src={u.imagem_url}
+                                  alt=""
+                                  fill
+                                  sizes="48px"
+                                  className="object-cover"
+                                />
+                              </span>
+                            )}
+                            <span className="min-w-0 text-[13px] font-medium">{u.nome}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
