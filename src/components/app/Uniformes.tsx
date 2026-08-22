@@ -175,8 +175,15 @@ export function Uniformes({ uniformes, clubes }: { uniformes: Uniforme[]; clubes
           <form ref={formulario} onSubmit={enviar} className="grid gap-5">
             <div>
               <label
+                /*
+                  Altura fixa, e nao proporcao.
+                  Com `aspect-[3/4]` num drawer de ~480px o box virava 640px de
+                  altura: sozinho ele ocupava mais que a tela util e empurrava o
+                  botao de salvar para fora da vista. A proporcao 3:4 e da FOTO,
+                  nao do lugar onde ela e escolhida.
+                */
                 className={cn(
-                  "relative grid aspect-[3/4] w-full cursor-pointer place-items-center overflow-hidden",
+                  "relative grid h-[240px] w-full cursor-pointer place-items-center overflow-hidden",
                   "rounded-card border border-dashed border-line bg-surface-2 text-center",
                   "transition-colors hover:border-accent/50",
                 )}
@@ -187,7 +194,7 @@ export function Uniformes({ uniformes, clubes }: { uniformes: Uniforme[]; clubes
                     alt=""
                     fill
                     sizes="380px"
-                    className="object-cover"
+                    className="object-contain p-2"
                   />
                 )}
                 <span className="relative z-10 grid place-items-center gap-2 rounded-field bg-bg/70 px-4 py-3 backdrop-blur-sm">
