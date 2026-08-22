@@ -134,6 +134,25 @@ function formatarData(iso?: string | null) {
  * proprio, e "Famalicao" no lugar de "Famalicão" e o tipo de erro que so aparece
  * depois de publicado.
  */
+/**
+ * Junta cada item do prompt com as continuacoes indentadas dele.
+ *
+ * Um item comeca em "- " e segue enquanto as linhas vierem recuadas. Tudo que
+ * nao e item — paragrafo, titulo de bloco, linha em branco — vira um pedaco
+ * proprio e atravessa intacto.
+ */
+function agruparItens(texto: string): string[] {
+  const itens: string[] = [];
+  for (const linha of texto.split("\n")) {
+    const anterior = itens[itens.length - 1];
+    const continua =
+      /^\s+\S/.test(linha) && anterior !== undefined && anterior.startsWith("- ");
+    if (continua) itens[itens.length - 1] = `${anterior}\n${linha}`;
+    else itens.push(linha);
+  }
+  return itens;
+}
+
 export function montarPrompt(promptMae: string, t: Textos): string {
   const valores: Record<string, string> = {
     nome: t.nome.trim(),
@@ -153,10 +172,31 @@ export function montarPrompt(promptMae: string, t: Textos): string {
   const temMarcador = marcador.test(promptMae);
   marcador.lastIndex = 0; // regex global guarda posicao entre chamadas
 
-  const comValores = promptMae.replace(
-    marcador,
-    (_, chave: string) => valores[chave] ?? "",
-  );
+  /**
+   * Campo vazio derruba a LINHA inteira, em vez de virar `""` no prompt.
+   *
+   * Substituir um marcador vazio deixava a instrucao assim:
+   *     - Confronto: "" x "Flamengo"
+   * e o modelo, obediente, desenhava alguma coisa no lugar do vazio. Saiu
+   * "VS ≡≡ X FLAMENGO" numa arte e '" | "VASCO"' em outra — glifos inventados
+   * para preencher um buraco que so existia porque o prompt pediu.
+   *
+   * As duas artes tinham `clube` nulo no banco. O prompt ja mandava "omitir
+   * qualquer campo que chegue vazio", mas instrucao generica perde para o `""`
+   * concreto ali na linha. Tirar a linha nao deixa buraco a preencher.
+   *
+   * A unidade e o ITEM, nao a linha fisica: os prompts quebram as frases longas
+   * em linhas indentadas, e derrubar so a primeira deixaria a continuacao orfa.
+   */
+  const itens = agruparItens(promptMae);
+  const comValores = itens
+    .filter((item) => {
+      const usados = [...item.matchAll(new RegExp(marcador.source, "g"))].map((m) => m[1]);
+      /* item sem marcador e texto fixo do prompt: passa sempre */
+      return usados.length === 0 || usados.every((c) => valores[c]);
+    })
+    .join("\n")
+    .replace(marcador, (_, chave: string) => valores[chave] ?? "");
 
   if (temMarcador) return comValores;
 
