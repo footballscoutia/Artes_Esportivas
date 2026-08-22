@@ -5,7 +5,15 @@ import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
 import { sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
-import { FORMATO_META, TIPO_META, type Formato, type PosicaoLogo, type Tipo } from "./types";
+import {
+  FORMATO_META,
+  POSICAO_LOGO_ROTULO,
+  TIPO_META,
+  type Formato,
+  type LogoModo,
+  type PosicaoLogo,
+  type Tipo,
+} from "./types";
 
 /**
  * O caminho unico de "pedir uma arte ao modelo e guardar o resultado".
@@ -88,6 +96,9 @@ type Textos = {
   clube?: string | null;
   frase?: string | null;
   rotulo: string;
+  /** Muda a ultima instrucao do bloco: so o carimbo precisa de canto reservado. */
+  logoModo?: LogoModo;
+  posicaoLogo?: PosicaoLogo;
 } & DadosDoJogo;
 
 const DIAS = ["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"];
@@ -161,8 +172,21 @@ export function montarPrompt(promptMae: string, t: Textos): string {
   if (valores.frase) linhas.push(`- Frase do atleta: "${valores.frase}" — em itálico.`);
   linhas.push(
     `Nenhum outro texto na imagem. Não inventar palavras, números nem escudos de clube.`,
-    `Deixar o canto inferior direito limpo: a logo da agência entra ali por cima.`,
   );
+
+  /**
+   * O canto reservado so faz sentido no carimbo.
+   *
+   * Esta linha era fixa em "canto inferior direito", de quando havia um jeito
+   * so de por logo. Ficou mentindo duas vezes: pedia canto livre mesmo quando a
+   * geracao nao ia levar logo nenhuma, e apontava o canto errado quando a
+   * pessoa escolhia outro. No modo `ia` nao ha canto a reservar — a instrucao
+   * de integrar a logo vai junto da propria imagem dela, no provider.
+   */
+  if (t.logoModo === "carimbo") {
+    const canto = POSICAO_LOGO_ROTULO[t.posicaoLogo ?? "inferior-direito"].toLowerCase();
+    linhas.push(`Deixar o canto ${canto} limpo: a logo da agência entra ali por cima.`);
+  }
 
   return `${comValores}\n\n${linhas.join("\n")}`;
 }
@@ -177,6 +201,7 @@ export async function produzirArte({
   clubes = [],
   marcaLogo = null,
   posicaoLogo = "inferior-direito",
+  logoModo = "ia",
   ...jogo
 }: {
   tipo: Tipo;
@@ -187,9 +212,11 @@ export async function produzirArte({
   foto?: Buffer | null;
   /** Clube do atleta e, em matchday, o adversario. Nesta ordem. */
   clubes?: ClubeNaArte[];
-  /** Bytes da marca a carimbar. Nulo = a org ainda nao cadastrou nenhuma. */
+  /** Bytes da marca escolhida. Nulo = a org ainda nao cadastrou nenhuma. */
   marcaLogo?: Buffer | null;
   posicaoLogo?: PosicaoLogo;
+  /** Quem posiciona a logo: o modelo ('ia'), o codigo ('carimbo'), ou ninguem. */
+  logoModo?: LogoModo;
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
@@ -213,14 +240,24 @@ export async function produzirArte({
   const sufixo = formato === "feed_4x5" ? "feed" : "story";
   const provider = pegarProvider(`/mock/fundo-${tipo}-${sufixo}.png`);
 
+  /* A logo segue por UM dos dois caminhos, nunca pelos dois: ou ela vai no
+     pedido para o modelo integrar, ou fica para o `compor` colar depois. Ir
+     pelos dois imprimiria a marca duas vezes na mesma arte. */
+  const usaLogo = marcaLogo && logoModo !== "nenhuma";
+  const logoParaOModelo = usaLogo && logoModo === "ia" ? marcaLogo : null;
+  const logoParaCarimbar = usaLogo && logoModo === "carimbo" ? marcaLogo : null;
+
   const gerado = await provider.gerar({
     referencia: refBuffer,
+    logo: logoParaOModelo,
     foto: foto ?? null,
     prompt: montarPrompt(referencia.prompt_mae, {
       nome,
       clube,
       frase,
       rotulo: TIPO_META[tipo].rotulo,
+      logoModo,
+      posicaoLogo,
       ...jogo,
     }) + blocoDeClubes(clubes),
     escudos: clubes
@@ -230,8 +267,13 @@ export async function produzirArte({
     altura: Math.round(alvo.h * FOLGA),
   });
 
-  // corte para o formato final e a logo por cima
-  const final = await compor({ fundo: gerado.imagem, formato, logo: marcaLogo, posicaoLogo });
+  // corte para o formato final; a logo so entra aqui no modo carimbo
+  const final = await compor({
+    fundo: gerado.imagem,
+    formato,
+    logo: logoParaCarimbar,
+    posicaoLogo,
+  });
 
   /**
    * Guarda tambem o que o modelo devolveu sem corte e sem logo. Serve para

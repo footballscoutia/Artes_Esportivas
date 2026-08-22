@@ -18,6 +18,15 @@ import { Card, Chip } from "@/components/ui/Card";
 import { Campo, Input, Select, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
 import { criarPedido } from "@/lib/acoes";
+import {
+  LOGO_MODOS,
+  LOGO_MODO_META,
+  POSICOES_LOGO,
+  POSICAO_LOGO_ROTULO,
+  type LogoModo,
+  type Marca,
+  type PosicaoLogo,
+} from "@/lib/types";
 import { Orb, OrbMini } from "@/components/art/Orb";
 import {
   FORMATOS,
@@ -43,6 +52,9 @@ type Resultado = {
   referencia_versao: number;
   marca_id: string | null;
   posicao_logo: string;
+  /* o que a geracao REALMENTE fez com a logo — pode diferir do pedido, porque
+     sem marca cadastrada o servidor rebaixa o modo para "nenhuma" */
+  logo_modo: LogoModo;
 };
 
 /* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
@@ -54,13 +66,32 @@ const ETAPAS_GERACAO = [
   "Aplicando o corte e a logo",
 ];
 
-export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: Clube[] }) {
+export function NovaArte({
+  jogadores,
+  clubes,
+  marcas,
+}: {
+  jogadores: Jogador[];
+  clubes: Clube[];
+  marcas: Marca[];
+}) {
   const router = useRouter();
   const [passo, setPasso] = useState(0);
   const [tipo, setTipo] = useState<Tipo | null>(null);
   const [jogadorId, setJogadorId] = useState<string | null>(null);
   const [adversarioId, setAdversarioId] = useState<string | null>(null);
   const [formato, setFormato] = useState<Formato>("feed_4x5");
+  /**
+   * A logo, escolhida por geracao.
+   *
+   * Comeca na primeira marca cadastrada porque quase toda agencia tem uma so, e
+   * o modo comeca em `ia`: quem sabe onde sobra espaco e quem compos a imagem.
+   * Sem marca nenhuma, o modo cai para "nenhuma" e o bloco some da tela — nao
+   * ha o que escolher.
+   */
+  const [marcaId, setMarcaId] = useState<string | null>(marcas[0]?.id ?? null);
+  const [logoModo, setLogoModo] = useState<LogoModo>(marcas.length ? "ia" : "nenhuma");
+  const [posicaoLogo, setPosicaoLogo] = useState<PosicaoLogo>("inferior-direito");
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
@@ -139,6 +170,9 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
     if (jogadorId) body.set("jogador_id", jogadorId);
     if (clubeDoAtleta) body.set("clube_id", clubeDoAtleta.id);
     if (adversarioId) body.set("adversario_id", adversarioId);
+    body.set("logo_modo", logoModo);
+    if (marcaId && logoModo !== "nenhuma") body.set("marca_id", marcaId);
+    if (logoModo === "carimbo") body.set("posicao_logo", posicaoLogo);
 
     try {
       const r = await fetch("/api/gerar", { method: "POST", body });
@@ -182,6 +216,7 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
       duracao_ms: Math.round(resultado.duracao_ms),
       marca_id: resultado.marca_id,
       posicao_logo: resultado.posicao_logo,
+      logo_modo: resultado.logo_modo,
     });
 
     if (!r.ok) {
@@ -285,6 +320,79 @@ export function NovaArte({ jogadores, clubes }: { jogadores: Jogador[]; clubes: 
                 })}
               </div>
             </div>
+
+            {/*
+              A logo, escolhida por arte e não por conta.
+              A escolha some quando não há marca cadastrada: oferecer três modos
+              de aplicar uma logo que não existe é oferecer trabalho.
+            */}
+            {marcas.length > 0 && (
+              <div>
+                <p className="mb-3 text-[13px] font-medium">
+                  Logo <span className="text-muted-2">quem decide onde ela entra</span>
+                </p>
+
+                <div className="grid gap-3 min-[420px]:grid-cols-3">
+                  {LOGO_MODOS.map((modo) => {
+                    const m = LOGO_MODO_META[modo];
+                    const ativo = logoModo === modo;
+                    return (
+                      <button
+                        key={modo}
+                        type="button"
+                        onClick={() => setLogoModo(modo)}
+                        onMouseMove={seguirCursor}
+                        className={cn(
+                          "lift holofote rounded-card border p-4 text-left",
+                          ativo
+                            ? "border-accent bg-accent/10"
+                            : "border-line bg-surface/70 hover:border-line-2",
+                        )}
+                      >
+                        <span className="block text-[14px] font-medium">{m.titulo}</span>
+                        <span className="mt-1 block text-[11px] leading-relaxed text-muted">
+                          {m.dica}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {logoModo !== "nenhuma" && marcas.length > 1 && (
+                  <div className="mt-3">
+                    <Campo rotulo="Qual logo">
+                      <Select
+                        value={marcaId ?? ""}
+                        onChange={(e) => setMarcaId(e.target.value || null)}
+                      >
+                        {marcas.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </Campo>
+                  </div>
+                )}
+
+                {logoModo === "carimbo" && (
+                  <div className="mt-3">
+                    <Campo rotulo="Em qual canto" dica="escolhido antes de a arte existir">
+                      <Select
+                        value={posicaoLogo}
+                        onChange={(e) => setPosicaoLogo(e.target.value as PosicaoLogo)}
+                      >
+                        {POSICOES_LOGO.map((p) => (
+                          <option key={p} value={p}>
+                            {POSICAO_LOGO_ROTULO[p]}
+                          </option>
+                        ))}
+                      </Select>
+                    </Campo>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <p className="mb-3 text-[13px] font-medium">

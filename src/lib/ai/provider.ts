@@ -19,6 +19,15 @@ export type GenInput = {
    * ninguem confere.
    */
   escudos?: Array<{ rotulo: string; imagem: Buffer }>;
+  /**
+   * Logo da agencia, para o MODELO integrar na composicao.
+   *
+   * So vem preenchida no modo `ia`. No modo `carimbo` a logo nao passa por
+   * aqui: ela e colada depois, em codigo, sobre a imagem pronta. A diferenca
+   * decide qual erro e possivel — o modelo acerta o lugar e pode errar a forma;
+   * o codigo acerta a forma e escolhe o lugar as cegas.
+   */
+  logo?: Buffer | null;
   /** Prompt-mae da referencia. O usuario nunca escreve isto. */
   prompt: string;
   /** Resolucao pedida ao modelo — maior que o formato final, o corte vem depois. */

@@ -107,15 +107,19 @@ export async function materiaisDaArte({
  * de escolha manual, isto vira so o valor inicial do seletor — nao muda quem
  * chama.
  */
-export async function marcaPadraoDaOrg(): Promise<{ id: string; bytes: Buffer } | null> {
+export async function marcaPadraoDaOrg(
+  marcaId?: string | null,
+): Promise<{ id: string; bytes: Buffer } | null> {
   const sb = await criarClienteServidor();
-  const { data } = await sb
-    .from("marcas")
-    .select("id, imagem_url")
-    .eq("ativa", true)
-    .order("criado_em")
-    .limit(1)
-    .maybeSingle();
+
+  /* Com id, e a marca que a pessoa escolheu na tela. Sem id, a mais antiga
+     ativa — que e o comportamento de sempre e serve as orgs de uma marca so.
+     O filtro de org nao entra aqui: a RLS de `marcas` ja recorta por org, e um
+     id de outra agencia simplesmente nao devolve linha. */
+  const consulta = sb.from("marcas").select("id, imagem_url").eq("ativa", true);
+  const { data } = marcaId
+    ? await consulta.eq("id", marcaId).maybeSingle()
+    : await consulta.order("criado_em").limit(1).maybeSingle();
 
   if (!data) return null;
 

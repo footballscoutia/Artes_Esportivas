@@ -190,6 +190,25 @@ export const POSICOES_LOGO = [
 ] as const;
 export type PosicaoLogo = (typeof POSICOES_LOGO)[number];
 
+/**
+ * Como a logo entra na arte. Os dois modos falham de maneiras opostas, e por
+ * isso os dois ficam — nao ha modo certo, ha o que cada arte pede.
+ */
+export const LOGO_MODOS = ["ia", "carimbo", "nenhuma"] as const;
+export type LogoModo = (typeof LOGO_MODOS)[number];
+
+export const LOGO_MODO_META: Record<LogoModo, { titulo: string; dica: string }> = {
+  ia: {
+    titulo: "A IA posiciona",
+    dica: "A logo vai junto no pedido e o modelo a integra onde couber melhor, com a luz da arte. Quem escolhe o lugar viu a imagem.",
+  },
+  carimbo: {
+    titulo: "Canto fixo",
+    dica: "O código cola a logo original por cima, num canto que você escolhe. A forma sai exata, mas o lugar é escolhido antes de a arte existir.",
+  },
+  nenhuma: { titulo: "Sem logo", dica: "A arte sai limpa." },
+};
+
 export const POSICAO_LOGO_ROTULO: Record<PosicaoLogo, string> = {
   "inferior-direito": "Inferior direito",
   "inferior-esquerdo": "Inferior esquerdo",

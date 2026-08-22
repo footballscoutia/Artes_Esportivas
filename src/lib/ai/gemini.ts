@@ -32,7 +32,15 @@ export class GeminiProvider implements ImageGenProvider {
     this.modelo = modelo;
   }
 
-  async gerar({ referencia, foto, escudos, prompt, largura, altura }: GenInput): Promise<GenResult> {
+  async gerar({
+    referencia,
+    foto,
+    escudos,
+    logo,
+    prompt,
+    largura,
+    altura,
+  }: GenInput): Promise<GenResult> {
     const inicio = Date.now();
 
     const partes: Array<Record<string, unknown>> = [];
@@ -50,6 +58,30 @@ export class GeminiProvider implements ImageGenProvider {
         inlineData: { mimeType: "image/png", data: escudo.imagem.toString("base64") },
       });
     }
+    /**
+     * A logo entra DEPOIS dos escudos e antes do prompt-mae.
+     *
+     * A ordem nao e enfeite: o modelo le as partes em sequencia, e a logo
+     * precisa chegar ja tendo passado a foto e os escudos, para nao competir
+     * com eles pela mesma instrucao de "reproduza fielmente". Colocada por
+     * ultimo entre as imagens, ela e a que fica mais perto do texto que manda
+     * integra-la na composicao.
+     *
+     * O pedido e explicito em nao redesenhar. Um teste com a logo real (letra
+     * cursiva metalica, com boneco) voltou fiel e bem posicionada, no ceu vazio
+     * do topo — mas fidelidade de logo varia por geracao, e por isso o modo
+     * `carimbo` continua existindo para quando a forma exata for inegociavel.
+     */
+    if (logo) {
+      partes.push({
+        text: "Logo da agência. Reproduzir EXATAMENTE como está — mesmas letras, mesmas cores, mesmas proporções, sem redesenhar nem estilizar:",
+      });
+      partes.push({ inlineData: { mimeType: "image/png", data: logo.toString("base64") } });
+      partes.push({
+        text: "Integrar essa logo na arte, no ponto da composição em que ela fique legível e não cubra o atleta nem os escudos. Tamanho discreto, como assinatura da agência. Não repetir a logo em mais de um lugar.",
+      });
+    }
+
     partes.push({ text: prompt });
 
     try {

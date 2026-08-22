@@ -11,7 +11,16 @@ import { produzirArte, SemReferencia } from "./gerar";
 import { materiaisDaArte, marcaPadraoDaOrg } from "./materiais";
 import { paletaDoEscudo, type Paleta } from "./paleta";
 import { BALDE, baixar, subir } from "./storage";
-import { FORMATOS, POSICOES_LOGO, TIPOS, type Formato, type PosicaoLogo, type Tipo } from "./types";
+import {
+  FORMATOS,
+  LOGO_MODOS,
+  POSICOES_LOGO,
+  TIPOS,
+  type Formato,
+  type LogoModo,
+  type PosicaoLogo,
+  type Tipo,
+} from "./types";
 
 /**
  * Escrita. Tudo que muda o banco passa por aqui.
@@ -69,6 +78,8 @@ const Novo = z.object({
   posicao_logo: z
     .enum(["inferior-direito", "inferior-esquerdo", "superior-direito", "superior-esquerdo", "nenhuma"])
     .nullish(),
+  /** Quem posicionou a logo nesta geracao. Vem do /api/gerar, nao e escolha nova aqui. */
+  logo_modo: z.enum(LOGO_MODOS).nullish(),
 });
 
 /** Grava o pedido e a primeira geracao. E o "Salvar na biblioteca" do /novo. */
@@ -124,6 +135,7 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
     duracao_ms: p.data.duracao_ms ?? null,
     marca_id: p.data.marca_id || null,
     posicao_logo: p.data.posicao_logo || null,
+    logo_modo: p.data.logo_modo || "nenhuma",
   });
 
   if (erroGeracao) {
@@ -171,6 +183,30 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
      * arte nenhuma; sem os escudos ela sai com a cor de outro time. O pedido
      * guarda o caminho antigo da foto para os que nasceram antes do elenco.
      */
+    /**
+     * "Gerar outra" repete a ESCOLHA de logo da tentativa anterior.
+     *
+     * Sem isto ela caia no padrao antigo — marca padrao, canto inferior
+     * direito — e a segunda tentativa saia diferente da primeira em algo que
+     * ninguem pediu para mudar. Quem clica "gerar outra" quer variar a arte,
+     * nao a assinatura.
+     */
+    const { data: anterior } = await sb
+      .from("geracoes")
+      .select("marca_id, logo_modo, posicao_logo")
+      .eq("pedido_id", pedidoId)
+      .order("criado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const logoModo = (anterior?.logo_modo as LogoModo | null) ?? "ia";
+    /* a coluna aceita 'nenhuma', que nao e um canto — normaliza aqui, uma vez,
+       para o resto do fluxo so lidar com cantos de verdade */
+    const cantoAnterior = anterior?.posicao_logo as string | null;
+    const posicaoLogo: PosicaoLogo = POSICOES_LOGO.includes(cantoAnterior as PosicaoLogo)
+      ? (cantoAnterior as PosicaoLogo)
+      : "inferior-direito";
+
     const [{ foto, clubes }, marca] = await Promise.all([
       materiaisDaArte({
         jogador_id: pedido.jogador_id,
@@ -178,7 +214,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
         adversario_id: pedido.adversario_id,
         foto_path: pedido.foto_jogador_url,
       }),
-      marcaPadraoDaOrg(),
+      logoModo === "nenhuma" ? null : marcaPadraoDaOrg(anterior?.marca_id ?? null),
     ]);
 
     const arte = await produzirArte({
@@ -195,6 +231,8 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       campeonato: pedido.campeonato,
       estadio: pedido.estadio,
       marcaLogo: marca?.bytes ?? null,
+      logoModo,
+      posicaoLogo,
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
@@ -207,7 +245,8 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       custo_usd: arte.custo_usd,
       duracao_ms: arte.duracao_ms,
       marca_id: marca?.id ?? null,
-      posicao_logo: marca ? "inferior-direito" : "nenhuma",
+      logo_modo: marca ? logoModo : "nenhuma",
+      posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
     });
 
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);
@@ -253,7 +292,7 @@ export async function recompor(entrada: unknown): Promise<Resultado> {
   const [{ data: geracao }, { data: pedido }] = await Promise.all([
     sb
       .from("geracoes")
-      .select("fundo_url, modelo, org_id")
+      .select("fundo_url, modelo, org_id, logo_modo")
       .eq("id", p.data.geracao_id)
       .eq("pedido_id", p.data.pedido_id)
       .maybeSingle(),
@@ -261,6 +300,21 @@ export async function recompor(entrada: unknown): Promise<Resultado> {
   ]);
 
   if (!geracao?.fundo_url) return falha("Não achei o fundo desta geração para recompor.");
+
+  /**
+   * Logo desenhada pelo modelo nao se move.
+   *
+   * Recompor existe porque a logo era CAMADA: o fundo guardado nao tinha logo
+   * nenhuma, entao trocar de canto era colar de novo, de graca. No modo `ia` a
+   * logo esta nos pixels do fundo — mover exigiria apagar e repintar, ou seja,
+   * uma geracao nova, que custa. Dizer isso e melhor que devolver uma arte com
+   * a logo duas vezes, que e o que aconteceria em silencio.
+   */
+  if (geracao.logo_modo === "ia") {
+    return falha(
+      "Nesta arte a logo foi posicionada pela IA, então ela faz parte da imagem e não dá para movê-la. Gere outra escolhendo \"Canto fixo\" se quiser controlar o lugar.",
+    );
+  }
   if (!pedido) return falha("Pedido não encontrado.");
 
   try {
@@ -636,5 +690,75 @@ export async function pedirRecuperacao(email: string, origem: string): Promise<R
     console.error("[pedirRecuperacao]", r.status, corpo.slice(0, 300));
     return falha("Não consegui enviar agora. Tente de novo em alguns minutos.");
   }
+  return { ok: true, dados: undefined };
+}
+
+/**
+ * Cadastra ou renomeia uma marca.
+ *
+ * Ate aqui a unica logo do sistema tinha entrado por script — nao havia tela,
+ * e "cadastrar a logo do cliente" significava abrir o terminal. Uma tarefa
+ * assim ou nao acontece, ou acontece errado.
+ *
+ * A imagem vai para o bucket privado `marcas`, lido so por URL assinada. PNG
+ * com transparencia e o que funciona: no carimbo, fundo branco vira retangulo
+ * branco sobre a arte; no modo IA, o modelo copia o retangulo tambem.
+ */
+export async function salvarMarca(form: FormData): Promise<Resultado<{ id: string }>> {
+  const id = (form.get("id") as string) || null;
+  const nome = String(form.get("nome") ?? "").trim();
+  if (nome.length < 2) return falha("Dê um nome à marca — o do cliente serve.");
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const arquivo = form.get("imagem");
+  const temImagem = arquivo instanceof File && arquivo.size > 0;
+  if (!id && !temImagem) return falha("Envie a imagem da logo.");
+
+  const campos: Record<string, unknown> = { nome };
+
+  if (temImagem) {
+    try {
+      const bytes = Buffer.from(await arquivo.arrayBuffer());
+      campos.imagem_url = await subir(BALDE.marcas, bytes, arquivo.type || "image/png");
+    } catch (e) {
+      console.error("[salvarMarca] upload:", e);
+      return falha("Não consegui enviar a logo. Tente de novo.");
+    }
+  }
+
+  const sb = await criarClienteServidor();
+
+  if (id) {
+    const { data, error } = await sb.from("marcas").update(campos).eq("id", id).select("id");
+    if (error) return falha(`Não consegui salvar: ${error.message}`);
+    if (!data?.length) return falha("Marca não encontrada.");
+    revalidatePath("/marcas");
+    revalidatePath("/novo");
+    return { ok: true, dados: { id } };
+  }
+
+  const { data, error } = await sb
+    .from("marcas")
+    .insert({ ...campos, criado_por: usuario.id })
+    .select("id")
+    .single();
+
+  if (error || !data) return falha(`Não consegui cadastrar: ${error?.message ?? "sem retorno"}`);
+
+  revalidatePath("/marcas");
+  revalidatePath("/novo");
+  return { ok: true, dados: { id: data.id } };
+}
+
+/** Tira da escolha sem apagar: geracao antiga aponta para esta linha. */
+export async function arquivarMarca(id: string): Promise<Resultado> {
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb.from("marcas").update({ ativa: false }).eq("id", id).select("id");
+  if (error) return falha(`Não consegui arquivar: ${error.message}`);
+  if (!data?.length) return falha("Marca não encontrada.");
+  revalidatePath("/marcas");
+  revalidatePath("/novo");
   return { ok: true, dados: undefined };
 }

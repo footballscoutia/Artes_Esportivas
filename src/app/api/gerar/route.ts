@@ -5,7 +5,16 @@ import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
 import { materiaisDaArte, marcaPadraoDaOrg } from "@/lib/materiais";
 import { BALDE, assinar } from "@/lib/storage";
-import { TIPOS, FORMATOS, type Formato, type Tipo } from "@/lib/types";
+import {
+  TIPOS,
+  FORMATOS,
+  LOGO_MODOS,
+  POSICOES_LOGO,
+  type Formato,
+  type LogoModo,
+  type PosicaoLogo,
+  type Tipo,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -29,6 +38,10 @@ const Corpo = z.object({
   jogador_id: z.string().uuid().optional().nullable(),
   clube_id: z.string().uuid().optional().nullable(),
   adversario_id: z.string().uuid().optional().nullable(),
+  /* a escolha de logo e de cada geracao: qual marca, e quem a posiciona */
+  marca_id: z.string().uuid().optional().nullable(),
+  logo_modo: z.enum(LOGO_MODOS).optional().nullable(),
+  posicao_logo: z.enum(POSICOES_LOGO).optional().nullable(),
 });
 
 /**
@@ -93,6 +106,9 @@ export async function POST(req: Request) {
     jogador_id: form.get("jogador_id") || null,
     clube_id: form.get("clube_id") || null,
     adversario_id: form.get("adversario_id") || null,
+    marca_id: form.get("marca_id") || null,
+    logo_modo: form.get("logo_modo") || null,
+    posicao_logo: form.get("posicao_logo") || null,
   });
 
   if (!parsed.success) {
@@ -102,8 +118,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const { tipo, formato, nome, clube, frase, jogador_id, clube_id, adversario_id, ...jogo } =
-    parsed.data;
+  const {
+    tipo, formato, nome, clube, frase,
+    jogador_id, clube_id, adversario_id,
+    marca_id, logo_modo, posicao_logo,
+    ...jogo
+  } = parsed.data;
+
+  const logoModo: LogoModo = logo_modo ?? "ia";
+  const posicaoLogo: PosicaoLogo = posicao_logo ?? "inferior-direito";
 
   /**
    * A foto e os escudos vem do cadastro, nao do formulario. Foi a mudanca que
@@ -112,7 +135,9 @@ export async function POST(req: Request) {
    */
   const [{ foto, clubes }, marca] = await Promise.all([
     materiaisDaArte({ jogador_id, clube_id, adversario_id }),
-    marcaPadraoDaOrg(),
+    /* sem logo pedida, nem baixa os bytes: buscar a marca para nao usar seria
+       uma ida ao storage por geracao, de graca */
+    logoModo === "nenhuma" ? null : marcaPadraoDaOrg(marca_id),
   ]);
 
   try {
@@ -130,6 +155,8 @@ export async function POST(req: Request) {
       foto,
       clubes,
       marcaLogo: marca?.bytes ?? null,
+      logoModo,
+      posicaoLogo,
       ...jogo,
     });
 
@@ -139,7 +166,10 @@ export async function POST(req: Request) {
       ...arte,
       // a org ainda pode nao ter cadastrado marca nenhuma: nulo e valido
       marca_id: marca?.id ?? null,
-      posicao_logo: marca ? "inferior-direito" : "nenhuma",
+      /* o que a previa REALMENTE fez: sem marca nenhuma, o modo cai para
+         'nenhuma' por mais que a tela tenha pedido outra coisa */
+      logo_modo: marca ? logoModo : "nenhuma",
+      posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
     });
   } catch (e) {
     if (e instanceof SemReferencia) {
