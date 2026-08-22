@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Shield, Sparkles, Stamp, UsersRound } from "lucide-react";
+import { LayoutGrid, Shield, Shirt, Sparkles, Stamp, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SECOES = [
@@ -11,6 +11,7 @@ const SECOES = [
   { href: "/novo", rotulo: "Nova arte", icone: Sparkles },
   { href: "/elenco", rotulo: "Elenco", icone: UsersRound },
   { href: "/clubes", rotulo: "Clubes", icone: Shield },
+  { href: "/uniformes", rotulo: "Uniformes", icone: Shirt },
   { href: "/marcas", rotulo: "Logos", icone: Stamp },
 ];
 

@@ -247,6 +247,22 @@ export const POSICAO_LOGO_ROTULO: Record<PosicaoLogo, string> = {
 };
 
 /**
+ * Foto de referencia de um manto do clube.
+ *
+ * E foto de ALGUEM VESTINDO, e nao desenho da camisa: o modelo precisa ver
+ * como o tecido cai no corpo, onde a manga termina, como a gola se comporta.
+ * Mockup chapado produz camisa chapada.
+ */
+export type Uniforme = {
+  id: string;
+  clube_id: string;
+  nome: string;
+  imagem_url: string | null;
+  ativo: boolean;
+  criado_em: string;
+};
+
+/**
  * Logo que a arte pode levar carimbada. Cada org cadastra a propria — a
  * agencia e cada cliente dela — e escolhe qual entra em cada geracao.
  */

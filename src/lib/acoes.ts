@@ -8,7 +8,7 @@ import { criarClienteAdmin } from "./supabase/admin";
 import { usuarioAtual } from "./dados";
 import { compor } from "./compose";
 import { produzirArte, SemReferencia } from "./gerar";
-import { materiaisDaArte, marcaPadraoDaOrg } from "./materiais";
+import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "./materiais";
 import { paletaDoEscudo, type Paleta } from "./paleta";
 import { BALDE, baixar, subir } from "./storage";
 import {
@@ -81,6 +81,7 @@ const Novo = z.object({
   /** Quem posicionou a logo nesta geracao. Vem do /api/gerar, nao e escolha nova aqui. */
   logo_modo: z.enum(LOGO_MODOS).nullish(),
   logo_cor: z.string().max(20).nullish(),
+  uniforme_id: z.string().uuid().nullish(),
 });
 
 /** Grava o pedido e a primeira geracao. E o "Salvar na biblioteca" do /novo. */
@@ -138,6 +139,7 @@ export async function criarPedido(entrada: unknown): Promise<Resultado<{ id: str
     posicao_logo: p.data.posicao_logo || null,
     logo_modo: p.data.logo_modo || "nenhuma",
     logo_cor: p.data.logo_cor || null,
+    uniforme_id: p.data.uniforme_id || null,
   });
 
   if (erroGeracao) {
@@ -195,7 +197,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
      */
     const { data: anterior } = await sb
       .from("geracoes")
-      .select("marca_id, logo_modo, posicao_logo, logo_cor")
+      .select("marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id")
       .eq("pedido_id", pedidoId)
       .order("criado_em", { ascending: false })
       .limit(1)
@@ -236,6 +238,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       logoModo,
       posicaoLogo,
       logoCor: anterior?.logo_cor ?? null,
+      uniforme: await uniformeDaArte(anterior?.uniforme_id ?? null),
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
@@ -251,6 +254,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       logo_modo: marca ? logoModo : "nenhuma",
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
       logo_cor: marca ? (anterior?.logo_cor ?? null) : null,
+      uniforme_id: anterior?.uniforme_id ?? null,
     });
 
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);
@@ -763,6 +767,74 @@ export async function arquivarMarca(id: string): Promise<Resultado> {
   if (error) return falha(`Não consegui arquivar: ${error.message}`);
   if (!data?.length) return falha("Marca não encontrada.");
   revalidatePath("/marcas");
+  revalidatePath("/novo");
+  return { ok: true, dados: undefined };
+}
+
+/**
+ * Cadastra ou renomeia um uniforme.
+ *
+ * A foto e de ALGUEM VESTINDO, e nao mockup da camisa: o modelo precisa ver
+ * como o tecido cai no corpo. Mockup chapado produz camisa chapada.
+ */
+export async function salvarUniforme(form: FormData): Promise<Resultado<{ id: string }>> {
+  const id = (form.get("id") as string) || null;
+  const clubeId = (form.get("clube_id") as string) || null;
+  const nome = String(form.get("nome") ?? "").trim();
+  if (nome.length < 2) return falha("Dê um nome ao uniforme — \"Titular 2026\" já serve.");
+  if (!id && !clubeId) return falha("Escolha de qual clube é este uniforme.");
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const arquivo = form.get("imagem");
+  const temImagem = arquivo instanceof File && arquivo.size > 0;
+  if (!id && !temImagem) return falha("Envie a foto do uniforme.");
+
+  const campos: Record<string, unknown> = { nome };
+  if (clubeId) campos.clube_id = clubeId;
+
+  if (temImagem) {
+    try {
+      const bytes = Buffer.from(await arquivo.arrayBuffer());
+      campos.imagem_url = await subir(BALDE.uniformes, bytes, arquivo.type || "image/jpeg", "jpg");
+    } catch (e) {
+      console.error("[salvarUniforme] upload:", e);
+      return falha("Não consegui enviar a foto. Tente de novo.");
+    }
+  }
+
+  const sb = await criarClienteServidor();
+
+  if (id) {
+    const { data, error } = await sb.from("uniformes").update(campos).eq("id", id).select("id");
+    if (error) return falha(`Não consegui salvar: ${error.message}`);
+    if (!data?.length) return falha("Uniforme não encontrado.");
+    revalidatePath("/uniformes");
+    revalidatePath("/novo");
+    return { ok: true, dados: { id } };
+  }
+
+  const { data, error } = await sb
+    .from("uniformes")
+    .insert({ ...campos, criado_por: usuario.id })
+    .select("id")
+    .single();
+
+  if (error || !data) return falha(`Não consegui cadastrar: ${error?.message ?? "sem retorno"}`);
+
+  revalidatePath("/uniformes");
+  revalidatePath("/novo");
+  return { ok: true, dados: { id: data.id } };
+}
+
+/** Tira da escolha sem apagar: geracao antiga aponta para esta linha. */
+export async function arquivarUniforme(id: string): Promise<Resultado> {
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb.from("uniformes").update({ ativo: false }).eq("id", id).select("id");
+  if (error) return falha(`Não consegui arquivar: ${error.message}`);
+  if (!data?.length) return falha("Uniforme não encontrado.");
+  revalidatePath("/uniformes");
   revalidatePath("/novo");
   return { ok: true, dados: undefined };
 }

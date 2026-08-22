@@ -12,6 +12,7 @@ import type {
   Pedido,
   Referencia,
   Tipo,
+  Uniforme,
   Usuario,
 } from "./types";
 
@@ -232,6 +233,29 @@ export async function listarMarcas(): Promise<Marca[]> {
   const linhas = (data ?? []) as Marca[];
   const urls = await assinarVarios(BALDE.marcas, linhas.map((m) => m.imagem_url));
   return linhas.map((m, i) => ({ ...m, imagem_url: urls[i] }));
+}
+
+/**
+ * Os mantos cadastrados, com a foto pronta para exibir.
+ *
+ * Todos de uma vez e nao por clube: a tela de gerar precisa filtrar pelo clube
+ * do atleta enquanto a pessoa troca de atleta, e uma consulta por troca seria
+ * ida ao servidor para responder algo que ja cabe na memoria.
+ */
+export async function listarUniformes(): Promise<Uniforme[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("uniformes")
+    .select("id, clube_id, nome, imagem_url, ativo, criado_em")
+    .eq("ativo", true)
+    .order("criado_em");
+
+  estourar("listar os uniformes", error);
+  const linhas = (data ?? []) as Uniforme[];
+  const urls = await assinarVarios(BALDE.uniformes, linhas.map((u) => u.imagem_url));
+  return linhas.map((u, i) => ({ ...u, imagem_url: urls[i] }));
 }
 
 /** Os clubes cadastrados, com o escudo pronto para exibir. */

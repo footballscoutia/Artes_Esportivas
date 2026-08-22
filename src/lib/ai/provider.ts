@@ -28,6 +28,15 @@ export type GenInput = {
    * o codigo acerta a forma e escolhe o lugar as cegas.
    */
   logo?: Buffer | null;
+  /**
+   * Foto de alguem vestindo o manto que o atleta deve usar.
+   *
+   * Vai como IMAGEM pelo mesmo motivo do escudo: camisa descrita em texto sai
+   * desenhada de memoria, e camisa de memoria parece certa — as cores batem, as
+   * faixas quase batem, e ninguem confere o patrocinio. Nulo = a camisa sai da
+   * foto do atleta, que e o comportamento de sempre.
+   */
+  uniforme?: Buffer | null;
   /** Prompt-mae da referencia. O usuario nunca escreve isto. */
   prompt: string;
   /** Resolucao pedida ao modelo — maior que o formato final, o corte vem depois. */

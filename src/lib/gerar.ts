@@ -201,6 +201,7 @@ export async function produzirArte({
   frase,
   foto,
   clubes = [],
+  uniforme = null,
   marcaLogo = null,
   posicaoLogo = "inferior-direito",
   logoModo = "ia",
@@ -215,6 +216,8 @@ export async function produzirArte({
   foto?: Buffer | null;
   /** Clube do atleta e, em matchday, o adversario. Nesta ordem. */
   clubes?: ClubeNaArte[];
+  /** Foto do manto que o atleta deve vestir. Nulo = a camisa vem da foto dele. */
+  uniforme?: Buffer | null;
   /** Bytes da marca escolhida. Nulo = a org ainda nao cadastrou nenhuma. */
   marcaLogo?: Buffer | null;
   posicaoLogo?: PosicaoLogo;
@@ -271,6 +274,7 @@ export async function produzirArte({
 
   const gerado = await provider.gerar({
     referencia: refBuffer,
+    uniforme,
     logo: logoPintada,
     foto: foto ?? null,
     prompt: montarPrompt(referencia.prompt_mae, {

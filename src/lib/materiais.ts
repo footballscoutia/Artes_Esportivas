@@ -20,6 +20,30 @@ export type MateriaisDaArte = {
   clubes: ClubeNaArte[];
 };
 
+/**
+ * A foto do manto escolhido, pronta para ir ao modelo.
+ *
+ * Nao derruba a geracao se nao vier: arte com a camisa da foto do atleta ainda
+ * serve, e abortar deixaria a pessoa sem nada por causa de um JPEG.
+ */
+export async function uniformeDaArte(uniformeId?: string | null): Promise<Buffer | null> {
+  if (!uniformeId) return null;
+
+  const sb = await criarClienteServidor();
+  const { data } = await sb
+    .from("uniformes")
+    .select("imagem_url")
+    .eq("id", uniformeId)
+    .eq("ativo", true)
+    .maybeSingle();
+
+  if (!data?.imagem_url) return null;
+  return baixar(BALDE.uniformes, data.imagem_url).catch((e) => {
+    console.error("[materiais] uniforme nao veio:", e);
+    return null;
+  });
+}
+
 type LinhaClube = {
   id: string;
   nome: string;

@@ -17,6 +17,7 @@ export const BALDE = {
   geracoes: "geracoes",
   referencias: "referencias",
   marcas: "marcas",
+  uniformes: "uniformes",
 } as const;
 
 type Balde = (typeof BALDE)[keyof typeof BALDE];

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GenError } from "@/lib/ai";
 import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
-import { materiaisDaArte, marcaPadraoDaOrg } from "@/lib/materiais";
+import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "@/lib/materiais";
 import { BALDE, assinar } from "@/lib/storage";
 import {
   TIPOS,
@@ -43,6 +43,8 @@ const Corpo = z.object({
   marca_id: z.string().uuid().optional().nullable(),
   logo_modo: z.enum(LOGO_MODOS).optional().nullable(),
   posicao_logo: z.enum(POSICOES_LOGO).optional().nullable(),
+  /* qual manto o atleta veste; nulo = a camisa vem da foto dele */
+  uniforme_id: z.string().uuid().optional().nullable(),
   /* preset ("original"/"auto"/"branca"/"preta") ou hex escolhido na tela */
   logo_cor: z
     .string()
@@ -117,6 +119,7 @@ export async function POST(req: Request) {
     logo_modo: form.get("logo_modo") || null,
     posicao_logo: form.get("posicao_logo") || null,
     logo_cor: form.get("logo_cor") || null,
+    uniforme_id: form.get("uniforme_id") || null,
   });
 
   if (!parsed.success) {
@@ -129,7 +132,7 @@ export async function POST(req: Request) {
   const {
     tipo, formato, nome, clube, frase,
     jogador_id, clube_id, adversario_id,
-    marca_id, logo_modo, posicao_logo, logo_cor,
+    marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id,
     ...jogo
   } = parsed.data;
 
@@ -145,11 +148,12 @@ export async function POST(req: Request) {
    * tirou o upload de toda geracao: o atleta ja esta no elenco com a foto boa,
    * e repetir o upload semanal era a chance de subir a foto ruim.
    */
-  const [{ foto, clubes }, marca] = await Promise.all([
+  const [{ foto, clubes }, marca, uniforme] = await Promise.all([
     materiaisDaArte({ jogador_id, clube_id, adversario_id }),
     /* sem logo pedida, nem baixa os bytes: buscar a marca para nao usar seria
        uma ida ao storage por geracao, de graca */
     logoModo === "nenhuma" ? null : marcaPadraoDaOrg(marca_id),
+    uniformeDaArte(uniforme_id),
   ]);
 
   try {
@@ -166,6 +170,7 @@ export async function POST(req: Request) {
       frase,
       foto,
       clubes,
+      uniforme,
       marcaLogo: marca?.bytes ?? null,
       logoModo,
       posicaoLogo,
@@ -184,6 +189,7 @@ export async function POST(req: Request) {
       logo_modo: marca ? logoModo : "nenhuma",
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
       logo_cor: marca ? (logo_cor ?? "original") : null,
+      uniforme_id: uniforme ? uniforme_id : null,
     });
   } catch (e) {
     if (e instanceof SemReferencia) {

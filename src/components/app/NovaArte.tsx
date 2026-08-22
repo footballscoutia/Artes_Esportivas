@@ -28,6 +28,7 @@ import {
   type LogoCorPreset,
   type LogoModo,
   type Marca,
+  type Uniforme,
   type PosicaoLogo,
 } from "@/lib/types";
 import { Orb, OrbMini } from "@/components/art/Orb";
@@ -59,6 +60,7 @@ type Resultado = {
      sem marca cadastrada o servidor rebaixa o modo para "nenhuma" */
   logo_modo: LogoModo;
   logo_cor: string | null;
+  uniforme_id: string | null;
 };
 
 /* O que o usuario ve enquanto espera. Sao as etapas reais, na ordem real: uma
@@ -74,10 +76,12 @@ export function NovaArte({
   jogadores,
   clubes,
   marcas,
+  uniformes,
 }: {
   jogadores: Jogador[];
   clubes: Clube[];
   marcas: Marca[];
+  uniformes: Uniforme[];
 }) {
   const router = useRouter();
   const [passo, setPasso] = useState(0);
@@ -99,6 +103,7 @@ export function NovaArte({
   /* preset nomeado, ou "hex" quando a pessoa abre o seletor de cor */
   const [logoCor, setLogoCor] = useState<LogoCorPreset | "hex">("original");
   const [logoHex, setLogoHex] = useState("#FFFFFF");
+  const [uniformeId, setUniformeId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
@@ -142,6 +147,7 @@ export function NovaArte({
   const meta = tipo ? TIPO_META[tipo] : null;
   const jogador = jogadores.find((j) => j.id === jogadorId) ?? null;
   const clubeDoAtleta = clubes.find((c) => c.id === jogador?.clube_id) ?? null;
+  const uniformesDoClube = uniformes.filter((u) => u.clube_id === clubeDoAtleta?.id);
   // matchday sem adversario e data faria o modelo inventar a partida
   const jogoOk = !meta?.exigeJogo || Boolean(jogo.adversario.trim() && jogo.data_jogo);
   /**
@@ -182,6 +188,12 @@ export function NovaArte({
     if (logoModo === "carimbo") body.set("posicao_logo", posicaoLogo);
     if (logoModo !== "nenhuma") {
       body.set("logo_cor", logoCor === "hex" ? logoHex : logoCor);
+    }
+    /* So manda se o manto for MESMO do clube em campo: trocar de atleta depois
+       de escolher deixaria o id apontando para a camisa de outro time, e o
+       modelo obedeceria sem reclamar. */
+    if (uniformeId && uniformesDoClube.some((u) => u.id === uniformeId)) {
+      body.set("uniforme_id", uniformeId);
     }
 
     try {
@@ -228,6 +240,7 @@ export function NovaArte({
       posicao_logo: resultado.posicao_logo,
       logo_modo: resultado.logo_modo,
       logo_cor: resultado.logo_cor,
+      uniforme_id: resultado.uniforme_id,
     });
 
     if (!r.ok) {
@@ -461,6 +474,58 @@ export function NovaArte({
                     </Campo>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/*
+              Só os mantos do clube do atleta: uniforme do adversário aqui seria
+              oferecer o erro. Some quando o clube não tem nenhum cadastrado —
+              não há escolha a fazer, e a camisa continua vindo da foto.
+            */}
+            {uniformesDoClube.length > 0 && (
+              <div>
+                <p className="mb-3 text-[13px] font-medium">
+                  Uniforme <span className="text-muted-2">o manto desta arte</span>
+                </p>
+                <div className="grid gap-3 min-[420px]:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => setUniformeId(null)}
+                    onMouseMove={seguirCursor}
+                    className={cn(
+                      "lift holofote rounded-card border p-4 text-left",
+                      uniformeId === null
+                        ? "border-accent bg-accent/10"
+                        : "border-line bg-surface/70 hover:border-line-2",
+                    )}
+                  >
+                    <span className="block text-[14px] font-medium">Da foto</span>
+                    <span className="mt-1 block text-[11px] leading-relaxed text-muted">
+                      A camisa que o atleta veste na foto do elenco.
+                    </span>
+                  </button>
+                  {uniformesDoClube.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => setUniformeId(u.id)}
+                      onMouseMove={seguirCursor}
+                      className={cn(
+                        "lift holofote flex items-center gap-3 rounded-card border p-3 text-left",
+                        uniformeId === u.id
+                          ? "border-accent bg-accent/10"
+                          : "border-line bg-surface/70 hover:border-line-2",
+                      )}
+                    >
+                      {u.imagem_url && (
+                        <span className="relative size-12 shrink-0 overflow-hidden rounded-[8px]">
+                          <Image src={u.imagem_url} alt="" fill sizes="48px" className="object-cover" />
+                        </span>
+                      )}
+                      <span className="min-w-0 text-[13px] font-medium">{u.nome}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

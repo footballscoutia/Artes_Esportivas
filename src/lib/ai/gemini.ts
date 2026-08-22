@@ -36,6 +36,7 @@ export class GeminiProvider implements ImageGenProvider {
     referencia,
     foto,
     escudos,
+    uniforme,
     logo,
     prompt,
     largura,
@@ -52,6 +53,22 @@ export class GeminiProvider implements ImageGenProvider {
       partes.push({ text: "Imagem 2 — foto do atleta, preservar a identidade dele:" });
       partes.push({ inlineData: { mimeType: "image/jpeg", data: foto.toString("base64") } });
     }
+    /**
+     * O manto entra logo DEPOIS da foto do atleta.
+     *
+     * A ordem importa: a foto manda no rosto, o uniforme manda na roupa, e as
+     * duas instrucoes precisam chegar juntas para o modelo entender que sao a
+     * mesma pessoa vestida de outro jeito — e nao duas pessoas.
+     */
+    if (uniforme) {
+      partes.push({
+        text: "Imagem de referencia do UNIFORME. O atleta deve vestir exatamente esta camisa: mesmas cores, mesmas faixas, mesmo padrao, mesma gola, escudo e patrocinios nas mesmas posicoes. Nao inventar patrocinador, nao trocar o desenho, nao misturar com a camisa que aparece na foto do atleta. O rosto continua sendo o da foto do atleta:",
+      });
+      partes.push({
+        inlineData: { mimeType: "image/jpeg", data: uniforme.toString("base64") },
+      });
+    }
+
     for (const escudo of escudos ?? []) {
       partes.push({ text: `Escudo do ${escudo.rotulo}, reproduzir fielmente, sem redesenhar:` });
       partes.push({
