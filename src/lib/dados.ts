@@ -145,42 +145,51 @@ export async function capasDosPedidos(ids: string[]): Promise<Record<string, str
 }
 
 /**
- * Sorteia uma referencia do acervo para a combinacao pedida.
+ * Sorteia uma IMAGEM de estilo do acervo.
  *
- * Ate aqui era "a referencia ativa daquela combinacao", com um indice unico
- * garantindo uma so. O acervo real tem 59 referencias de matchday: pegar sempre
- * a mesma faria todo post da agencia sair igual, que e o oposto do objetivo.
+ * O acervo e banco de ESTILO, nao de conteudo. Uma arte de contratacao e uma de
+ * matchday nascem da mesma composicao bem resolvida; o que muda entre elas e a
+ * mensagem, e a mensagem agora vem da tabela `prompts`, por tipo.
  *
- * A queda e deliberada e nesta ordem:
- *   1. mesma categoria E mesmo formato — o ideal;
- *   2. mesma categoria, outro formato — matchday e quase todo story, contratacao
- *      quase toda feed; melhor emprestar a proporcao errada do que falhar;
- *   3. qualquer referencia ativa — categorias sem acervo proprio (estreia,
- *      craque do jogo, frase) vivem daqui: a referencia da o ESTILO, o
- *      prompt-mae da a mensagem.
+ * Por isso o tipo saiu do sorteio. Ele estava ali por um motivo tecnico que
+ * deixou de existir: o prompt morava dentro da referencia, entao pegar a imagem
+ * de outro tipo trazia junto o texto errado. Separados, a unica trava que
+ * sobra e o FORMATO — uma composicao 9:16 nao vira 4:5 sem estragar o
+ * enquadramento.
+ *
+ * Na pratica: matchday em feed escolhia entre 6 imagens e passa a escolher
+ * entre as 22 daquele formato. Gol tinha UMA.
  */
-export async function sortearReferencia(
-  tipo: Tipo,
-  formato: Formato,
-): Promise<Referencia | null> {
-  if (!LIGADO) return mock.buscarReferencia(tipo, formato);
+export async function sortearReferencia(formato: Formato): Promise<Referencia | null> {
+  if (!LIGADO) return mock.buscarReferencia("matchday", formato);
 
   const sb = await criarClienteServidor();
 
-  const tentativas: Array<() => PromiseLike<{ data: unknown[] | null }>> = [
-    () => sb.from("referencias").select("*").eq("ativa", true).eq("tipo", tipo).eq("formato", formato),
-    () => sb.from("referencias").select("*").eq("ativa", true).eq("tipo", tipo),
-    () => sb.from("referencias").select("*").eq("ativa", true),
-  ];
-
-  for (const tentar of tentativas) {
-    const { data } = await tentar();
+  /* Mesmo formato primeiro; qualquer um depois, para o acervo de um formato so
+     nao deixar o outro sem arte nenhuma. */
+  for (const filtrar of [true, false]) {
+    const consulta = sb.from("referencias").select("*").eq("ativa", true);
+    const { data } = await (filtrar ? consulta.eq("formato", formato) : consulta);
     if (data?.length) {
       const escolhida = data[Math.floor(Math.random() * data.length)] as Referencia;
       return { ...escolhida, imagem_url: await assinar(BALDE.referencias, escolhida.imagem_url) };
     }
   }
   return null;
+}
+
+/**
+ * A mensagem da categoria.
+ *
+ * Um texto por tipo, e nao um por referencia. Antes eram 5 textos duplicados em
+ * 78 linhas, e corrigir uma virgula era um `replace` em 59 delas.
+ */
+export async function promptDoTipo(tipo: Tipo): Promise<string | null> {
+  if (!LIGADO) return null;
+
+  const sb = await criarClienteServidor();
+  const { data } = await sb.from("prompts").select("texto").eq("tipo", tipo).maybeSingle();
+  return (data?.texto as string | undefined) ?? null;
 }
 
 /** A referencia que uma arte realmente usou. O pedido guarda o id. */

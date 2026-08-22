@@ -4,7 +4,7 @@ import path from "node:path";
 import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
 import { pintarLogo } from "./logo-cor";
-import { sortearReferencia } from "./dados";
+import { promptDoTipo, sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
 import {
   FORMATO_META,
@@ -228,11 +228,25 @@ export async function produzirArte({
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
-  const referencia = await sortearReferencia(tipo, formato);
+  /**
+   * A imagem e a mensagem vem de lugares diferentes agora.
+   *
+   * A referencia da o ESTILO e e sorteada so por formato; o prompt da a
+   * MENSAGEM e vem do tipo. Enquanto os dois moravam juntos, o sorteio tinha
+   * de casar o tipo — e o acervo de matchday em feed, com 6 imagens, repetia.
+   */
+  const [referencia, promptMae] = await Promise.all([
+    sortearReferencia(formato),
+    promptDoTipo(tipo),
+  ]);
+
   if (!referencia || !referencia.ativa) {
     throw new SemReferencia(
-      `Não há referência ativa para ${tipo} em ${formato}. Cadastre em Referências.`,
+      `Não há nenhuma referência de estilo ativa. Cadastre em Referências.`,
     );
+  }
+  if (!promptMae) {
+    throw new SemReferencia(`Não há prompt cadastrado para a categoria ${tipo}.`);
   }
 
   // referencia curada: caminho em public/ na fase de andaime, URL assinada depois
@@ -277,7 +291,7 @@ export async function produzirArte({
     uniforme,
     logo: logoPintada,
     foto: foto ?? null,
-    prompt: montarPrompt(referencia.prompt_mae, {
+    prompt: montarPrompt(promptMae, {
       nome,
       clube,
       frase,
