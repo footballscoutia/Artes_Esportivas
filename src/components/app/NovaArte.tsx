@@ -17,6 +17,7 @@ import { Button, BotaoIcone, BotaoLink } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Campo, Input, Select, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   LOGO_CORES,
   LOGO_COR_META,
@@ -120,6 +121,7 @@ export function NovaArte({
    * janela nenhuma.
    */
   const [pedido, setPedido] = useState<{ id: string; chave: string } | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
   const [nome, setNome] = useState("");
   const [clube, setClube] = useState("");
   const [frase, setFrase] = useState("");
@@ -167,6 +169,51 @@ export function NovaArte({
   /* O que DEFINE o pedido. A logo, o uniforme e o canto ficam de fora: sao
      escolhas da tentativa, e trocar a cor da logo e gerar de novo continua
      sendo o mesmo post. */
+  /**
+   * O que falta, e o que acontece por faltar.
+   *
+   * Os dois grupos existem porque a consequencia e diferente, e juntar tudo em
+   * "preencha os campos" seria alarme sem informacao:
+   *
+   *   "some"   — campo de texto vazio. Desde que o `montarPrompt` passou a
+   *              derrubar o item inteiro, o modelo nao inventa nada no lugar:
+   *              a arte sai sem aquilo, e ponto.
+   *   "inventa" — referencia VISUAL que falta. Aqui o modelo preenche o vazio
+   *              de memoria, e foi o que produziu o uniforme errado do
+   *              Coutinho e um escudo com texto sem sentido. Este e o grupo
+   *              que custa dinheiro em arte descartada.
+   */
+  const avisos: Array<{ texto: string; inventa: boolean }> = [];
+  if (meta?.exigeJogo) {
+    if (!jogo.campeonato.trim()) avisos.push({ texto: "Campeonato", inventa: false });
+    if (!jogo.hora_jogo.trim()) avisos.push({ texto: "Horário", inventa: false });
+    if (!jogo.estadio.trim()) avisos.push({ texto: "Estádio", inventa: false });
+  }
+  if (!clube.trim()) avisos.push({ texto: "Clube do atleta", inventa: false });
+
+  const clubesNaArte = [clubeDoAtleta, clubes.find((c) => c.id === adversarioId)].filter(
+    (c): c is Clube => Boolean(c),
+  );
+  for (const c of clubesNaArte) {
+    const nomeCurto = c.nome_curto ?? c.nome;
+    if (!c.escudo_url) {
+      avisos.push({ texto: `Escudo do ${nomeCurto} não cadastrado`, inventa: true });
+    }
+    if (!c.cor_primaria) {
+      avisos.push({ texto: `Cores do ${nomeCurto} não cadastradas`, inventa: true });
+    }
+  }
+  if (clubeDoAtleta && !uniformeId) {
+    avisos.push({
+      texto:
+        uniformesDoClube.length === 0
+          ? `Nenhum uniforme do ${clubeDoAtleta.nome_curto ?? clubeDoAtleta.nome} cadastrado`
+          : "Uniforme não escolhido — a camisa virá da foto do elenco",
+      inventa: uniformesDoClube.length === 0,
+    });
+  }
+  const inventaAlgo = avisos.some((a) => a.inventa);
+
   const chaveDoPedido = JSON.stringify([
     tipo, formato, jogadorId, adversarioId, nome.trim(), clube.trim(), frase.trim(), jogo,
   ]);
@@ -699,7 +746,7 @@ export function NovaArte({
 
             <Navegacao
               voltar={() => setPasso(1)}
-              avancar={gerar}
+              avancar={() => setConfirmando(true)}
               podeAvancar={podeGerar}
               rotuloAvancar="Gerar arte"
               icone={<Sparkles size={16} />}
@@ -707,6 +754,96 @@ export function NovaArte({
           </div>
         )}
       </div>
+
+      {/*
+        Confirmação antes de gastar.
+        Cada geração custa dinheiro de verdade e leva dez segundos, e o que sai
+        depende de dados que a pessoa pode ter esquecido. Um passo a mais aqui
+        custa um clique; a arte errada custa uma geração e a descoberta vem
+        depois de esperar.
+      */}
+      <Drawer
+        aberto={confirmando}
+        aoFechar={() => setConfirmando(false)}
+        titulo="Gerar esta arte?"
+        subtitulo={`${meta?.titulo ?? ""} · ${FORMATO_META[formato].titulo} · ${nome.trim()}`}
+        rodape={
+          <div className="flex gap-2">
+            <Button
+              variante="fantasma"
+              className="flex-1"
+              onClick={() => setConfirmando(false)}
+            >
+              Preencher antes
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                setConfirmando(false);
+                gerar();
+              }}
+            >
+              <Sparkles size={15} />
+              Gerar
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {avisos.length === 0 ? (
+            <p className="rounded-field border border-line bg-surface-2/40 px-4 py-3 text-[13px] leading-relaxed text-muted">
+              Está tudo preenchido. A geração leva alguns segundos e a arte fica salva na
+              biblioteca automaticamente.
+            </p>
+          ) : (
+            <>
+              {inventaAlgo && (
+                <div className="rounded-field border border-warn/40 bg-warn/10 px-4 py-3">
+                  <p className="text-[13px] font-medium text-warn">
+                    Sem estas referências, a IA inventa
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-warn/90">
+                    Ela não deixa em branco: preenche de memória. Escudo, cores e uniforme
+                    inventados parecem certos à primeira vista — é o erro que ninguém confere.
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {avisos
+                      .filter((a) => a.inventa)
+                      .map((a) => (
+                        <li key={a.texto} className="text-[12px] text-warn">
+                          • {a.texto}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+
+              {avisos.some((a) => !a.inventa) && (
+                <div className="rounded-field border border-line bg-surface-2/40 px-4 py-3">
+                  <p className="text-[13px] font-medium">Estes campos vão sair da arte</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    Em branco, eles simplesmente não aparecem — a arte sai sem eles, sem texto
+                    inventado no lugar.
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {avisos
+                      .filter((a) => !a.inventa)
+                      .map((a) => (
+                        <li key={a.texto} className="text-[12px] text-muted">
+                          • {a.texto}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+
+          <p className="text-[11px] leading-relaxed text-muted-2">
+            Vale preencher antes: refazer depois é outra geração, e cada uma custa.
+          </p>
+        </div>
+      </Drawer>
 
       {/* painel da direita: resumo, geração e resultado */}
       <div ref={painel} className="lg:sticky lg:top-24 lg:self-start">
