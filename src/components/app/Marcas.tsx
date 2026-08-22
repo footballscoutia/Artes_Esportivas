@@ -23,11 +23,20 @@ import { cn } from "@/lib/utils";
  * Uma agencia cadastra varias: a dela e a de cada cliente. Qual entra em cada
  * arte e escolha da geracao, na tela de Nova arte — nao um ajuste da conta.
  */
+/**
+ * A logo entra na arte com 30% da largura do formato — 324px no feed de 1080.
+ * O confortável é o dobro: dá margem para o recorte, para telas densas e para
+ * um dia a logo aparecer maior sem precisar recadastrar nada.
+ */
+const LARGURA_NA_ARTE = Math.round(1080 * 0.3);
+const LARGURA_CONFORTAVEL = LARGURA_NA_ARTE * 2;
+
 export function Marcas({ marcas }: { marcas: Marca[] }) {
   const router = useRouter();
   const [pendente, comTransicao] = useTransition();
   const [aberto, setAberto] = useState<"nova" | Marca | null>(null);
   const [previa, setPrevia] = useState<string | null>(null);
+  const [largura, setLargura] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const formulario = useRef<HTMLFormElement>(null);
 
@@ -36,6 +45,7 @@ export function Marcas({ marcas }: { marcas: Marca[] }) {
   function fechar() {
     setAberto(null);
     setPrevia(null);
+    setLargura(null);
     setErro(null);
   }
 
@@ -87,7 +97,7 @@ export function Marcas({ marcas }: { marcas: Marca[] }) {
         />
 
         {erro && (
-          <p className="mb-4 rounded-field border border-perigo/40 bg-perigo/10 px-4 py-3 text-[13px] text-perigo">
+          <p className="mb-4 rounded-field border border-erro/40 bg-erro/10 px-4 py-3 text-[13px] text-erro">
             {erro}
           </p>
         )}
@@ -181,7 +191,17 @@ export function Marcas({ marcas }: { marcas: Marca[] }) {
                   className="sr-only"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    setPrevia(f ? URL.createObjectURL(f) : null);
+                    const url = f ? URL.createObjectURL(f) : null;
+                    setPrevia(url);
+                    setLargura(null);
+                    /* Mede a largura real do arquivo para poder avisar antes de
+                       salvar. Depois de salvo, descobrir que a logo era pequena
+                       custa uma arte gerada com a assinatura borrada. */
+                    if (url) {
+                      const img = new window.Image();
+                      img.onload = () => setLargura(img.naturalWidth);
+                      img.src = url;
+                    }
                   }}
                 />
               </label>
@@ -189,6 +209,20 @@ export function Marcas({ marcas }: { marcas: Marca[] }) {
                 PNG com fundo transparente. Fundo branco vira um retângulo branco sobre a arte — e
                 quando a IA posiciona a logo, ela copia o retângulo junto.
               </p>
+              {/*
+                O aviso é sobre MARGEM, não sobre erro: no feed a logo é
+                desenhada com 324px de largura, então um arquivo de 400px passa
+                — mas sem folga nenhuma. Quem souber disso na hora do upload
+                troca o arquivo; quem descobrir depois, descobre numa arte
+                pronta com a assinatura mole.
+              */}
+              {largura !== null && largura < LARGURA_CONFORTAVEL && (
+                <p className="mt-2 rounded-field border border-warn/40 bg-warn/10 px-3 py-2 text-[11px] leading-relaxed text-warn">
+                  Esta imagem tem {largura}px de largura. Na arte a logo é desenhada com {LARGURA_NA_ARTE}px,
+                  então sobra pouca ou nenhuma margem e as bordas podem ficar moles. Se tiver um
+                  arquivo maior — de {LARGURA_CONFORTAVEL}px para cima —, ele vai render melhor.
+                </p>
+              )}
             </div>
 
             <Campo rotulo="Nome" dica="para você achar na hora de gerar">
