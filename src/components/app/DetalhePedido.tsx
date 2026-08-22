@@ -76,6 +76,8 @@ export function DetalhePedido({
    */
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
   const selecionada = geracoes.find((g) => g.id === selecionadaId) ?? geracoes[0] ?? null;
+  /* a geração exibida teve a logo integrada pelo modelo? decide a aba inteira */
+  const logoDaIa = selecionada?.logo_modo === "ia";
   const [baixando, setBaixando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -283,13 +285,27 @@ export function DetalhePedido({
 
             {aba === "camadas" && (
               <div className="space-y-5">
-                <p className="text-[12px] leading-relaxed text-muted">
-                  O texto vem do modelo, dentro da arte — se o nome sair errado, o caminho é
-                  gerar outra. A logo é diferente: é carimbada por cima, então trocar de canto
-                  não custa uma geração nova.
-                </p>
+                {/*
+                  Com a logo posta pela IA não há o que reposicionar: ela está
+                  nos pixels da arte, não numa camada por cima. O controle sai
+                  da tela em vez de ficar ali para dar erro quando clicado — um
+                  botão que só serve para recusar é pior que botão nenhum.
+                */}
+                {logoDaIa ? (
+                  <p className="text-[12px] leading-relaxed text-muted">
+                    Nesta arte quem posicionou a logo foi a IA, então ela faz parte da imagem e
+                    não há como movê-la daqui. Para escolher o canto você mesmo, gere outra
+                    usando <span className="text-text">Canto fixo</span>.
+                  </p>
+                ) : (
+                  <p className="text-[12px] leading-relaxed text-muted">
+                    O texto vem do modelo, dentro da arte — se o nome sair errado, o caminho é
+                    gerar outra. A logo é diferente: é carimbada por cima, então trocar de canto
+                    não custa uma geração nova.
+                  </p>
+                )}
 
-                <div>
+                <div className={logoDaIa ? "hidden" : undefined}>
                   <p className="mb-2 text-[12px] font-medium">Onde a logo entra</p>
                   <div className="grid grid-cols-2 gap-2">
                     {POSICOES_LOGO.map((p) => (

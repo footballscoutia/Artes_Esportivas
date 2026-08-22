@@ -176,9 +176,15 @@ export type Geracao = {
   /** qual adapter respondeu — "mock", "gemini", "recomposicao". Serve para comparar modelos. */
   provider?: string;
   duracao_ms?: number | null;
-  /** Qual marca foi carimbada nesta tentativa. Nulo = sem logo. */
+  /** Qual marca entrou nesta tentativa. Nulo = sem logo. */
   marca_id?: string | null;
   posicao_logo?: PosicaoLogo | "nenhuma" | null;
+  /**
+   * Quem posicionou a logo. Nulo nas geracoes anteriores a esta coluna — e por
+   * isso a tela testa por igualdade a "ia", nunca por diferenca: nulo e
+   * carimbo, que e como tudo funcionava antes.
+   */
+  logo_modo?: LogoModo | null;
   criado_em: string;
 };
 
