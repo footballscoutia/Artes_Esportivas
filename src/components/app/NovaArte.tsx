@@ -470,20 +470,59 @@ export function NovaArte({
                   })}
                 </div>
 
-                {logoModo !== "nenhuma" && marcas.length > 1 && (
-                  <div className="mt-3">
-                    <Campo rotulo="Qual logo">
-                      <Select
-                        value={marcaId ?? ""}
-                        onChange={(e) => setMarcaId(e.target.value || null)}
-                      >
-                        {marcas.map((m) => (
-                          <option key={m.id} value={m.id}>
+                {/*
+                  A logo se escolhe OLHANDO, e por isso ela aparece.
+                  Antes era um <select> de nomes, e só surgia com duas ou mais
+                  cadastradas — quem tinha uma só nunca via qual estava sendo
+                  carimbada na arte. Com o xadrez por baixo dá para conferir de
+                  passagem se o PNG tem fundo transparente, que é o detalhe que
+                  estraga a arte quando falta.
+                */}
+                {logoModo !== "nenhuma" && marcas.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-[12px] font-medium">
+                      Qual logo{" "}
+                      {marcas.length === 1 && (
+                        <span className="text-muted-2">a única cadastrada</span>
+                      )}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 min-[560px]:grid-cols-4">
+                      {marcas.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMarcaId(m.id)}
+                          className={cn(
+                            "overflow-hidden rounded-card border transition-colors",
+                            marcaId === m.id
+                              ? "border-accent ring-1 ring-accent/40"
+                              : "border-line hover:border-line-2",
+                          )}
+                        >
+                          <span
+                            className="relative block h-16 w-full"
+                            style={{
+                              backgroundImage:
+                                "repeating-conic-gradient(rgba(255,255,255,0.05) 0% 25%, transparent 0% 50%)",
+                              backgroundSize: "12px 12px",
+                            }}
+                          >
+                            {m.imagem_url && (
+                              <Image
+                                src={m.imagem_url}
+                                alt=""
+                                fill
+                                sizes="200px"
+                                className="object-contain p-2"
+                              />
+                            )}
+                          </span>
+                          <span className="block truncate border-t border-line px-2 py-1.5 text-[11px]">
                             {m.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Campo>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -566,73 +605,80 @@ export function NovaArte({
             )}
 
             {/*
-              Todos os mantos, agrupados por clube, com o do atleta na frente.
-              Filtrar pelo clube do atleta parecia proteger contra escolher a
-              camisa do adversário, mas travava um caso legítimo: atleta
-              cadastrado sem clube ficava sem seletor nenhum. Com o grupo
-              nomeado, errar deixa de ser acidente e passa a ser escolha.
+              Uma grade só, com a foto grande e o clube como etiqueta.
+
+              Antes era uma lista com um cabeçalho por clube. Com um manto por
+              clube aquilo virava três títulos para três itens, ocupando meia
+              tela para dizer muito pouco — e a miniatura era pequena demais
+              para reconhecer a camisa, que é como a escolha realmente acontece.
+              Aqui o clube vira etiqueta dentro do cartão e a foto manda.
+
+              A ordem ainda protege: os do clube do atleta vêm primeiro e levam
+              um ponto de destaque. Escolher o manto do adversário continua
+              possível — e continua sendo escolha, não acidente.
             */}
             {uniformes.length > 0 && (
               <div>
                 <p className="mb-3 text-[13px] font-medium">
                   Uniforme <span className="text-muted-2">o manto desta arte</span>
                 </p>
+                <div className="grid grid-cols-2 gap-3 min-[560px]:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={() => setUniformeId(null)}
+                    className={cn(
+                      "flex flex-col overflow-hidden rounded-card border text-left transition-colors",
+                      uniformeId === null
+                        ? "border-accent ring-1 ring-accent/40"
+                        : "border-line hover:border-line-2",
+                    )}
+                  >
+                    <span className="grid aspect-[3/4] place-items-center bg-surface-2 px-3 text-center">
+                      <span className="text-[12px] leading-relaxed text-muted">
+                        A camisa da foto do elenco
+                      </span>
+                    </span>
+                    <span className="border-t border-line px-2 py-1.5 text-[12px] font-medium">
+                      Da foto
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setUniformeId(null)}
-                  onMouseMove={seguirCursor}
-                  className={cn(
-                    "lift holofote mb-4 block w-full rounded-card border p-4 text-left",
-                    uniformeId === null
-                      ? "border-accent bg-accent/10"
-                      : "border-line bg-surface/70 hover:border-line-2",
+                  {gruposDeUniforme.flatMap((g) =>
+                    g.lista.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setUniformeId(u.id)}
+                        className={cn(
+                          "flex flex-col overflow-hidden rounded-card border text-left transition-colors",
+                          uniformeId === u.id
+                            ? "border-accent ring-1 ring-accent/40"
+                            : "border-line hover:border-line-2",
+                        )}
+                      >
+                        <span className="relative block aspect-[3/4] bg-surface-2">
+                          {u.imagem_url && (
+                            <Image
+                              src={u.imagem_url}
+                              alt=""
+                              fill
+                              sizes="220px"
+                              className="object-cover"
+                            />
+                          )}
+                        </span>
+                        <span className="border-t border-line px-2 py-1.5">
+                          <span className="block truncate text-[12px] font-medium">{u.nome}</span>
+                          <span className="flex items-center gap-1 text-[11px] text-muted-2">
+                            {g.clubeId === clubeDoAtleta?.id && (
+                              <span className="size-1.5 shrink-0 rounded-full bg-accent" />
+                            )}
+                            <span className="truncate">{g.nome}</span>
+                          </span>
+                        </span>
+                      </button>
+                    )),
                   )}
-                >
-                  <span className="block text-[14px] font-medium">Da foto</span>
-                  <span className="mt-1 block text-[11px] leading-relaxed text-muted">
-                    A camisa que o atleta veste na foto do elenco.
-                  </span>
-                </button>
-
-                <div className="space-y-4">
-                  {gruposDeUniforme.map((g) => (
-                    <div key={g.clubeId}>
-                      <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-2">
-                        {g.nome}
-                        {g.clubeId === clubeDoAtleta?.id && " · clube do atleta"}
-                      </p>
-                      <div className="grid gap-3 min-[420px]:grid-cols-3">
-                        {g.lista.map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => setUniformeId(u.id)}
-                            onMouseMove={seguirCursor}
-                            className={cn(
-                              "lift holofote flex items-center gap-3 rounded-card border p-3 text-left",
-                              uniformeId === u.id
-                                ? "border-accent bg-accent/10"
-                                : "border-line bg-surface/70 hover:border-line-2",
-                            )}
-                          >
-                            {u.imagem_url && (
-                              <span className="relative size-12 shrink-0 overflow-hidden rounded-[8px]">
-                                <Image
-                                  src={u.imagem_url}
-                                  alt=""
-                                  fill
-                                  sizes="48px"
-                                  className="object-cover"
-                                />
-                              </span>
-                            )}
-                            <span className="min-w-0 text-[13px] font-medium">{u.nome}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
