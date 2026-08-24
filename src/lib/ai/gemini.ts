@@ -63,7 +63,7 @@ export class GeminiProvider implements ImageGenProvider {
      */
     if (uniforme) {
       partes.push({
-        text: "Imagem de referencia do UNIFORME. O atleta deve vestir exatamente esta camisa: mesmas cores, mesmas faixas, mesmo padrao, mesma gola, escudo e patrocinios nas mesmas posicoes. Nao inventar patrocinador, nao trocar o desenho, nao misturar com a camisa que aparece na foto do atleta. O rosto continua sendo o da foto do atleta:",
+        text: "Imagem de referencia do UNIFORME. O atleta deve vestir exatamente esta camisa: mesmas cores, mesmas faixas, mesmo padrao, mesma gola, escudo e patrocinios nas mesmas posicoes. Os dizeres da camisa sao os que aparecem nesta imagem, copiados letra por letra; o que nao couber legivel fica de FORA, sem substituto — manga limpa e melhor que palavra aproximada, que parece patrocinio real e nao e. Nao trocar o desenho nem misturar com a camisa da foto do atleta. O rosto continua sendo o da foto do atleta:",
       });
       partes.push({
         inlineData: { mimeType: "image/jpeg", data: uniforme.toString("base64") },
@@ -71,7 +71,9 @@ export class GeminiProvider implements ImageGenProvider {
     }
 
     for (const escudo of escudos ?? []) {
-      partes.push({ text: `Escudo do ${escudo.rotulo}, reproduzir fielmente, sem redesenhar:` });
+      partes.push({
+        text: `Escudo do ${escudo.rotulo}. Copiar como esta: mesmas cores, mesmas formas e, principalmente, as MESMAS LETRAS de dentro dele. Nao recolorir, nao criar versao dourada, monocromatica ou vazada, nao reescrever o nome do clube. Se nao couber legivel, usa-lo maior ou em menos lugares — nunca aproximar as letras:`,
+      });
       partes.push({
         inlineData: { mimeType: "image/png", data: escudo.imagem.toString("base64") },
       });
