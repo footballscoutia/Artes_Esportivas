@@ -63,7 +63,7 @@ export class GeminiProvider implements ImageGenProvider {
      */
     if (uniforme) {
       partes.push({
-        text: "Imagem de referencia do UNIFORME. O atleta deve vestir exatamente esta camisa: mesmas cores, mesmas faixas, mesmo padrao, mesma gola, escudo e patrocinios nas mesmas posicoes. Os dizeres da camisa sao os que aparecem nesta imagem, copiados letra por letra; o que nao couber legivel fica de FORA, sem substituto — manga limpa e melhor que palavra aproximada, que parece patrocinio real e nao e. Nao trocar o desenho nem misturar com a camisa da foto do atleta. O rosto continua sendo o da foto do atleta:",
+        text: "Imagem de referencia do UNIFORME. O atleta deve vestir exatamente esta camisa: mesmas cores, mesmas faixas, mesmo padrao, mesma gola, escudo e patrocinios nas mesmas posicoes. Os dizeres da camisa sao os que aparecem nesta imagem, copiados letra por letra; o que nao couber legivel fica de FORA, sem substituto — manga limpa e melhor que palavra aproximada, que parece patrocinio real e nao e. NUNCA escrever na camisa o nome da agencia, o nome do atleta, o nome do campeonato nem qualquer marca que nao esteja na imagem do uniforme: patrocinio falso num manto real e o pior erro possivel desta arte. Nao trocar o desenho nem misturar com a camisa da foto do atleta. O rosto continua sendo o da foto do atleta:",
       });
       partes.push({
         inlineData: { mimeType: "image/jpeg", data: uniforme.toString("base64") },
@@ -99,7 +99,7 @@ export class GeminiProvider implements ImageGenProvider {
       partes.push({ inlineData: { mimeType: "image/png", data: logo.toString("base64") } });
       partes.push({
         text:
-          "Integrar essa logo na arte, no ponto da composição em que ela fique legível e não cubra o atleta nem os escudos. Tamanho discreto, como assinatura da agência. Não repetir a logo em mais de um lugar. O texto dela precisa sair legível: se ficar pequeno demais para ler, aumentar a logo inteira." +
+          "Integrar essa logo na arte, no ponto da composição em que ela fique legível e não cubra o atleta nem os escudos. Tamanho discreto, como assinatura da agência. Não repetir a logo em mais de um lugar. Ela é assinatura SOBRE a arte, não faz parte da cena: nunca no uniforme, nunca dentro de um escudo, nunca estampada em objeto, parede ou placa da composição. O texto dela precisa sair legível: se ficar pequeno demais para ler, aumentar a logo inteira." +
           (logoAdaptavel
             ? " A cor da logo pode ser adaptada para contrastar com o fundo onde ela ficar — clara sobre fundo escuro, escura sobre fundo claro —, mantendo a forma e as proporções intactas."
             : ""),
