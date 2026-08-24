@@ -85,7 +85,9 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
      */
     const { data: anterior } = await sb
       .from("geracoes")
-      .select("marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id")
+      .select(
+        "marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id, escudo_modo, zona_texto, paleta, nome_clube",
+      )
       .eq("pedido_id", pedidoId)
       .order("criado_em", { ascending: false })
       .limit(1)
@@ -98,6 +100,15 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
     const posicaoLogo: PosicaoLogo = POSICOES_LOGO.includes(cantoAnterior as PosicaoLogo)
       ? (cantoAnterior as PosicaoLogo)
       : "inferior-direito";
+
+    /* Passa pela mesma fronteira do resto: geracao antiga, gravada antes das
+       colunas existirem, cai nos defaults em vez de chegar nula ao prompt. */
+    const opcoes = normalizar({
+      escudo: anterior?.escudo_modo,
+      zonaTexto: anterior?.zona_texto,
+      paleta: anterior?.paleta,
+      nomeClube: anterior?.nome_clube,
+    });
 
     const [{ foto, clubes }, marca] = await Promise.all([
       materiaisDaArte({
@@ -115,7 +126,7 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       tipo: pedido.tipo as Tipo,
       formato: pedido.formato as Formato,
       nome: pedido.nome_jogador,
-      clube: pedido.clube,
+      clube: opcoes.nomeClube ? pedido.clube : null,
       frase: pedido.frase,
       adversario: pedido.adversario,
       data_jogo: pedido.data_jogo,
@@ -127,6 +138,10 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       posicaoLogo,
       logoCor: anterior?.logo_cor ?? null,
       uniforme: await uniformeDaArte(anterior?.uniforme_id ?? null),
+      /* Mesma razao da logo logo acima: quem clica "gerar outra" quer variar a
+         ARTE, nao as escolhas. Sem isto a segunda tentativa voltaria aos
+         defaults e mudaria escudo, faixa e paleta sem ninguem ter pedido. */
+      opcoes,
     });
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
@@ -143,6 +158,10 @@ export async function gerarOutra(pedidoId: string): Promise<Resultado> {
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
       logo_cor: marca ? (anterior?.logo_cor ?? null) : null,
       uniforme_id: anterior?.uniforme_id ?? null,
+      escudo_modo: opcoes.escudo,
+      zona_texto: opcoes.zonaTexto,
+      paleta: opcoes.paleta,
+      nome_clube: opcoes.nomeClube,
     });
 
     if (error) return falha(`Gerei a arte mas não consegui gravar: ${error.message}`);
@@ -750,6 +769,7 @@ export async function salvarPadrao(form: FormData): Promise<Resultado<{ id: stri
     escudo: form.get("escudo_modo"),
     zonaTexto: form.get("zona_texto"),
     paleta: form.get("paleta"),
+    nomeClube: form.get("nome_clube"),
   });
 
   /* Tipo vazio = serve para qualquer arte. Guardar "" viraria um tipo chamado

@@ -315,6 +315,7 @@ export function NovaArte({
     body.set("escudo_modo", opcoes.escudo);
     body.set("zona_texto", opcoes.zonaTexto);
     body.set("paleta", opcoes.paleta);
+    body.set("nome_clube", String(opcoes.nomeClube));
     if (padraoId) body.set("padrao_id", padraoId);
     body.set("logo_modo", logoModo);
     if (marcaId && logoModo !== "nenhuma") body.set("marca_id", marcaId);
@@ -659,6 +660,7 @@ export function NovaArte({
                 form.set("escudo_modo", opcoes.escudo);
                 form.set("zona_texto", opcoes.zonaTexto);
                 form.set("paleta", opcoes.paleta);
+                form.set("nome_clube", String(opcoes.nomeClube));
                 const r = await salvarPadrao(form);
                 if (!r.ok) setErro(r.erro);
                 else {

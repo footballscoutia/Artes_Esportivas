@@ -171,6 +171,15 @@ export function Personalizacao({
       />
 
       <Grupo
+        titulo="Nome do clube"
+        ajuda="escrito na arte ou nao"
+        valores={["sim", "nao"] as const}
+        rotulos={{ sim: "Escrever o clube", nao: "Sem o nome do clube" }}
+        atual={opcoes.nomeClube ? "sim" : "nao"}
+        aoEscolher={(v) => aoMudar({ ...opcoes, nomeClube: v === "sim" })}
+      />
+
+      <Grupo
         titulo="Texto"
         ajuda="em que faixa do quadro"
         valores={ZONAS_TEXTO}

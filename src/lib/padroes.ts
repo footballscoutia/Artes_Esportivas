@@ -35,6 +35,18 @@ export type Opcoes = {
   escudo: EscudoModo;
   zonaTexto: ZonaTexto;
   paleta: Paleta;
+  /**
+   * Se o nome do clube e escrito na arte.
+   *
+   * Nao ha instrucao nova para isto: falso faz o `clube` chegar vazio ao
+   * `montarPrompt`, e o item inteiro cai do prompt pelo mecanismo que ja
+   * existe. Deixar o campo em branco sempre produziu esse efeito — o que muda e
+   * virar escolha visivel, e caber num padrao salvo.
+   *
+   * O registro no banco continua guardando o clube: a opcao decide o que vai ao
+   * MODELO, nao o que o pedido lembra sobre si mesmo.
+   */
+  nomeClube: boolean;
 };
 
 /**
@@ -54,6 +66,7 @@ export const OPCOES_PADRAO: Opcoes = {
    * resultado de quem nunca abriu a personalizacao.
    */
   paleta: "clube",
+  nomeClube: true,
 };
 
 /** Fronteira: jsonb do banco ou FormData da tela viram `Opcoes` validas. */
@@ -66,6 +79,13 @@ export function normalizar(cru: unknown): Opcoes {
     escudo: escolher(o.escudo, ESCUDO_MODOS, OPCOES_PADRAO.escudo),
     zonaTexto: escolher(o.zonaTexto, ZONAS_TEXTO, OPCOES_PADRAO.zonaTexto),
     paleta: escolher(o.paleta, PALETAS, OPCOES_PADRAO.paleta),
+    /* Aceita boolean e as strings que vem de FormData, onde tudo e texto. */
+    nomeClube:
+      typeof o.nomeClube === "boolean"
+        ? o.nomeClube
+        : o.nomeClube === undefined || o.nomeClube === null
+          ? OPCOES_PADRAO.nomeClube
+          : o.nomeClube !== "false" && o.nomeClube !== "0",
   };
 }
 

@@ -124,6 +124,7 @@ export async function registrarGeracao(e: Entrada): Promise<string> {
     escudo_modo: e.opcoes.escudo,
     zona_texto: e.opcoes.zonaTexto,
     paleta: e.opcoes.paleta,
+    nome_clube: e.opcoes.nomeClube,
   });
 
   if (erroGeracao) throw new Error(`Não consegui gravar a geração: ${erroGeracao.message}`);

@@ -53,6 +53,7 @@ const Corpo = z.object({
   escudo_modo: z.enum(ESCUDO_MODOS).optional().nullable(),
   zona_texto: z.enum(ZONAS_TEXTO).optional().nullable(),
   paleta: z.enum(PALETAS).optional().nullable(),
+  nome_clube: z.enum(["true", "false"]).optional().nullable(),
   /* qual padrao salvo originou essas escolhas; so para registro */
   padrao_id: z.string().uuid().optional().nullable(),
   /* preset ("original"/"auto"/"branca"/"preta") ou hex escolhido na tela */
@@ -136,6 +137,7 @@ export async function POST(req: Request) {
     escudo_modo: form.get("escudo_modo") || null,
     zona_texto: form.get("zona_texto") || null,
     paleta: form.get("paleta") || null,
+    nome_clube: form.get("nome_clube") || null,
     padrao_id: form.get("padrao_id") || null,
   });
 
@@ -150,7 +152,7 @@ export async function POST(req: Request) {
     tipo, formato, nome, clube, frase,
     jogador_id, clube_id, adversario_id,
     marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id, pedido_id,
-    escudo_modo, zona_texto, paleta, padrao_id,
+    escudo_modo, zona_texto, paleta, padrao_id, nome_clube,
     ...jogo
   } = parsed.data;
 
@@ -166,6 +168,7 @@ export async function POST(req: Request) {
     escudo: escudo_modo ?? undefined,
     zonaTexto: zona_texto ?? undefined,
     paleta: paleta ?? undefined,
+    nomeClube: nome_clube ?? undefined,
   });
 
   const logoModo: LogoModo = logo_modo ?? "ia";
@@ -198,7 +201,16 @@ export async function POST(req: Request) {
       tipo: tipo as Tipo,
       formato: formato as Formato,
       nome,
-      clube,
+      /**
+       * A opcao decide o que vai ao MODELO, nao o que o pedido guarda.
+       *
+       * Com `nomeClube` falso o clube chega vazio ao montarPrompt e o item
+       * inteiro cai do prompt, pelo mesmo mecanismo que ja tratava campo em
+       * branco. O registro logo abaixo continua recebendo o `clube` de
+       * verdade — o banco e a fonte que a gente abre para diagnosticar arte, e
+       * ele nao pode esquecer de que clube era o post.
+       */
+      clube: opcoes.nomeClube ? clube : null,
       frase,
       foto,
       clubes,
@@ -261,6 +273,7 @@ export async function POST(req: Request) {
       escudo_modo: opcoes.escudo,
       zona_texto: opcoes.zonaTexto,
       paleta: opcoes.paleta,
+      nome_clube: opcoes.nomeClube,
     });
   } catch (e) {
     if (e instanceof SemReferencia) {
