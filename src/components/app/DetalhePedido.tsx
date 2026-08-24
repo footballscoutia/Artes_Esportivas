@@ -109,7 +109,7 @@ export function DetalhePedido({
       const a = document.createElement("a");
       a.href = url;
       const limpo = pedido.nome_jogador.trim().toLowerCase().replace(/\s+/g, "-");
-      a.download = `${limpo}-${pedido.tipo}-${pedido.formato}.png`;
+      a.download = `${limpo}-${pedido.tipo}-${pedido.formato}.jpg`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {

@@ -232,7 +232,7 @@ export async function recompor(entrada: unknown): Promise<Resultado> {
       logo,
       posicaoLogo: posicao,
     });
-    const arte_path = await subir(BALDE.geracoes, final);
+    const arte_path = await subir(BALDE.geracoes, final, "image/jpeg", "jpg");
 
     const { error } = await criarClienteAdmin().from("geracoes").insert({
       pedido_id: p.data.pedido_id,

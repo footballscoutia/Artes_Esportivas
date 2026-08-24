@@ -119,5 +119,21 @@ export async function compor({
     camadas.push({ input: marca, ...onde });
   }
 
-  return sharp(base).composite(camadas).png({ compressionLevel: 8 }).toBuffer();
+  /**
+   * A arte final sai em JPEG, nao em PNG.
+   *
+   * PNG e sem perdas e otimo para grafico de cor chapada; para imagem
+   * FOTOGRAFICA ele so guarda o mesmo pixel ocupando o triplo. Medido nas
+   * geracoes reais: o que o modelo devolve tem ~630KB em JPEG e a arte final
+   * saia com ~2MB depois do nosso PNG. Nao havia ganho de qualidade nenhum —
+   * so espera na hora de carregar a previa e storage a mais.
+   *
+   * Qualidade 92 com `mozjpeg`: acima disso o arquivo cresce sem diferenca
+   * visivel, e e onde o texto desenhado pelo modelo ainda fica com a borda
+   * limpa. Nao ha alfa a preservar — o fundo cobre a tela inteira.
+   */
+  return sharp(base)
+    .composite(camadas)
+    .jpeg({ quality: 92, mozjpeg: true, chromaSubsampling: "4:4:4" })
+    .toBuffer();
 }

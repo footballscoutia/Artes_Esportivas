@@ -343,7 +343,7 @@ export function NovaArte({
     if (!resultado) return;
     const a = document.createElement("a");
     a.href = resultado.imagem;
-    a.download = `${nome.trim().toLowerCase().replace(/\s+/g, "-")}-${tipo}-${formato}.png`;
+    a.download = `${nome.trim().toLowerCase().replace(/\s+/g, "-")}-${tipo}-${formato}.jpg`;
     a.click();
   }
 

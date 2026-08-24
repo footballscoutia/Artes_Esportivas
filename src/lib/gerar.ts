@@ -377,7 +377,7 @@ export async function produzirArte({
    * mostra, mas quem baixasse levava um `.png` que e JPEG por dentro.
    */
   const [arte_path, fundo_path] = await Promise.all([
-    subir(BALDE.geracoes, final),
+    subir(BALDE.geracoes, final, "image/jpeg", "jpg"),
     subir(BALDE.geracoes, gerado.imagem, gerado.mime, extensaoDe(gerado.mime)),
   ]);
 
