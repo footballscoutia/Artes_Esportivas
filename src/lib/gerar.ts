@@ -8,7 +8,6 @@ import { promptDoTipo, sortearReferencia } from "./dados";
 import { BALDE, subir } from "./storage";
 import {
   FORMATO_META,
-  LOGO_COR_HEX,
   POSICAO_LOGO_ROTULO,
   TIPO_META,
   type Formato,
@@ -310,26 +309,35 @@ export async function produzirArte({
   const logoParaCarimbar = usaLogo && logoModo === "carimbo" ? marcaLogo : null;
 
   /**
-   * No modo IA a logo e repintada ANTES de ir ao modelo.
+   * No modo IA a logo e repintada ANTES de ir ao modelo — menos no "auto".
    *
    * Repintar depois seria impossivel: a logo estaria dentro dos pixels da arte,
-   * misturada com o resto. Entao a cor entra na referencia — o modelo recebe a
-   * logo ja na cor pedida e a instrucao de reproduzi-la como esta.
+   * misturada com o resto. Entao a cor pedida entra na referencia, e o modelo
+   * recebe a logo ja pintada com a instrucao de reproduzi-la como esta.
    *
-   * O "auto" nao existe aqui, e nao por esquecimento: ele mede a luminancia do
-   * lugar onde a logo cai, e nesse modo o lugar so se conhece depois de a arte
-   * existir. Quem pedir "auto" com a IA posicionando recebe branco, que e o que
-   * acerta mais sobre arte de estadio.
+   * O "auto" era a excecao errada. Ele virava BRANCO SOLIDO, porque no modo IA
+   * nao ha onde medir luminancia antes de a arte existir. So que achatar uma
+   * marca metalica de contorno escuro em branco chapado destroi a informacao
+   * que a torna legivel: o simbolo sobrevive, por ja ser silhueta cheia, e o
+   * texto ao lado vira um borrao branco. O modelo entao desenha o que
+   * conseguiu ler — o boneco, sem o nome da agencia. Foi o que aconteceu numa
+   * arte de frase.
+   *
+   * Agora o "auto" manda o ORIGINAL, em fidelidade cheia, e passa a decisao de
+   * contraste para quem enxerga o fundo: o proprio modelo, que so precisa saber
+   * que pode adaptar a cor mantendo a forma.
    */
+  const adaptavel = logoCor === "auto";
   const logoPintada =
-    logoParaOModelo && logoCor && logoCor !== "original"
-      ? await pintarLogo(logoParaOModelo, logoCor === "auto" ? LOGO_COR_HEX.branca : logoCor)
+    logoParaOModelo && logoCor && logoCor !== "original" && !adaptavel
+      ? await pintarLogo(logoParaOModelo, logoCor)
       : logoParaOModelo;
 
   const gerado = await provider.gerar({
     referencia: refBuffer,
     uniforme,
     logo: logoPintada,
+    logoAdaptavel: adaptavel,
     foto: foto ?? null,
     prompt: montarPrompt(promptMae, {
       nome,

@@ -38,6 +38,7 @@ export class GeminiProvider implements ImageGenProvider {
     escudos,
     uniforme,
     logo,
+    logoAdaptavel,
     prompt,
     largura,
     altura,
@@ -91,11 +92,15 @@ export class GeminiProvider implements ImageGenProvider {
      */
     if (logo) {
       partes.push({
-        text: "Logo da agência. Reproduzir EXATAMENTE como está — mesmas letras, mesmas cores, mesmas proporções, sem redesenhar nem estilizar:",
+        text: "Logo da agência. Ela tem DUAS partes — o símbolo e o texto ao lado dele — e as duas entram na arte, nunca só o símbolo. Reproduzir EXATAMENTE como está: mesmas letras, mesmas proporções, mesma relação entre símbolo e texto, sem redesenhar nem estilizar:",
       });
       partes.push({ inlineData: { mimeType: "image/png", data: logo.toString("base64") } });
       partes.push({
-        text: "Integrar essa logo na arte, no ponto da composição em que ela fique legível e não cubra o atleta nem os escudos. Tamanho discreto, como assinatura da agência. Não repetir a logo em mais de um lugar.",
+        text:
+          "Integrar essa logo na arte, no ponto da composição em que ela fique legível e não cubra o atleta nem os escudos. Tamanho discreto, como assinatura da agência. Não repetir a logo em mais de um lugar. O texto dela precisa sair legível: se ficar pequeno demais para ler, aumentar a logo inteira." +
+          (logoAdaptavel
+            ? " A cor da logo pode ser adaptada para contrastar com o fundo onde ela ficar — clara sobre fundo escuro, escura sobre fundo claro —, mantendo a forma e as proporções intactas."
+            : ""),
       });
     }
 

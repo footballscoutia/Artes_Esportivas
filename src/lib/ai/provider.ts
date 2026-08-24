@@ -29,6 +29,16 @@ export type GenInput = {
    */
   logo?: Buffer | null;
   /**
+   * A logo vai no ORIGINAL e o modelo escolhe como faze-la contrastar.
+   *
+   * Existe porque o contrario destruia a marca: pedir "cor automatica" com a IA
+   * posicionando repintava a logo de branco solido antes de envia-la, e uma
+   * marca metalica com contorno escuro achatada em branco perde as letras. O
+   * simbolo sobrevive, por ja ser silhueta cheia; o texto vira borrao, e o
+   * modelo desenha so o que conseguiu ler.
+   */
+  logoAdaptavel?: boolean;
+  /**
    * Foto de alguem vestindo o manto que o atleta deve usar.
    *
    * Vai como IMAGEM pelo mesmo motivo do escudo: camisa descrita em texto sai
