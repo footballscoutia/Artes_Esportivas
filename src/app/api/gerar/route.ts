@@ -5,6 +5,7 @@ import { usuarioAtual } from "@/lib/dados";
 import { produzirArte, SemReferencia } from "@/lib/gerar";
 import { registrarGeracao } from "@/lib/registro";
 import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "@/lib/materiais";
+import { ESCUDO_MODOS, PALETAS, ZONAS_TEXTO, normalizar } from "@/lib/padroes";
 import { BALDE, assinar } from "@/lib/storage";
 import {
   TIPOS,
@@ -48,6 +49,12 @@ const Corpo = z.object({
   uniforme_id: z.string().uuid().optional().nullable(),
   /* tentativa nova do MESMO pedido; ausente = pedido novo */
   pedido_id: z.string().uuid().optional().nullable(),
+  /* escolhas de composicao; ausentes = o comportamento de antes da opcao existir */
+  escudo_modo: z.enum(ESCUDO_MODOS).optional().nullable(),
+  zona_texto: z.enum(ZONAS_TEXTO).optional().nullable(),
+  paleta: z.enum(PALETAS).optional().nullable(),
+  /* qual padrao salvo originou essas escolhas; so para registro */
+  padrao_id: z.string().uuid().optional().nullable(),
   /* preset ("original"/"auto"/"branca"/"preta") ou hex escolhido na tela */
   logo_cor: z
     .string()
@@ -126,6 +133,10 @@ export async function POST(req: Request) {
     logo_cor: form.get("logo_cor") || null,
     uniforme_id: form.get("uniforme_id") || null,
     pedido_id: form.get("pedido_id") || null,
+    escudo_modo: form.get("escudo_modo") || null,
+    zona_texto: form.get("zona_texto") || null,
+    paleta: form.get("paleta") || null,
+    padrao_id: form.get("padrao_id") || null,
   });
 
   if (!parsed.success) {
@@ -139,8 +150,23 @@ export async function POST(req: Request) {
     tipo, formato, nome, clube, frase,
     jogador_id, clube_id, adversario_id,
     marca_id, logo_modo, posicao_logo, logo_cor, uniforme_id, pedido_id,
+    escudo_modo, zona_texto, paleta, padrao_id,
     ...jogo
   } = parsed.data;
+
+  /**
+   * As escolhas passam pela fronteira antes de virar prompt.
+   *
+   * `normalizar` troca qualquer valor desconhecido — ou ausente — pelo default,
+   * que e o comportamento de antes de a opcao existir. Importa que o caminho
+   * seja este e nao um `??` espalhado: assim uma opcao nova so precisa ser
+   * ensinada em um lugar.
+   */
+  const opcoes = normalizar({
+    escudo: escudo_modo ?? undefined,
+    zonaTexto: zona_texto ?? undefined,
+    paleta: paleta ?? undefined,
+  });
 
   const logoModo: LogoModo = logo_modo ?? "ia";
   const posicaoLogo: PosicaoLogo = posicao_logo ?? "inferior-direito";
@@ -181,6 +207,7 @@ export async function POST(req: Request) {
       logoModo,
       posicaoLogo,
       logoCor,
+      opcoes,
       ...jogo,
     });
 
@@ -209,6 +236,8 @@ export async function POST(req: Request) {
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
       logo_cor: marca ? (logo_cor ?? "original") : null,
       uniforme_id: uniforme ? (uniforme_id ?? null) : null,
+      opcoes,
+      padrao_id: padrao_id ?? null,
       ...jogo,
     }).catch((e) => {
       console.error("[gerar] nao gravei a geracao:", e);
@@ -228,6 +257,10 @@ export async function POST(req: Request) {
       posicao_logo: marca && logoModo === "carimbo" ? posicaoLogo : "nenhuma",
       logo_cor: marca ? (logo_cor ?? "original") : null,
       uniforme_id: uniforme ? uniforme_id : null,
+      /* o que a previa realmente usou, ja normalizado — a tela reexibe isto */
+      escudo_modo: opcoes.escudo,
+      zona_texto: opcoes.zonaTexto,
+      paleta: opcoes.paleta,
     });
   } catch (e) {
     if (e instanceof SemReferencia) {

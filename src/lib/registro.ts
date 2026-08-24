@@ -2,6 +2,7 @@ import "server-only";
 import { criarClienteServidor } from "./supabase/server";
 import { criarClienteAdmin } from "./supabase/admin";
 import type { ArteProduzida } from "./gerar";
+import type { Opcoes } from "./padroes";
 import type { Formato, Tipo } from "./types";
 
 /**
@@ -41,6 +42,17 @@ type Entrada = {
   posicao_logo: string | null;
   logo_cor: string | null;
   uniforme_id: string | null;
+  /**
+   * As escolhas de composicao ficam na GERACAO, e nao apenas no padrao.
+   *
+   * Padrao pode ser editado ou apagado depois; a geracao precisa continuar
+   * contando a verdade sobre ela mesma. Este banco e a fonte que a gente abre
+   * para diagnosticar defeito de arte — foi consultando `pedidos` que ficou
+   * claro que o "00h00" tinha sido digitado, e nao inventado pelo modelo.
+   */
+  opcoes: Opcoes;
+  /** Qual padrao salvo originou as escolhas. Nulo = escolhidas na mao. */
+  padrao_id?: string | null;
 };
 
 export async function registrarGeracao(e: Entrada): Promise<string> {
@@ -108,6 +120,10 @@ export async function registrarGeracao(e: Entrada): Promise<string> {
     posicao_logo: e.posicao_logo,
     logo_cor: e.logo_cor,
     uniforme_id: e.uniforme_id,
+    padrao_id: e.padrao_id ?? null,
+    escudo_modo: e.opcoes.escudo,
+    zona_texto: e.opcoes.zonaTexto,
+    paleta: e.opcoes.paleta,
   });
 
   if (erroGeracao) throw new Error(`Não consegui gravar a geração: ${erroGeracao.message}`);

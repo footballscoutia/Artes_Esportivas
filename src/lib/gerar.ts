@@ -5,6 +5,7 @@ import { pegarProvider, providerAtivo } from "./ai";
 import { compor } from "./compose";
 import { pintarLogo } from "./logo-cor";
 import { promptDoTipo, sortearReferencia } from "./dados";
+import { OPCOES_PADRAO, blocoDeOpcoes, type Opcoes } from "./padroes";
 import { BALDE, subir } from "./storage";
 import {
   FORMATO_META,
@@ -56,7 +57,7 @@ export type ClubeNaArte = {
  * precisa saber que elas mandam na paleta e nao sao so um detalhe do brasao.
  * Nas 78 referencias do acervo a arte inteira sai da cor do clube.
  */
-function blocoDeClubes(clubes: ClubeNaArte[]) {
+function blocoDeClubes(clubes: ClubeNaArte[], paleta: Opcoes["paleta"]) {
   if (clubes.length === 0) return "";
 
   const linhas: string[] = ["", "IDENTIDADE DOS CLUBES:"];
@@ -75,13 +76,42 @@ function blocoDeClubes(clubes: ClubeNaArte[]) {
     }
   }
 
-  if (algumaCor) {
+  /**
+   * A paleta so e reivindicada aqui quando ela vem MESMO do clube.
+   *
+   * Com `paleta: "referencia"` esta frase precisa calar: o bloco de opcoes diz
+   * o contrario logo abaixo, e duas instrucoes brigando sobre quem manda na cor
+   * e o mesmo defeito das duas regras do nome do atleta que se contradiziam —
+   * o modelo obedece a uma e a outra vira ruido.
+   */
+  if (algumaCor && paleta === "clube") {
     linhas.push(
       "A paleta da arte sai dessas cores. Elas dominam fundo, faixas e destaques,",
       "não aparecem apenas dentro do escudo.",
     );
   }
   return linhas.join("\n");
+}
+
+/**
+ * O modo do escudo apaga a IMAGEM, nao o clube.
+ *
+ * Tirar o clube inteiro da lista levaria junto as cores dele — que continuam
+ * mandando na paleta mesmo sem escudo — e faria o `blocoDeClubes` calar sobre
+ * um clube que esta na arte. Zerando so o escudo, esse bloco passa sozinho a
+ * escrever "nao desenhar escudo algum" para ele, que e instrucao que ja existia
+ * e ja funcionava. Uma opcao nova que reusa a regra antiga em vez de criar
+ * outra nao tem como contradize-la.
+ *
+ * A ordem de `clubes` e [clube do atleta, adversario], fixada por quem monta a
+ * lista, e e dela que sai o significado de "clube" e "adversario" aqui.
+ */
+function aplicarModoDeEscudo(clubes: ClubeNaArte[], modo: Opcoes["escudo"]): ClubeNaArte[] {
+  if (modo === "ambos") return clubes;
+  return clubes.map((c, i) => {
+    const mantem = modo === "clube" ? i === 0 : modo === "adversario" ? i === 1 : false;
+    return mantem ? c : { ...c, escudo: null };
+  });
 }
 
 export type DadosDoJogo = {
@@ -245,6 +275,7 @@ export async function produzirArte({
   posicaoLogo = "inferior-direito",
   logoModo = "ia",
   logoCor = null,
+  opcoes = OPCOES_PADRAO,
   ...jogo
 }: {
   tipo: Tipo;
@@ -264,6 +295,8 @@ export async function produzirArte({
   logoModo?: LogoModo;
   /** Cor pedida: "auto", um hex, ou nulo para as cores do arquivo. */
   logoCor?: string | null;
+  /** Escolhas de composicao. O default reproduz o comportamento antigo. */
+  opcoes?: Opcoes;
 } & DadosDoJogo): Promise<ArteProduzida> {
   const alvo = FORMATO_META[formato];
 
@@ -333,6 +366,8 @@ export async function produzirArte({
       ? await pintarLogo(logoParaOModelo, logoCor)
       : logoParaOModelo;
 
+  const clubesNaArte = aplicarModoDeEscudo(clubes, opcoes.escudo);
+
   const gerado = await provider.gerar({
     referencia: refBuffer,
     uniforme,
@@ -347,8 +382,10 @@ export async function produzirArte({
       logoModo,
       posicaoLogo,
       ...jogo,
-    }) + blocoDeClubes(clubes),
-    escudos: clubes
+    }) +
+      blocoDeClubes(clubesNaArte, opcoes.paleta) +
+      blocoDeOpcoes(opcoes),
+    escudos: clubesNaArte
       .filter((c): c is ClubeNaArte & { escudo: Buffer } => Boolean(c.escudo))
       .map((c) => ({ rotulo: c.rotulo, imagem: c.escudo })),
     largura: Math.round(alvo.w * FOLGA),
