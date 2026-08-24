@@ -10,6 +10,7 @@ import { compor } from "./compose";
 import { produzirArte, SemReferencia } from "./gerar";
 import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "./materiais";
 import { paletaDoEscudo, type Paleta } from "./paleta";
+import { normalizar } from "./padroes";
 import { BALDE, baixar, subir } from "./storage";
 import {
   POSICOES_LOGO,
@@ -722,6 +723,69 @@ export async function arquivarUniforme(id: string): Promise<Resultado> {
   if (error) return falha(`Não consegui arquivar: ${error.message}`);
   if (!data?.length) return falha("Uniforme não encontrado.");
   revalidatePath("/uniformes");
+  revalidatePath("/novo");
+  return { ok: true, dados: undefined };
+}
+
+/**
+ * Salva uma combinacao de escolhas com nome, para ela se repetir.
+ *
+ * O valor nao esta em digitar menos: esta em a MESMA combinacao voltar. Arranjo
+ * novo a cada arte e a maior fonte de variancia do resultado, e a personalizacao
+ * sozinha pioraria isso — cada opcao nova multiplica combinacoes que ninguem
+ * testou. O padrao salvo desfaz esse custo: na pratica a agencia usa tres ou
+ * quatro arranjos, nao todos os possiveis.
+ */
+export async function salvarPadrao(form: FormData): Promise<Resultado<{ id: string }>> {
+  const id = (form.get("id") as string) || null;
+  const nome = String(form.get("nome") ?? "").trim();
+  if (nome.length < 2) return falha('Dê um nome ao padrão — "Matchday limpo" já serve.');
+
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  /* Passa pela mesma fronteira do resto: valor desconhecido vira o default, em
+     vez de chegar cru ao banco e so falhar la na frente, na hora de gerar. */
+  const opcoes = normalizar({
+    escudo: form.get("escudo_modo"),
+    zonaTexto: form.get("zona_texto"),
+    paleta: form.get("paleta"),
+  });
+
+  /* Tipo vazio = serve para qualquer arte. Guardar "" viraria um tipo chamado
+     string vazia, que nunca casa com nada e some da lista sem explicar. */
+  const tipo = String(form.get("tipo") ?? "").trim() || null;
+
+  const sb = await criarClienteServidor();
+
+  if (id) {
+    const { data, error } = await sb
+      .from("padroes")
+      .update({ nome, tipo, opcoes })
+      .eq("id", id)
+      .select("id");
+    if (error) return falha(`Não consegui salvar: ${error.message}`);
+    if (!data?.length) return falha("Padrão não encontrado.");
+    revalidatePath("/novo");
+    return { ok: true, dados: { id } };
+  }
+
+  const { data, error } = await sb
+    .from("padroes")
+    .insert({ nome, tipo, opcoes, criado_por: usuario.id })
+    .select("id")
+    .single();
+
+  if (error || !data) return falha(`Não consegui cadastrar: ${error?.message ?? "sem retorno"}`);
+
+  revalidatePath("/novo");
+  return { ok: true, dados: { id: data.id } };
+}
+
+export async function apagarPadrao(id: string): Promise<Resultado> {
+  const sb = await criarClienteServidor();
+  const { error } = await sb.from("padroes").delete().eq("id", id);
+  if (error) return falha(`Não consegui apagar: ${error.message}`);
   revalidatePath("/novo");
   return { ok: true, dados: undefined };
 }

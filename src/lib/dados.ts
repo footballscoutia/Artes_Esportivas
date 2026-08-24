@@ -1,4 +1,5 @@
 import "server-only";
+import { normalizar, type PadraoSalvo } from "./padroes";
 import { criarClienteServidor } from "./supabase/server";
 import * as mock from "./mock";
 import { BALDE, assinar, assinarVarios } from "./storage";
@@ -329,4 +330,33 @@ export async function usuarioAtual(): Promise<Usuario | null> {
     podeGerar: perfil?.pode_gerar ?? false,
     ehAdmin: perfil?.admin_plataforma ?? false,
   };
+}
+
+/**
+ * Os padroes salvos da org, prontos para a tela de gerar oferecer.
+ *
+ * Todos de uma vez, incluindo os de outros tipos: a tela filtra em memoria
+ * enquanto a pessoa troca o tipo da arte, e uma consulta por troca seria ida ao
+ * servidor para responder o que ja esta na mao.
+ */
+export async function listarPadroes(): Promise<PadraoSalvo[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("padroes")
+    .select("id, nome, tipo, opcoes, criado_em")
+    .order("criado_em");
+
+  estourar("listar os padrões", error);
+
+  /* `normalizar` na saida, e nao so na entrada: o jsonb pode ter sido gravado
+     por uma versao anterior do contrato, e a tela nao deve ser a primeira a
+     descobrir isso. */
+  return (data ?? []).map((p) => ({
+    id: p.id as string,
+    nome: p.nome as string,
+    tipo: (p.tipo as Tipo | null) ?? null,
+    opcoes: normalizar(p.opcoes),
+  }));
 }

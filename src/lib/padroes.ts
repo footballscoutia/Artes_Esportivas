@@ -21,6 +21,8 @@
  * nova aqui precisa passar nesse teste antes de existir.
  */
 
+import type { Tipo } from "./types";
+
 export const ESCUDO_MODOS = ["ambos", "clube", "adversario", "nenhum"] as const;
 export const ZONAS_TEXTO = ["auto", "topo", "base", "lateral"] as const;
 export const PALETAS = ["referencia", "clube"] as const;
@@ -165,3 +167,16 @@ export function blocoDeOpcoes(o: Opcoes): string {
   const SEPARADOR = "\n\n";
   return partes.length ? SEPARADOR + partes.join(SEPARADOR) : "";
 }
+
+/**
+ * Um padrao como a tela o consome: opcoes ja normalizadas, nunca jsonb cru.
+ *
+ * `tipo` nulo = serve para qualquer arte. Preenchido = so aparece naquele tipo,
+ * para um "Matchday limpo" nao poluir a lista do aniversario.
+ */
+export type PadraoSalvo = {
+  id: string;
+  nome: string;
+  tipo: Tipo | null;
+  opcoes: Opcoes;
+};

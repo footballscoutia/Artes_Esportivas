@@ -17,6 +17,9 @@ import { Button, BotaoIcone, BotaoLink } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Campo, Input, Select, Textarea } from "@/components/ui/Field";
 import { Stepper } from "@/components/app/Stepper";
+import { Personalizacao } from "@/components/app/Personalizacao";
+import { OPCOES_PADRAO, type Opcoes, type PadraoSalvo } from "@/lib/padroes";
+import { apagarPadrao, salvarPadrao } from "@/lib/acoes";
 import { Drawer } from "@/components/ui/Drawer";
 import {
   LOGO_CORES,
@@ -79,11 +82,13 @@ export function NovaArte({
   clubes,
   marcas,
   uniformes,
+  padroes,
 }: {
   jogadores: Jogador[];
   clubes: Clube[];
   marcas: Marca[];
   uniformes: Uniforme[];
+  padroes: PadraoSalvo[];
 }) {
   const router = useRouter();
   const [passo, setPasso] = useState(0);
@@ -106,6 +111,16 @@ export function NovaArte({
   const [logoCor, setLogoCor] = useState<LogoCorPreset | "hex">("original");
   const [logoHex, setLogoHex] = useState("#FFFFFF");
   const [uniformeId, setUniformeId] = useState<string | null>(null);
+  /**
+   * As escolhas de composicao, e de qual padrao elas vieram.
+   *
+   * `padraoId` guarda so a procedencia, para a tela mostrar qual padrao esta
+   * ativo — mexer numa opcao nao o apaga, porque partir de um padrao e ajustar
+   * uma coisa e o uso normal. Quem registra a verdade do que foi gerado sao as
+   * `opcoes`, nao ele.
+   */
+  const [opcoes, setOpcoes] = useState<Opcoes>(OPCOES_PADRAO);
+  const [padraoId, setPadraoId] = useState<string | null>(null);
   /**
    * O pedido que as geracoes desta tela estao alimentando, guardado JUNTO da
    * chave do formulario que o criou.
@@ -297,6 +312,10 @@ export function NovaArte({
     if (jogadorId) body.set("jogador_id", jogadorId);
     if (clubeDoAtleta) body.set("clube_id", clubeDoAtleta.id);
     if (adversarioId) body.set("adversario_id", adversarioId);
+    body.set("escudo_modo", opcoes.escudo);
+    body.set("zona_texto", opcoes.zonaTexto);
+    body.set("paleta", opcoes.paleta);
+    if (padraoId) body.set("padrao_id", padraoId);
     body.set("logo_modo", logoModo);
     if (marcaId && logoModo !== "nenhuma") body.set("marca_id", marcaId);
     if (logoModo === "carimbo") body.set("posicao_logo", posicaoLogo);
@@ -617,6 +636,46 @@ export function NovaArte({
               um ponto de destaque. Escolher o manto do adversário continua
               possível — e continua sendo escolha, não acidente.
             */}
+            <Personalizacao
+              opcoes={opcoes}
+              aoMudar={setOpcoes}
+              padroes={padroes}
+              padraoId={padraoId}
+              aoEscolherPadrao={(p) => {
+                setPadraoId(p?.id ?? null);
+                /* Soltar o padrao NAO desfaz as opcoes: quem clicou de novo
+                   quer parar de seguir o padrao, e nao voltar tudo ao zero. */
+                if (p) setOpcoes(p.opcoes);
+              }}
+              tipo={tipo}
+              temAdversario={Boolean(adversarioId)}
+              aoSalvarPadrao={async (nomePadrao) => {
+                const form = new FormData();
+                form.set("nome", nomePadrao);
+                /* Nasce amarrado ao tipo em edicao: um "Matchday limpo" na
+                   lista do aniversario e ruido, e o campo aceita nulo para
+                   quem quiser um padrao que sirva a tudo. */
+                if (tipo) form.set("tipo", tipo);
+                form.set("escudo_modo", opcoes.escudo);
+                form.set("zona_texto", opcoes.zonaTexto);
+                form.set("paleta", opcoes.paleta);
+                const r = await salvarPadrao(form);
+                if (!r.ok) setErro(r.erro);
+                else {
+                  setPadraoId(r.dados.id);
+                  router.refresh();
+                }
+              }}
+              aoApagarPadrao={async (id) => {
+                const r = await apagarPadrao(id);
+                if (!r.ok) setErro(r.erro);
+                else {
+                  if (padraoId === id) setPadraoId(null);
+                  router.refresh();
+                }
+              }}
+            />
+
             {uniformes.length > 0 && (
               <div>
                 <p className="mb-3 text-[13px] font-medium">
