@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
-import { Check, RotateCcw, Save } from "lucide-react";
+import { Check, Download, RotateCcw, Save, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Matchday } from "@/video/Matchday";
 import {
@@ -38,6 +38,8 @@ type Props = {
   dados: Dados;
   camadas: Camadas;
   opcoesIniciais: Opcoes;
+  /** Vira o nome do arquivo baixado. */
+  nomeArquivo: string;
 };
 
 function Deslizante({
@@ -136,12 +138,34 @@ function Escolha<T extends string>({
   );
 }
 
-export function EditorVideo({ videoId, dados, camadas, opcoesIniciais }: Props) {
+export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArquivo }: Props) {
   const [opcoes, setOpcoes] = useState<Opcoes>(opcoesIniciais);
   const [salvo, setSalvo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, iniciarSalvar] = useTransition();
   const player = useRef<PlayerRef>(null);
+
+  /**
+   * O RENDER ACONTECE NO NAVEGADOR DA PESSOA.
+   *
+   * Esta era a peca que faltava, e a resposta acabou sendo a mais barata das
+   * possiveis. O caminho classico — `@remotion/renderer` no servidor — precisa
+   * de Chromium, que nao roda em funcao serverless comum: exigiria Lambda na
+   * AWS, um conteiner proprio ou uma maquina ligada, com custo mensal e uma
+   * conta a mais para administrar.
+   *
+   * O `renderMediaOnWeb` usa WebCodecs, que ja existe no Chrome. O video e
+   * codificado na maquina de quem edita, com aceleracao de hardware, e sai um
+   * mp4 do mesmo componente que o Player esta tocando. Custo de servidor: zero.
+   * Infraestrutura nova: nenhuma.
+   *
+   * O preco e honesto e vale dizer: quem renderiza e a maquina da pessoa, entao
+   * um computador fraco demora mais, e navegador sem WebCodecs nao renderiza. Por
+   * isso a checagem de suporte vem ANTES do botao, e nao depois do clique.
+   */
+  const [renderizando, setRenderizando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const [semSuporte, setSemSuporte] = useState<string | null>(null);
 
   const mexer = <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => {
     setOpcoes((o) => ({ ...o, [chave]: valor }));
@@ -157,6 +181,72 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais }: Props) 
    */
   const props = useMemo(() => ({ dados, camadas, opcoes }), [dados, camadas, opcoes]);
   const quadros = Math.round(opcoes.duracao * FPS);
+
+  /* A checagem roda uma vez, na montagem: descobrir que o navegador nao serve
+     DEPOIS de esperar o render seria a pior hora possivel. */
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      try {
+        const { canRenderMediaOnWeb } = await import("@remotion/web-renderer");
+        const r = await canRenderMediaOnWeb({
+          container: "mp4",
+          videoCodec: "h264",
+          width: 1080,
+          height: 1920,
+        });
+        if (vivo && !r.canRender) {
+          setSemSuporte(
+            "Este navegador não consegue renderizar vídeo. O Chrome no computador consegue.",
+          );
+        }
+      } catch {
+        /* Sem a checagem, o botao continua: melhor tentar e falhar com mensagem
+           do que esconder a funcao por causa de uma deteccao que nao rodou. */
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function renderizar() {
+    setRenderizando(true);
+    setProgresso(0);
+    setErro(null);
+    try {
+      const { renderMediaOnWeb } = await import("@remotion/web-renderer");
+      const r = await renderMediaOnWeb({
+        composition: {
+          id: "matchday",
+          component: Matchday,
+          width: 1080,
+          height: 1920,
+          fps: FPS,
+          durationInFrames: quadros,
+          /* O tipo exige defaultProps; quem manda de verdade e o inputProps
+             logo abaixo, com o estado atual dos controles. */
+          defaultProps: props,
+        },
+        inputProps: props,
+        container: "mp4",
+        videoCodec: "h264",
+        onProgress: (p) => setProgresso(p.progress),
+      });
+
+      const blob = await r.getBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${nomeArquivo}.mp4`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não consegui renderizar o vídeo.");
+    } finally {
+      setRenderizando(false);
+    }
+  }
 
   /* Duracao menor com o cursor la na frente deixaria o Player fora de faixa. */
   useEffect(() => {
@@ -314,6 +404,33 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais }: Props) 
         </div>
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}
+
+        <div className="flex flex-col gap-2 border-t border-line pt-5">
+          <Button className="w-full" disabled={renderizando || Boolean(semSuporte)} onClick={renderizar}>
+            <Download className="size-3.5" />
+            {renderizando
+              ? `Renderizando… ${Math.round(progresso * 100)}%`
+              : "Renderizar e baixar"}
+          </Button>
+          {renderizando && (
+            <div className="h-1 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full bg-accent transition-[width] duration-200"
+                style={{ width: `${Math.round(progresso * 100)}%` }}
+              />
+            </div>
+          )}
+          {semSuporte && (
+            <p className="flex items-start gap-1.5 text-[12px] leading-relaxed text-muted">
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+              {semSuporte}
+            </p>
+          )}
+          <p className="text-[11px] leading-relaxed text-muted-2">
+            O vídeo é montado no seu computador, não num servidor. Não custa nada, e enquanto
+            renderiza é melhor deixar esta aba aberta.
+          </p>
+        </div>
 
         <div className="flex items-center gap-2 border-t border-line pt-5">
           <Button

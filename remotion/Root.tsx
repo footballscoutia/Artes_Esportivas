@@ -19,6 +19,8 @@ import { EsquemaMatchday, OPCOES_PADRAO } from "@/video/template";
 
 const padrao: PropsMatchday = {
   dados: {
+    rotulo: "MATCHDAY",
+    nome: "Philippe Coutinho",
     clube: "Vasco",
     adversario: "Cabofriense",
     data: "QUINTA 30.07",

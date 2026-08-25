@@ -83,7 +83,9 @@ export function NovoVideo({ jogadores, clubes }: Props) {
             clube_id: clubeDoAtleta?.id ?? null,
             adversario_id: ehConfronto ? adversarioId : null,
           },
-          opcoes,
+          /* O tipo viaja nas OPCOES tambem, porque e ele que escolhe o roteiro
+             de linhas, e a composicao recebe opcoes e nao o pedido. */
+          opcoes: { ...opcoes, tipo },
         }),
       });
       const corpo = await r.json();

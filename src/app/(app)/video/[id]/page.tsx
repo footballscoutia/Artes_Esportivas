@@ -3,6 +3,7 @@ import { BotaoLink } from "@/components/ui/Button";
 import { EditorVideo } from "@/components/app/EditorVideo";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { BALDE, assinar } from "@/lib/storage";
+import { TIPO_META, type Tipo } from "@/lib/types";
 import { EsquemaOpcoes, OPCOES_PADRAO } from "@/video/template";
 
 const DIAS = ["DOMINGO", "SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO"];
@@ -28,7 +29,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
 
   const { data: pedido } = await sb
     .from("pedidos")
-    .select("nome_jogador, clube, adversario, data_jogo, hora_jogo, estadio, campeonato, clube_id")
+    .select("nome_jogador, clube, adversario, data_jogo, hora_jogo, estadio, campeonato, clube_id, tipo")
     .eq("id", video.pedido_id)
     .maybeSingle();
 
@@ -84,6 +85,8 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
         videoId={video.id}
         camadas={{ fundo, atleta, escudo: escudo ?? undefined, logo: logo ?? undefined }}
         dados={{
+          rotulo: TIPO_META[(pedido?.tipo ?? "matchday") as Tipo]?.rotulo ?? "",
+          nome: pedido?.nome_jogador ?? "",
           clube: pedido?.clube ?? "",
           adversario: pedido?.adversario ?? "",
           data: formatarData(pedido?.data_jogo ?? null),
@@ -91,7 +94,21 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
           estadio: pedido?.estadio ?? "",
           campeonato: pedido?.campeonato ?? "",
         }}
-        opcoesIniciais={validadas.success ? validadas.data : OPCOES_PADRAO}
+        /* O tipo vem do PEDIDO e sobrepoe o que estiver gravado nas opcoes:
+           video criado antes de o roteiro existir tem "matchday" congelado la,
+           e continuaria falando de confronto num gol. A verdade sobre o tipo e
+           do pedido. */
+        opcoesIniciais={{
+          ...(validadas.success ? validadas.data : OPCOES_PADRAO),
+          tipo: pedido?.tipo ?? "matchday",
+        }}
+        nomeArquivo={[pedido?.nome_jogador, pedido?.tipo]
+          .filter(Boolean)
+          .join("-")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")}
       />
     </div>
   );

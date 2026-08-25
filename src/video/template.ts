@@ -143,6 +143,11 @@ export const TEMPLATES: Record<string, Template> = {
    ========================================================================= */
 
 export const EsquemaDados = z.object({
+  /* O rotulo do tipo — "GOLACO", "BEM-VINDO", "MATCHDAY". Ele e o assunto do
+     video, e sua ausencia era o defeito: um video de gol que so falava do
+     confronto e um matchday com o nome errado. */
+  rotulo: z.string(),
+  nome: z.string(),
   clube: z.string(),
   adversario: z.string(),
   data: z.string(),
@@ -161,6 +166,9 @@ export const EsquemaCamadas = z.object({
 
 export const EsquemaOpcoes = z.object({
   template: z.enum(["confronto", "rodape"]),
+  /* Guardado nas opcoes e nao so no pedido: o roteiro depende dele, e o
+     componente recebe opcoes, nao o pedido. */
+  tipo: z.string(),
   /* Os limites nao sao enfeite: sao o que impede o editor de produzir um video
      de 0,2s ou um texto de 40x que estoura o quadro. */
   duracao: z.number().min(4).max(20),
@@ -184,8 +192,50 @@ export type Dados = z.infer<typeof EsquemaDados>;
 export type Camadas = z.infer<typeof EsquemaCamadas>;
 export type Opcoes = z.infer<typeof EsquemaOpcoes>;
 
+/**
+ * QUAIS LINHAS o vídeo escreve, e em que ordem — por tipo de arte.
+ *
+ * Isto faltava, e o defeito era visível: um vídeo de GOL saía falando de
+ * confronto, data e estádio, porque a composição tinha o conteúdo do matchday
+ * cravado e ignorava o tipo. Um gol não tem adversário nem estádio para
+ * anunciar; ele tem o ATLETA e o feito.
+ *
+ * Cada linha nomeia um PAPEL, e não um campo: "destaque" é o que aparece
+ * grande, e no matchday isso é o clube enquanto num gol é o nome do atleta. O
+ * desenho não precisa saber de tipo nenhum — só de papéis.
+ */
+export type Papel = "etiqueta" | "destaque" | "confronto" | "tarja";
+
+export type Roteiro = { papel: Papel; campo: keyof Dados; prefixo?: string }[];
+
+const ROTEIRO_DE_JOGO: Roteiro = [
+  { papel: "etiqueta", campo: "campeonato" },
+  { papel: "destaque", campo: "clube" },
+  { papel: "confronto", campo: "adversario", prefixo: "X " },
+  { papel: "tarja", campo: "data" },
+];
+
+/** Tudo que não é confronto anuncia uma PESSOA, e o roteiro é o mesmo. */
+const ROTEIRO_DE_ATLETA: Roteiro = [
+  { papel: "etiqueta", campo: "rotulo" },
+  { papel: "destaque", campo: "nome" },
+  { papel: "confronto", campo: "clube" },
+];
+
+export const ROTEIROS: Record<string, Roteiro> = {
+  matchday: ROTEIRO_DE_JOGO,
+  gol: ROTEIRO_DE_ATLETA,
+  contratacao: ROTEIRO_DE_ATLETA,
+  estreia: ROTEIRO_DE_ATLETA,
+  mvp: ROTEIRO_DE_ATLETA,
+  aniversario: ROTEIRO_DE_ATLETA,
+  convocado: ROTEIRO_DE_ATLETA,
+  frase: ROTEIRO_DE_ATLETA,
+};
+
 export const OPCOES_PADRAO: Opcoes = {
   template: "confronto",
+  tipo: "matchday",
   duracao: 8,
   escalaTexto: 1,
   velocidade: 1,

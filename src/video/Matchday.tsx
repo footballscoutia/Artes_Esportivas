@@ -1,6 +1,14 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { FONTES, INTROS, TEMPLATES, type Camadas, type Dados, type Opcoes } from "./template";
+import {
+  FONTES,
+  INTROS,
+  ROTEIROS,
+  TEMPLATES,
+  type Camadas,
+  type Dados,
+  type Opcoes,
+} from "./template";
 
 /**
  * A composicao, refeita em cima das referencias da agencia.
@@ -154,41 +162,57 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             gap: 8 * e,
           }}
         >
-          {dados.campeonato && (
-            <Etiqueta
-              texto={dados.campeonato}
-              cor={opcoes.corTexto}
-              corpo={22 * e}
-              p={entra(quadro, tpl.tempos.campeonato, 0.5, fps, opcoes)}
-            />
-          )}
+          {(ROTEIROS[opcoes.tipo] ?? ROTEIROS.matchday).map((linha, i) => {
+            /* A tarja junta data, hora e estadio; as outras linhas sao um campo
+               so. E a unica excecao, e ela mora aqui em vez de virar tres
+               entradas no roteiro — tres entradas produziriam tres tarjas. */
+            const texto =
+              linha.papel === "tarja"
+                ? [dados.data, dados.hora, dados.estadio].filter(Boolean).join("   ·   ")
+                : `${linha.prefixo ?? ""}${dados[linha.campo]}`;
+            if (!texto.trim()) return null;
 
-          <Titulo
-            texto={dados.clube}
-            cor={opcoes.corTexto}
-            corpo={104 * e}
-            fonte={opcoes.fonte}
-            p={entra(quadro, tpl.tempos.clube, 0.7, fps, opcoes)}
-          />
+            /* Os tempos seguem a ORDEM da linha no roteiro, e nao o nome do
+               campo. Assim um roteiro novo nao precisa de tempos proprios. */
+            const tempos = [tpl.tempos.campeonato, tpl.tempos.clube, tpl.tempos.confronto, tpl.tempos.dados];
+            const p = entra(quadro, tempos[i] ?? tempos[tempos.length - 1], 0.6, fps, opcoes);
 
-          {dados.adversario && (
-            <LinhaDoConfronto
-              texto={`X ${dados.adversario}`}
-              cor={opcoes.corTexto}
-              corBarra={opcoes.corBarra}
-              corpo={54 * e}
-              fonte={opcoes.fonte}
-              p={entra(quadro, tpl.tempos.confronto, 0.6, fps, opcoes)}
-            />
-          )}
-
-          <Tarja
-            texto={[dados.data, dados.hora, dados.estadio].filter(Boolean).join("   ·   ")}
-            cor={opcoes.corTexto}
-            corpo={21 * e}
-            fonte={opcoes.fonte}
-            p={entra(quadro, tpl.tempos.dados, 0.55, fps, opcoes)}
-          />
+            if (linha.papel === "etiqueta")
+              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={22 * e} p={p} />;
+            if (linha.papel === "destaque")
+              return (
+                <Titulo
+                  key={i}
+                  texto={texto}
+                  cor={opcoes.corTexto}
+                  corpo={104 * e}
+                  fonte={opcoes.fonte}
+                  p={p}
+                />
+              );
+            if (linha.papel === "confronto")
+              return (
+                <LinhaDoConfronto
+                  key={i}
+                  texto={texto}
+                  cor={opcoes.corTexto}
+                  corBarra={opcoes.corBarra}
+                  corpo={54 * e}
+                  fonte={opcoes.fonte}
+                  p={p}
+                />
+              );
+            return (
+              <Tarja
+                key={i}
+                texto={texto}
+                cor={opcoes.corTexto}
+                corpo={21 * e}
+                fonte={opcoes.fonte}
+                p={p}
+              />
+            );
+          })}
         </div>
       </AbsoluteFill>
 
