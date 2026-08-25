@@ -6,7 +6,7 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, Clapperboard, UserRound } from "lucide-react";
 import { Button, BotaoLink } from "@/components/ui/Button";
 import { Campo, Input } from "@/components/ui/Field";
-import { EscolhasDeVideo } from "@/components/app/EscolhasDeVideo";
+import { EscolhasDeVideo, OQueAparece } from "@/components/app/EscolhasDeVideo";
 import {
   TIPOS,
   TIPO_META,
@@ -246,7 +246,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           )}
         </div>
 
-        {ehConfronto && (
+        {ehConfronto && !opcoes.ocultos.includes("adversario") && (
           <div>
             <p className="mb-3 text-[13px] font-medium">
               Adversário <span className="text-muted-2 font-normal">quem enfrenta</span>
@@ -363,41 +363,56 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           </div>
         )}
 
+        {/* Antes dos campos, e nao depois: perguntar o que aparece DEPOIS de a
+            pessoa escrever significa deixa-la digitar um estadio que ela ja
+            tinha decidido nao mostrar. */}
+        <OQueAparece opcoes={opcoes} aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))} />
+
         <div className="grid gap-4 min-[560px]:grid-cols-2">
           <Campo rotulo="Nome no vídeo">
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Philippe Coutinho" />
           </Campo>
-          <Campo rotulo="Clube">
-            <Input value={clube} onChange={(e) => setClube(e.target.value)} placeholder="Vasco" />
-          </Campo>
-          <Campo rotulo="Campeonato">
-            <Input
-              value={jogo.campeonato}
-              onChange={(e) => setJogo({ ...jogo, campeonato: e.target.value })}
-              placeholder="Brasileirão"
-            />
-          </Campo>
-          <Campo rotulo="Estádio">
-            <Input
-              value={jogo.estadio}
-              onChange={(e) => setJogo({ ...jogo, estadio: e.target.value })}
-              placeholder="São Januário"
-            />
-          </Campo>
-          <Campo rotulo="Data">
-            <Input
-              type="date"
-              value={jogo.data_jogo}
-              onChange={(e) => setJogo({ ...jogo, data_jogo: e.target.value })}
-            />
-          </Campo>
-          <Campo rotulo="Horário">
-            <Input
-              value={jogo.hora_jogo}
-              onChange={(e) => setJogo({ ...jogo, hora_jogo: e.target.value })}
-              placeholder="20h30"
-            />
-          </Campo>
+          {!opcoes.ocultos.includes("clube") && (
+            <Campo rotulo="Clube">
+              <Input value={clube} onChange={(e) => setClube(e.target.value)} placeholder="Vasco" />
+            </Campo>
+          )}
+          {!opcoes.ocultos.includes("campeonato") && (
+            <Campo rotulo="Campeonato">
+              <Input
+                value={jogo.campeonato}
+                onChange={(e) => setJogo({ ...jogo, campeonato: e.target.value })}
+                placeholder="Brasileirão"
+              />
+            </Campo>
+          )}
+          {!opcoes.ocultos.includes("estadio") && (
+            <Campo rotulo="Estádio">
+              <Input
+                value={jogo.estadio}
+                onChange={(e) => setJogo({ ...jogo, estadio: e.target.value })}
+                placeholder="São Januário"
+              />
+            </Campo>
+          )}
+          {!opcoes.ocultos.includes("data") && (
+            <Campo rotulo="Data">
+              <Input
+                type="date"
+                value={jogo.data_jogo}
+                onChange={(e) => setJogo({ ...jogo, data_jogo: e.target.value })}
+              />
+            </Campo>
+          )}
+          {!opcoes.ocultos.includes("hora") && (
+            <Campo rotulo="Horário">
+              <Input
+                value={jogo.hora_jogo}
+                onChange={(e) => setJogo({ ...jogo, hora_jogo: e.target.value })}
+                placeholder="20h30"
+              />
+            </Campo>
+          )}
         </div>
 
         {/* Campo vazio não vira buraco: a linha inteira some do vídeo. É o mesmo
@@ -424,6 +439,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
           amostraDoTexto={clube || nome || "GOLAÇO"}
           escudoUrl={clubeDoAtleta?.escudo_url ?? undefined}
+          mostrarOcultaveis={false}
         />
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}

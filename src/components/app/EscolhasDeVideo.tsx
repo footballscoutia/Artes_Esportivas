@@ -53,7 +53,14 @@ export function Grupo<T extends string>({
       <p className="mb-2 text-[13px] font-medium">
         {titulo} {ajuda && <span className="text-muted-2 font-normal">{ajuda}</span>}
       </p>
-      <div className={cn("grid gap-1.5", colunas === 2 && "min-[520px]:grid-cols-2")}>
+      <div
+        className={cn(
+          "grid gap-1.5",
+          colunas === 2
+            ? "grid-cols-2 min-[760px]:grid-cols-3 min-[1100px]:grid-cols-4"
+            : "grid-cols-2 min-[900px]:grid-cols-3 min-[1200px]:grid-cols-4",
+        )}
+      >
         {Object.entries(itens).map(([chave, item]) => (
           <button
             key={chave}
@@ -71,7 +78,11 @@ export function Grupo<T extends string>({
               {item.rotulo}
             </span>
             {amostra?.(chave)}
-            {item.nota && (
+            {/* A descricao escrita so aparece onde NAO ha previa. Onde ha, ela
+                e redundante — a animacao diz melhor o que "arrasto lateral
+                borrado" tenta descrever — e custa uma linha em cada cartao,
+                que numa grade de dez vira tres fileiras mais altas. */}
+            {item.nota && !amostra && (
               <span className="mt-0.5 block text-[11px] leading-snug text-muted-2">
                 {item.nota}
               </span>
@@ -95,6 +106,7 @@ export function EscolhasDeVideo({
   amostraDoTexto = "GOLAÇO",
   aoVerTransicao,
   escudoUrl,
+  mostrarOcultaveis = true,
 }: {
   opcoes: Opcoes;
   aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
@@ -105,6 +117,12 @@ export function EscolhasDeVideo({
   aoVerTransicao?: () => void;
   /** O escudo real, para a prévia da intro não usar um genérico. */
   escudoUrl?: string;
+  /**
+   * Falso quando a tela já perguntou isso antes — é o caso do vídeo do zero,
+   * onde os interruptores vêm ANTES dos campos de texto para a pessoa não
+   * escrever um estádio que decidiu não mostrar.
+   */
+  mostrarOcultaveis?: boolean;
 }) {
   const totalComIntro = opcoes.duracao + INTROS[opcoes.intro].dura;
   /* Um relogio so, no pai, para as dez previas andarem em fase. Dez timers
@@ -114,14 +132,17 @@ export function EscolhasDeVideo({
 
   return (
     /**
-     * Duas colunas, e não uma lista descendo.
+     * Os GRUPOS empilham na largura toda; as OPÇÕES é que vão em grade.
      *
-     * Numa coluna só, oito grupos com prévia produziam uma página que rolava
-     * muito mais que o conteúdo ao lado — e metade da largura ficava vazia. O
-     * problema não era o número de opções: era o formato de lista para algo
-     * que se compara lado a lado.
+     * A tentativa anterior fez o contrário — dois grupos lado a lado — e não
+     * resolveu: medindo a página, o efeito de intro gastava 979px para oito
+     * opções e a transição 1119px para dez, porque cada grupo continuava sendo
+     * uma lista de uma coluna dentro de meia largura. Cartão de 112px de altura
+     * ocupando 666px de largura é desperdício dos dois lados.
+     *
+     * Com as opções em quatro colunas, dez viram três fileiras em vez de dez.
      */
-    <div className="grid items-start gap-x-5 gap-y-5 min-[900px]:grid-cols-2">
+    <div className="flex flex-col gap-5">
       <Grupo
         titulo="Arranjo"
         itens={ARRANJOS}
@@ -263,43 +284,7 @@ export function EscolhasDeVideo({
         </span>
       </label>
 
-      {/**
-        * O que aparece no vídeo — a mesma ideia da arte parada, onde campo em
-        * branco derruba a linha inteira. Um vídeo de gol não precisa dizer a
-        * que horas foi o jogo, e mandá-lo dizer é ruído com aparência de dado.
-        */}
-      <div>
-        <p className="mb-2 text-[13px] font-medium">
-          O que aparece <span className="text-muted-2 font-normal">desligue o que sobra</span>
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(OCULTAVEIS).map(([chave, rotulo]) => {
-            const visivel = !opcoes.ocultos.includes(chave);
-            return (
-              <button
-                key={chave}
-                type="button"
-                onClick={() =>
-                  aoMudar(
-                    "ocultos",
-                    visivel
-                      ? [...opcoes.ocultos, chave]
-                      : opcoes.ocultos.filter((c) => c !== chave),
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
-                  visivel
-                    ? "border-accent bg-accent/10 font-medium"
-                    : "border-line text-muted-2 line-through",
-                )}
-              >
-                {rotulo}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {mostrarOcultaveis && <OQueAparece opcoes={opcoes} aoMudar={aoMudar} />}
 
       <label className="flex flex-col gap-1.5">
         <span className="flex items-baseline justify-between text-[13px] font-medium">
@@ -323,6 +308,57 @@ export function EscolhasDeVideo({
           </span>
         )}
       </label>
+    </div>
+  );
+}
+
+/**
+ * O que aparece no vídeo — os interruptores, isolados.
+ *
+ * Isolado porque aparece em dois momentos diferentes: no vídeo do zero ele vem
+ * ANTES dos campos de texto, senão a pessoa escreve um estádio que já decidiu
+ * não mostrar; no editor ele fica com o resto, porque ali os textos já existem
+ * e a decisão é de arrumação e não de digitação.
+ */
+export function OQueAparece({
+  opcoes,
+  aoMudar,
+}: {
+  opcoes: Opcoes;
+  aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[13px] font-medium">
+        O que aparece <span className="text-muted-2 font-normal">desligue o que não vai ao vídeo</span>
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {Object.entries(OCULTAVEIS).map(([chave, rotulo]) => {
+          const visivel = !opcoes.ocultos.includes(chave);
+          return (
+            <button
+              key={chave}
+              type="button"
+              onClick={() =>
+                aoMudar(
+                  "ocultos",
+                  visivel
+                    ? [...opcoes.ocultos, chave]
+                    : opcoes.ocultos.filter((c) => c !== chave),
+                )
+              }
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
+                visivel
+                  ? "border-accent bg-accent/10 font-medium"
+                  : "border-line text-muted-2 line-through",
+              )}
+            >
+              {rotulo}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

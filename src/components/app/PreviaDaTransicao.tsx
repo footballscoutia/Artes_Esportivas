@@ -98,7 +98,7 @@ export function PreviaDaTransicao({
   const estilo = estiloDaDeformacao(def);
 
   return (
-    <span className="relative mt-1.5 block h-[52px] overflow-hidden rounded-field bg-bg-2">
+    <span className="relative mt-1.5 block h-[40px] overflow-hidden rounded-field bg-bg-2">
       <span
         className="absolute inset-0 grid place-items-center"
         style={{ transform: estilo.transform, filter: estilo.filter }}
@@ -108,8 +108,8 @@ export function PreviaDaTransicao({
           style={{
             fontFamily: f.familia,
             fontWeight: f.peso,
-            fontSize: 26,
-            letterSpacing: 26 * f.aperto,
+            fontSize: 20,
+            letterSpacing: 20 * f.aperto,
             transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
             color: "var(--text)",
             lineHeight: 1.1,
@@ -163,15 +163,15 @@ export function PreviaDaEntrada({
   const base: React.CSSProperties = {
     fontFamily: f.familia,
     fontWeight: f.peso,
-    fontSize: 24,
-    letterSpacing: 24 * f.aperto,
+    fontSize: 19,
+    letterSpacing: 19 * f.aperto,
     color: "var(--text)",
     lineHeight: 1.1,
     whiteSpace: "nowrap",
   };
 
   return (
-    <span className="relative mt-1.5 block h-[52px] overflow-hidden rounded-field bg-bg-2">
+    <span className="relative mt-1.5 block h-[40px] overflow-hidden rounded-field bg-bg-2">
       <span className="absolute inset-0 grid place-items-center">
         <span
           style={{
@@ -237,7 +237,7 @@ export function PreviaDoIntro({
   const e = estiloDoIntro(efeito, p);
 
   return (
-    <span className="relative mt-1.5 block h-[62px] overflow-hidden rounded-field bg-black/70">
+    <span className="relative mt-1.5 block h-[44px] overflow-hidden rounded-field bg-black/70">
       <span className="absolute inset-0 grid place-items-center">
         <span
           style={{
@@ -250,9 +250,9 @@ export function PreviaDoIntro({
         >
           {escudoUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={escudoUrl} alt="" style={{ height: 40, width: "auto" }} />
+            <img src={escudoUrl} alt="" style={{ height: 30, width: "auto" }} />
           ) : (
-            <svg width="30" height="36" viewBox="0 0 30 36" aria-hidden>
+            <svg width="24" height="29" viewBox="0 0 30 36" aria-hidden>
               <path d="M15 1 L29 6 V19 C29 27 22 33 15 35 C8 33 1 27 1 19 V6 Z" fill="currentColor" opacity="0.85" />
             </svg>
           )}
