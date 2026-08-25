@@ -4,7 +4,6 @@ import { Check } from "lucide-react";
 import { FONTES } from "@/video/fontes";
 import {
   PreviaDaEntrada,
-  PreviaDaTransicao,
   PreviaDoIntro,
   useRelogioDaPrevia,
 } from "@/components/app/PreviaDaTransicao";
@@ -13,9 +12,7 @@ import {
   INTROS,
   INTRO_EFEITOS,
   OCULTAVEIS,
-  duracaoDaTransicao,
   TEMPLATES,
-  TRANSICOES,
   type Opcoes,
 } from "@/video/template";
 import type { ReactNode } from "react";
@@ -107,6 +104,7 @@ export function EscolhasDeVideo({
   aoVerTransicao,
   escudoUrl,
   mostrarOcultaveis = true,
+  aoRenderRelogio,
 }: {
   opcoes: Opcoes;
   aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
@@ -123,12 +121,21 @@ export function EscolhasDeVideo({
    * escrever um estádio que decidiu não mostrar.
    */
   mostrarOcultaveis?: boolean;
+  /**
+   * O relógio das prévias, emprestado a quem desenha os cortes ao lado.
+   *
+   * Um relógio só para a tela inteira: dois `requestAnimationFrame` fariam a
+   * prévia de uma coluna animar fora de fase com a da outra, e comparar duas
+   * coisas que não acontecem ao mesmo tempo é o que a pessoa não consegue.
+   */
+  aoRenderRelogio?: (t: number) => void;
 }) {
   const totalComIntro = opcoes.duracao + INTROS[opcoes.intro].dura;
   /* Um relogio so, no pai, para as dez previas andarem em fase. Dez timers
      independentes produziriam dez animacoes desencontradas, e comparar coisas
      que nao acontecem ao mesmo tempo e justamente o que nao da para fazer. */
   const t = useRelogioDaPrevia(true);
+  aoRenderRelogio?.(t);
 
   return (
     /**
@@ -213,8 +220,8 @@ export function EscolhasDeVideo({
       {/* Entra entre a fonte e a transicao: e efeito de TEXTO, desenhado na
           fonte que acabou de ser escolhida, e nao no quadro inteiro. */}
       <Grupo
-        titulo="Como o texto aparece"
-        ajuda="a entrada de cada linha"
+        titulo="Transição no texto"
+        ajuda="como cada linha entra"
         itens={ENTRADAS}
         atual={opcoes.entradaTexto}
         aoEscolher={(v) => aoMudar("entradaTexto", v)}
@@ -228,61 +235,6 @@ export function EscolhasDeVideo({
           />
         )}
       />
-
-      {/**
-        * A transicao vem DEPOIS da fonte de proposito.
-        *
-        * A previa de cada transicao e desenhada com a fonte ja escolhida, entao
-        * perguntar na ordem inversa mostraria dez animacoes numa tipografia que
-        * a pessoa ainda vai trocar.
-        */}
-      <Grupo
-        titulo="Transição do meio"
-        itens={TRANSICOES}
-        atual={opcoes.transicao}
-        aoEscolher={(v) => {
-          aoMudar("transicao", v);
-          aoVerTransicao?.();
-        }}
-        colunas={colunas}
-        amostra={(chave) => (
-          <PreviaDaTransicao
-            transicao={chave}
-            fonte={opcoes.fonte}
-            intensidade={opcoes.intensidade}
-            velocidade={opcoes.velocidadeTransicao}
-            texto={amostraDoTexto}
-            t={t}
-          />
-        )}
-      />
-
-      {/* Fica junto das transicoes, e nao com os outros controles: e a
-          velocidade DELAS, e as previas logo acima reagem na hora. */}
-      <label className="-mt-2 flex flex-col gap-1.5">
-        <span className="flex items-baseline justify-between text-[13px] font-medium">
-          <span className="flex items-baseline gap-1">
-            Velocidade da transição
-            <span className="text-muted-2 font-normal">quão rápido é o corte</span>
-          </span>
-          <span className="tabular-nums text-[12px] text-muted">
-            {duracaoDaTransicao(opcoes.velocidadeTransicao).toFixed(2).replace(".", ",")}s
-          </span>
-        </span>
-        <input
-          type="range"
-          min={0.4}
-          max={2.5}
-          step={0.1}
-          value={opcoes.velocidadeTransicao}
-          onChange={(ev) => aoMudar("velocidadeTransicao", Number(ev.target.value))}
-          className="accent-accent"
-        />
-        <span className="flex justify-between text-[11px] text-muted-2">
-          <span>lenta</span>
-          <span>rápida</span>
-        </span>
-      </label>
 
       {mostrarOcultaveis && <OQueAparece opcoes={opcoes} aoMudar={aoMudar} />}
 

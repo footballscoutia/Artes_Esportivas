@@ -5,6 +5,7 @@ import {
   INTROS,
   ROTEIROS,
   ENTRADAS,
+  TRANSICAO_PADRAO,
   deformacaoDaTransicao,
   estiloDoIntro,
   duracaoDaTransicao,
@@ -87,35 +88,54 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
     extrapolateRight: "clamp",
   });
 
-  /* O corte do meio: o bloco de texto sai e volta, e um clarao curto marca a
-     emenda. Sem a saida do texto, a segunda metade seria a primeira parada. */
-  const corte = tpl.corte * f * fps;
-  const sai = interpolate(quadro, [corte - 0.3 * f * fps, corte], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const volta = interpolate(quadro, [corte + 0.12 * f * fps, corte + 0.5 * f * fps], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const visivel = Math.max(0, Math.min(1, 1 - sai + volta));
-
   /**
-   * O pico da transicao: 1 no corte exato, 0 nas beiradas da janela.
+   * OS CORTES. Eram um; agora sao ate quatro.
    *
-   * A escolha muda o EFEITO, nao o instante — o corte acontece de qualquer
-   * jeito, e a transicao so decide como a emenda e disfarcada.
+   * Cada um tem instante e transicao propria. O quadro cai em NO MAXIMO um
+   * deles — as janelas nao se sobrepoem porque o editor impoe espacamento —,
+   * entao achar o corte ativo e procurar o primeiro cuja janela contem o
+   * quadro, e nao somar deformacoes de varios.
    */
-  /* A janela do corte. A conta vem de `deformacaoDaTransicao` — a MESMA que o
-     seletor usa para a previa. Duas copias divergiriam, e uma previa que
-     mente e pior que nenhuma. */
-  const janela = (duracaoDaTransicao(opcoes.velocidadeTransicao) / 2) * f * fps;
-  const u = (quadro - (corte - janela)) / (janela * 2);
-  const def = deformacaoDaTransicao(opcoes.transicao, u, opcoes.intensidade, quadro);
+  const cortes =
+    opcoes.cortes && opcoes.cortes.length > 0
+      ? opcoes.cortes
+      : [{ em: tpl.corte, transicao: opcoes.transicao ?? TRANSICAO_PADRAO }];
+
+  const meiaJanela = (duracaoDaTransicao(opcoes.velocidadeTransicao) / 2) * f * fps;
+  const ativo = cortes
+    .map((c) => ({ ...c, quadro: c.em * f * fps }))
+    .find((c) => Math.abs(quadro - c.quadro) < meiaJanela);
+
+  const u = ativo ? (quadro - (ativo.quadro - meiaJanela)) / (meiaJanela * 2) : -1;
+  const def = deformacaoDaTransicao(
+    ativo?.transicao ?? TRANSICAO_PADRAO,
+    u,
+    opcoes.intensidade,
+    quadro,
+  );
   const deformar = estiloDaDeformacao(def);
   const clarao = def.clarao;
   const escurece = def.escurece;
 
+  /**
+   * O bloco de texto sai e volta em CADA corte.
+   *
+   * Antes era uma conta unica em cima do corte do template. Com varios, a
+   * visibilidade e o minimo entre as contas de todos: basta um corte estar
+   * acontecendo para o texto estar fora.
+   */
+  const visivel = cortes.reduce((menor, c) => {
+    const q = c.em * f * fps;
+    const sai = interpolate(quadro, [q - 0.3 * f * fps, q], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+    const volta = interpolate(quadro, [q + 0.12 * f * fps, q + 0.5 * f * fps], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+    return Math.min(menor, Math.max(0, Math.min(1, 1 - sai + volta)));
+  }, 1);
   const e = opcoes.escalaTexto;
 
   return (
@@ -123,6 +143,29 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
       <AbsoluteFill style={{ transform: `scale(${zoomFundo}) ${deformar.transform}`, filter: deformar.filter }}>
         <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </AbsoluteFill>
+
+      {/**
+        * O GLITCH: duas copias do fundo deslocadas e tingidas, somadas por
+        * `screen`. E o mesmo truque de separacao de canais que a TV analogica
+        * fazia por defeito — e por isso le como falha de sinal, e nao como
+        * enfeite. So existe enquanto `rgb` for maior que zero.
+        */}
+      {def.rgb > 0.5 && (
+        <>
+          <AbsoluteFill style={{ transform: `scale(${zoomFundo}) translateX(${def.rgb}px)`, mixBlendMode: "screen", opacity: 0.55 }}>
+            <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover", filter: "url(#semVerde)" }} />
+          </AbsoluteFill>
+          <AbsoluteFill style={{ transform: `scale(${zoomFundo}) translateX(${-def.rgb}px)`, mixBlendMode: "screen", opacity: 0.55 }}>
+            <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover", filter: "url(#semVermelho)" }} />
+          </AbsoluteFill>
+          <svg width="0" height="0" style={{ position: "absolute" }}>
+            <defs>
+              <filter id="semVerde"><feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" /></filter>
+              <filter id="semVermelho"><feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" /></filter>
+            </defs>
+          </svg>
+        </>
+      )}
 
       <AbsoluteFill
         style={{
@@ -250,7 +293,14 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
         />
       )}
 
-      {clarao > 0.01 && <AbsoluteFill style={{ backgroundColor: "#fff", opacity: clarao * 0.5 }} />}
+      {clarao > 0.01 && (
+        <AbsoluteFill
+          style={{
+            backgroundColor: def.veuCor === "clube" ? opcoes.corBarra : "#fff",
+            opacity: clarao * 0.5,
+          }}
+        />
+      )}
       {escurece > 0.01 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: escurece * 0.9 }} />}
       {fecho > 0 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: fecho }} />}
 

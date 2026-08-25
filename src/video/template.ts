@@ -13,6 +13,12 @@
  */
 
 import { z } from "zod";
+import { IDS_DE_TRANSICAO, TRANSICAO_PADRAO } from "./transicoes";
+
+/* O catálogo de transições mora em `transicoes.ts` — ele cresceu o bastante
+   para merecer arquivo próprio. Reexportado aqui para os consumidores não
+   precisarem saber de duas portas. */
+export * from "./transicoes";
 
 /**
  * As CHAVES de fonte vivem aqui, e os desenhos vivem em fontes.ts.
@@ -112,100 +118,6 @@ export function estiloDoIntro(nome: string, p: number): EstiloDeEntrada {
 }
 
 /* =========================================================================
-   TRANSICOES — o que acontece nos poucos quadros em volta do corte do meio.
-   ========================================================================= */
-
-export const TRANSICOES = {
-  corte: { rotulo: "Corte seco", nota: "Sem efeito nenhum" },
-  flash: { rotulo: "Estouro", nota: "Um clarão branco curto" },
-  whip: { rotulo: "Whip", nota: "Arrasto lateral borrado, como virar a câmera" },
-  punch: { rotulo: "Punch", nota: "Avanço rápido com desfoque" },
-  fecha: { rotulo: "Fecha e abre", nota: "O quadro escurece e volta" },
-  desliza: { rotulo: "Deslize", nota: "O quadro escorrega para o lado e volta" },
-  sobe: { rotulo: "Sobe", nota: "Empurra de baixo para cima" },
-  tremor: { rotulo: "Tremor", nota: "Sacode curto, de impacto" },
-  gira: { rotulo: "Giro", nota: "Inclina e desinclina, com um leve avanço" },
-  estica: { rotulo: "Estica", nota: "Alonga na horizontal, como fita passando" },
-} as const;
-
-export type Transicao = keyof typeof TRANSICOES;
-
-export type Deformacao = {
-  x: number;
-  y: number;
-  escala: number;
-  rot: number;
-  esticaX: number;
-  borrao: number;
-  clarao: number;
-  escurece: number;
-};
-
-/**
- * A DEFORMAÇÃO de uma transição num instante — a conta, num lugar só.
- *
- * Ela mora aqui, no contrato, e não dentro da composição, porque DOIS lugares
- * precisam dela: o vídeo, que a aplica de verdade, e a prévia do seletor, que a
- * mostra antes de a pessoa escolher. Se cada um tivesse a sua cópia, a prévia
- * mentiria no dia em que alguém afinasse só um dos dois — e uma prévia que
- * mente é pior que nenhuma, porque a escolha é feita em cima dela.
- *
- * `u` atravessa a janela do corte de 0 a 1, com 0.5 no corte exato. `fase` só
- * serve ao tremor, que precisa de um valor que ande sozinho.
- */
-export function deformacaoDaTransicao(
-  nome: string,
-  u: number,
-  intensidade: number,
-  fase: number,
-): Deformacao {
-  const zero: Deformacao = {
-    x: 0,
-    y: 0,
-    escala: 0,
-    rot: 0,
-    esticaX: 0,
-    borrao: 0,
-    clarao: 0,
-    escurece: 0,
-  };
-  const pico = Math.max(0, 1 - Math.abs(u - 0.5) * 2) * intensidade;
-  if (pico <= 0) return zero;
-
-  /* A direção inverte no corte: antes dele o quadro SAI, depois ele ENTRA. Sem
-     a inversão a imagem iria e voltaria pelo mesmo lado, que lê como solavanco
-     e não como corte. */
-  const lado = u < 0.5 ? -1 : 1;
-
-  switch (nome) {
-    case "flash":
-      return { ...zero, clarao: pico };
-    case "fecha":
-      return { ...zero, escurece: pico };
-    case "whip":
-      return { ...zero, x: lado * 190 * pico, borrao: 16 * pico };
-    case "punch":
-      return { ...zero, escala: 0.24 * pico, borrao: 11 * pico };
-    case "desliza":
-      return { ...zero, x: lado * 300 * pico };
-    case "sobe":
-      return { ...zero, y: lado * 260 * pico };
-    case "tremor":
-      return {
-        ...zero,
-        x: Math.sin(fase * 1.9) * 26 * pico,
-        y: Math.cos(fase * 2.3) * 18 * pico,
-      };
-    case "gira":
-      return { ...zero, rot: lado * 4 * pico, escala: 0.12 * pico };
-    case "estica":
-      return { ...zero, esticaX: 0.5 * pico, borrao: 7 * pico };
-    default:
-      return zero;
-  }
-}
-
-/* =========================================================================
    ENTRADAS DE TEXTO — como cada linha aparece.
 
    Ate aqui havia uma só, cravada: deslizar da esquerda com fade. Todo vídeo
@@ -285,29 +197,7 @@ export function progressoDaLetra(p: number, indice: number, total: number, nome:
   return Math.max(0, Math.min(1, (p - atraso) / Math.max(0.001, janela)));
 }
 
-/**
- * Quanto dura a janela do corte, em segundos da linha do tempo de referencia.
- *
- * Sai daqui, e nao de uma constante na composicao, porque a previa do seletor
- * precisa do MESMO numero para mostrar a velocidade certa. Era o unico pedaco
- * da transicao que ainda vivia em dois lugares.
- */
-export const JANELA_BASE = 0.32;
-export const duracaoDaTransicao = (velocidade: number) => JANELA_BASE / velocidade;
 
-/** A deformação vira transform e filter de CSS, do mesmo jeito nos dois lados. */
-export function estiloDaDeformacao(d: Deformacao) {
-  return {
-    transform: [
-      `translate(${d.x.toFixed(1)}px, ${d.y.toFixed(1)}px)`,
-      `scale(${1 + d.escala + d.esticaX}, ${1 + d.escala})`,
-      d.rot ? `rotate(${d.rot.toFixed(2)}deg)` : "",
-    ]
-      .filter(Boolean)
-      .join(" "),
-    filter: d.borrao > 0.4 ? `blur(${d.borrao.toFixed(1)}px)` : undefined,
-  };
-}
 
 /**
  * O template descreve UM ARRANJO, e nao mais uma lista de elementos soltos.
@@ -421,7 +311,23 @@ export const EsquemaOpcoes = z.object({
   ocultos: z.array(z.string()),
   intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]),
   introEfeito: z.enum(["cresce", "encolhe", "sobe", "gira", "impacto", "desfoca", "revela", "pisca"]),
-  transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
+  /**
+   * OS CORTES do vídeo: quantos, quando e com qual transição.
+   *
+   * Era um só, no meio, fixo pelo template. Um vídeo de 15s com um corte é uma
+   * foto com zoom; um de 6s com cinco é epilepsia. Por isso a lista tem TETO —
+   * quatro — e o editor guarda espaçamento mínimo entre eles: dois cortes a
+   * 0,1s de distância viram um borrão só, não duas transições.
+   *
+   * Opcional para os vídeos gravados antes disto existir continuarem válidos;
+   * quem os lê cai no corte único do template.
+   */
+  cortes: z
+    .array(z.object({ em: z.number().min(0.4), transicao: z.enum(IDS_DE_TRANSICAO as [string, ...string[]]) }))
+    .max(4)
+    .optional(),
+  /** Legado: o corte único das versões anteriores. */
+  transicao: z.string().optional(),
   fonte: z.enum(CHAVES_DE_FONTE),
   /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
      arrastaria o Remotion para dentro deste arquivo de novo. O preco e o
@@ -510,7 +416,7 @@ export const OPCOES_PADRAO: Opcoes = {
   ocultos: [],
   intro: "escudo-logo",
   introEfeito: "cresce",
-  transicao: "whip",
+  cortes: [{ em: 4.3, transicao: TRANSICAO_PADRAO }],
   fonte: "cartaz",
   corTexto: "#ffffff",
   /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a

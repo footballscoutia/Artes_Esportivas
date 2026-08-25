@@ -7,6 +7,8 @@ import { ArrowLeft, ArrowRight, Check, Clapperboard, UserRound } from "lucide-re
 import { Button, BotaoLink } from "@/components/ui/Button";
 import { Campo, Input } from "@/components/ui/Field";
 import { EscolhasDeVideo, OQueAparece } from "@/components/app/EscolhasDeVideo";
+import { CortesDoVideo } from "@/components/app/CortesDoVideo";
+import { useRelogioDaPrevia } from "@/components/app/PreviaDaTransicao";
 import {
   TIPOS,
   TIPO_META,
@@ -114,6 +116,8 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
    */
   const [passo, setPasso] = useState<1 | 2>(1);
   const [gerando, setGerando] = useState(false);
+  /* Um relógio só para as prévias das duas colunas: em fase, dá para comparar. */
+  const relogio = useRelogioDaPrevia(true);
   const [erro, setErro] = useState<string | null>(null);
 
   const jogador = jogadores.find((j) => j.id === jogadorId) ?? null;
@@ -433,14 +437,28 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
         </div>
       </div>
 
-      <div className={cn("grid gap-8 lg:grid-cols-2", passo !== 2 && "hidden")}>
-        <EscolhasDeVideo
-          opcoes={opcoes}
-          aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
-          amostraDoTexto={clube || nome || "GOLAÇO"}
-          escudoUrl={clubeDoAtleta?.escudo_url ?? undefined}
-          mostrarOcultaveis={false}
-        />
+      {/* Escolhas de estilo à esquerda, ritmo do vídeo à direita. A coluna da
+          direita estava vazia e os cortes são justamente o que precisa de
+          espaço próprio: eles crescem conforme a pessoa acrescenta. */}
+      <div className={cn("grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]", passo !== 2 && "hidden")}>
+        <div className="min-w-0">
+          <EscolhasDeVideo
+            opcoes={opcoes}
+            aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
+            amostraDoTexto={clube || nome || "GOLAÇO"}
+            escudoUrl={clubeDoAtleta?.escudo_url ?? undefined}
+            mostrarOcultaveis={false}
+          />
+        </div>
+
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <CortesDoVideo
+            opcoes={opcoes}
+            aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
+            amostraDoTexto={clube || nome || "VASCO"}
+            t={relogio}
+          />
+        </div>
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}
 

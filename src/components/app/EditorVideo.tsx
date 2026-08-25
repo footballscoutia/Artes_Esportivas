@@ -14,6 +14,8 @@ import {
   type Opcoes,
 } from "@/video/template";
 import { EscolhasDeVideo } from "@/components/app/EscolhasDeVideo";
+import { CortesDoVideo } from "@/components/app/CortesDoVideo";
+import { useRelogioDaPrevia } from "@/components/app/PreviaDaTransicao";
 import { salvarVideo } from "@/lib/acoes";
 import { cn } from "@/lib/utils";
 
@@ -162,6 +164,7 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
    * um computador fraco demora mais, e navegador sem WebCodecs nao renderiza. Por
    * isso a checagem de suporte vem ANTES do botao, e nao depois do clique.
    */
+  const relogio = useRelogioDaPrevia(true);
   const [renderizando, setRenderizando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [semSuporte, setSemSuporte] = useState<string | null>(null);
@@ -219,11 +222,21 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
    * Comeca um pouco ANTES do corte porque a transicao tem entrada: parar em
    * cima dele mostraria so o pico, que e o quadro que menos informa.
    */
+  /**
+   * Leva o preview ate o PRIMEIRO corte e toca.
+   *
+   * Com varios cortes, "ver a transicao" deixou de ter um destino unico. O
+   * primeiro e a escolha honesta: e o que a pessoa ve primeiro ao assistir, e
+   * dali em diante o video corre e mostra os outros sozinho.
+   */
   function verTransicao() {
-    const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.confronto;
     const f = opcoes.duracao / 8;
     const inicioDaArte = INTROS[opcoes.intro].dura * f * FPS;
-    const alvo = Math.max(0, Math.round(inicioDaArte + (tpl.corte * f - 0.7) * FPS));
+    const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.confronto;
+    const primeiro = [...(opcoes.cortes ?? [{ em: tpl.corte, transicao: "" }])].sort(
+      (a, b) => a.em - b.em,
+    )[0];
+    const alvo = Math.max(0, Math.round(inicioDaArte + (primeiro.em * f - 0.7) * FPS));
     player.current?.seekTo(Math.min(alvo, quadros - 1));
     player.current?.play();
   }
@@ -304,12 +317,21 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
 
       <div className="flex flex-col gap-5 lg:max-h-[74vh] lg:overflow-y-auto lg:pr-1">
         <div className="border-t border-line pt-5">
+          <CortesDoVideo
+            opcoes={opcoes}
+            aoMudar={mexer}
+            amostraDoTexto={dados.clube || dados.nome || "VASCO"}
+            t={relogio}
+          />
+        </div>
+
+        <div className="border-t border-line pt-5">
           <EscolhasDeVideo
             opcoes={opcoes}
             aoMudar={mexer}
             amostraDoTexto={dados.clube || dados.nome || "GOLAÇO"}
-            aoVerTransicao={verTransicao}
             escudoUrl={camadas.escudo}
+            mostrarOcultaveis
           />
         </div>
 
