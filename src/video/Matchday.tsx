@@ -5,6 +5,7 @@ import {
   INTROS,
   ROTEIROS,
   deformacaoDaTransicao,
+  duracaoDaTransicao,
   estiloDaDeformacao,
   TEMPLATES,
   type Camadas,
@@ -104,7 +105,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
   /* A janela do corte. A conta vem de `deformacaoDaTransicao` — a MESMA que o
      seletor usa para a previa. Duas copias divergiriam, e uma previa que
      mente e pior que nenhuma. */
-  const janela = 0.16 * f * fps;
+  const janela = (duracaoDaTransicao(opcoes.velocidadeTransicao) / 2) * f * fps;
   const u = (quadro - (corte - janela)) / (janela * 2);
   const def = deformacaoDaTransicao(opcoes.transicao, u, opcoes.intensidade, quadro);
   const deformar = estiloDaDeformacao(def);

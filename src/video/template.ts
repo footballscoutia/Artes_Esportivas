@@ -141,6 +141,16 @@ export function deformacaoDaTransicao(
   }
 }
 
+/**
+ * Quanto dura a janela do corte, em segundos da linha do tempo de referencia.
+ *
+ * Sai daqui, e nao de uma constante na composicao, porque a previa do seletor
+ * precisa do MESMO numero para mostrar a velocidade certa. Era o unico pedaco
+ * da transicao que ainda vivia em dois lugares.
+ */
+export const JANELA_BASE = 0.32;
+export const duracaoDaTransicao = (velocidade: number) => JANELA_BASE / velocidade;
+
 /** A deformação vira transform e filter de CSS, do mesmo jeito nos dois lados. */
 export function estiloDaDeformacao(d: Deformacao) {
   return {
@@ -248,6 +258,10 @@ export const EsquemaOpcoes = z.object({
   escalaTexto: z.number().min(0.6).max(2),
   velocidade: z.number().min(0.5).max(2),
   intensidade: z.number().min(0).max(2),
+  /* Quao RAPIDO o corte acontece. Multiplicador em vez de segundos porque a
+     duracao real depende da duracao do video: um whip de 0,32s num video de 6s
+     e o mesmo gesto que num de 15s, e cravar segundos quebraria essa relacao. */
+  velocidadeTransicao: z.number().min(0.4).max(2.5),
   intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]),
   transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
   fonte: z.enum(CHAVES_DE_FONTE),
@@ -317,6 +331,7 @@ export const OPCOES_PADRAO: Opcoes = {
   escalaTexto: 1,
   velocidade: 1,
   intensidade: 1,
+  velocidadeTransicao: 1,
   intro: "escudo-logo",
   transicao: "whip",
   fonte: "cartaz",

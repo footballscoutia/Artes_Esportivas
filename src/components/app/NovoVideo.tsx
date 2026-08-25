@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Check, Clapperboard, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clapperboard, UserRound } from "lucide-react";
 import { Button, BotaoLink } from "@/components/ui/Button";
 import { Campo, Input } from "@/components/ui/Field";
 import { EscolhasDeVideo } from "@/components/app/EscolhasDeVideo";
@@ -41,6 +41,51 @@ type Props = {
 /** Os tipos que fazem sentido em video vertical de rede social. */
 const TIPOS_DE_VIDEO = TIPOS.filter((t) => t !== "frase");
 
+/** Onde a pessoa esta, e o que falta. Dois passos nao precisam de mais. */
+function Passos({
+  atual,
+  aoVoltar,
+  pronto,
+}: {
+  atual: 1 | 2;
+  aoVoltar: () => void;
+  pronto: boolean;
+}) {
+  const itens = [
+    { n: 1, rotulo: "O que o vídeo diz" },
+    { n: 2, rotulo: "Como ele se monta" },
+  ];
+  return (
+    <div className="flex items-center gap-2">
+      {itens.map((i) => (
+        <button
+          key={i.n}
+          type="button"
+          disabled={i.n === 2 && !pronto}
+          onClick={() => i.n === 1 && aoVoltar()}
+          className={cn(
+            "flex items-center gap-2 rounded-card border px-3 py-2 text-[13px] transition-colors",
+            atual === i.n
+              ? "border-accent bg-accent/10 font-medium"
+              : "border-line text-muted",
+            i.n === 2 && !pronto && "opacity-50",
+          )}
+        >
+          <span
+            className={cn(
+              "grid size-5 place-items-center rounded-full text-[11px] font-medium",
+              atual === i.n ? "bg-accent text-white" : "bg-surface-2 text-muted-2",
+            )}
+          >
+            {i.n}
+          </span>
+          {i.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
   const router = useRouter();
 
@@ -58,6 +103,16 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
   const [uniformeId, setUniformeId] = useState<string | null>(null);
   const [marcaId, setMarcaId] = useState<string | null>(marcas[0]?.id ?? null);
   const [opcoes, setOpcoes] = useState<Opcoes>(OPCOES_PADRAO);
+  /**
+   * Duas etapas, e nao uma coluna longa.
+   *
+   * Numa tela so, as escolhas de montagem ficavam numa coluna lateral que
+   * descia muito mais que o conteudo ao lado — a pessoa rolava para ver fonte
+   * e transicao enquanto o topo ja tinha saido da tela. E as duas coisas nem
+   * sao do mesmo tipo: a primeira e SOBRE O QUE o video fala, a segunda e
+   * COMO ele se monta. Separar respeita essa fronteira.
+   */
+  const [passo, setPasso] = useState<1 | 2>(1);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -122,8 +177,10 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-6">
+      <Passos atual={passo} aoVoltar={() => setPasso(1)} pronto={pronto} />
+
+      <div className={cn("flex flex-col gap-7", passo !== 1 && "hidden")}>
         <div>
           <p className="mb-3 text-[13px] font-medium">
             Tipo <span className="text-muted-2 font-normal">o que o vídeo anuncia</span>
@@ -349,9 +406,19 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
         <p className="text-[12px] leading-relaxed text-muted-2">
           Campo em branco simplesmente não aparece no vídeo — nada fica escrito pela metade.
         </p>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
+          <Button disabled={!pronto} onClick={() => setPasso(2)}>
+            Próximo: como o vídeo se monta
+            <ArrowRight size={15} />
+          </Button>
+          {!pronto && (
+            <span className="text-[12px] text-muted-2">Escolha o atleta para continuar.</span>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className={cn("grid gap-8 lg:grid-cols-2", passo !== 2 && "hidden")}>
         <EscolhasDeVideo
           opcoes={opcoes}
           aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
@@ -360,14 +427,17 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}
 
-        <div className="flex flex-col gap-2 border-t border-line pt-5">
-          <Button className="w-full" disabled={!pronto || gerando} onClick={gerar}>
-            <Clapperboard size={15} />
-            {gerando ? "Gerando camadas…" : "Gerar vídeo"}
-          </Button>
-          {!pronto && (
-            <p className="text-[12px] text-muted-2">Escolha o atleta para continuar.</p>
-          )}
+        <div className="flex flex-col gap-2 border-t border-line pt-5 lg:col-span-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variante="sutil" onClick={() => setPasso(1)}>
+              <ArrowLeft size={15} />
+              Voltar
+            </Button>
+            <Button className="flex-1" disabled={!pronto || gerando} onClick={gerar}>
+              <Clapperboard size={15} />
+              {gerando ? "Gerando camadas…" : "Gerar vídeo"}
+            </Button>
+          </div>
           <p className="text-[11px] leading-relaxed text-muted-2">
             Gerar cria duas camadas — o cenário e o atleta recortado — e custa duas gerações.
             Depois disso, editar animação, ritmo, fonte e cores não custa nada.

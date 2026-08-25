@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FONTES } from "@/video/fontes";
 import {
   deformacaoDaTransicao,
+  duracaoDaTransicao,
   estiloDaDeformacao,
   type Opcoes,
 } from "@/video/template";
@@ -26,8 +27,14 @@ import {
  * não acontecem ao mesmo tempo é justamente o que a pessoa não consegue fazer.
  */
 
-/** Um ciclo completo — pausa, transição, pausa — em milissegundos. */
-const CICLO = 2600;
+/**
+ * Um ciclo completo — pausa, transicao, pausa — em milissegundos.
+ *
+ * Curto de proposito: a transicao ocupa uma FATIA proporcional a duracao real
+ * dela, e um ciclo longo faria a versao rapida virar um piscar perdido no meio
+ * de dois segundos de nada.
+ */
+const CICLO = 1600;
 
 export function useRelogioDaPrevia(ligado: boolean) {
   const [t, setT] = useState(0);
@@ -55,12 +62,14 @@ export function PreviaDaTransicao({
   transicao,
   fonte,
   intensidade,
+  velocidade,
   texto,
   t,
 }: {
   transicao: string;
   fonte: Opcoes["fonte"];
   intensidade: number;
+  velocidade: number;
   texto: string;
   /** 0..1 do ciclo, vindo do relógio compartilhado. */
   t: number;
@@ -72,8 +81,12 @@ export function PreviaDaTransicao({
    * repouso. Uma transição em laço contínuo vira tremeliques sem começo nem
    * fim, e não dá para ver o gesto — é a pausa que revela o movimento.
    */
-  const FATIA = 0.34;
-  const inicio = 0.33;
+  /* A fatia sai da duracao REAL da transicao em vez de um numero fixo: e o
+     que faz a previa mostrar a velocidade escolhida. Com teto, senao uma
+     transicao lenta ocuparia o ciclo inteiro e a pausa — que e o que deixa o
+     gesto visivel — desapareceria. */
+  const FATIA = Math.min(0.62, (duracaoDaTransicao(velocidade) * 1000) / CICLO);
+  const inicio = (1 - FATIA) / 2;
   const dentro = t > inicio && t < inicio + FATIA;
   const u = dentro ? (t - inicio) / FATIA : t <= inicio ? 0 : 1;
 

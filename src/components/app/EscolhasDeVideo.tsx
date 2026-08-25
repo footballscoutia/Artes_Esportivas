@@ -8,6 +8,7 @@ import {
 } from "@/components/app/PreviaDaTransicao";
 import {
   INTROS,
+  duracaoDaTransicao,
   TEMPLATES,
   TRANSICOES,
   type Opcoes,
@@ -176,11 +177,39 @@ export function EscolhasDeVideo({
             transicao={chave}
             fonte={opcoes.fonte}
             intensidade={opcoes.intensidade}
+            velocidade={opcoes.velocidadeTransicao}
             texto={amostraDoTexto}
             t={t}
           />
         )}
       />
+
+      {/* Fica junto das transicoes, e nao com os outros controles: e a
+          velocidade DELAS, e as previas logo acima reagem na hora. */}
+      <label className="-mt-2 flex flex-col gap-1.5">
+        <span className="flex items-baseline justify-between text-[13px] font-medium">
+          <span className="flex items-baseline gap-1">
+            Velocidade da transição
+            <span className="text-muted-2 font-normal">quão rápido é o corte</span>
+          </span>
+          <span className="tabular-nums text-[12px] text-muted">
+            {duracaoDaTransicao(opcoes.velocidadeTransicao).toFixed(2).replace(".", ",")}s
+          </span>
+        </span>
+        <input
+          type="range"
+          min={0.4}
+          max={2.5}
+          step={0.1}
+          value={opcoes.velocidadeTransicao}
+          onChange={(ev) => aoMudar("velocidadeTransicao", Number(ev.target.value))}
+          className="accent-accent"
+        />
+        <span className="flex justify-between text-[11px] text-muted-2">
+          <span>lenta</span>
+          <span>rápida</span>
+        </span>
+      </label>
 
       <label className="flex flex-col gap-1.5">
         <span className="flex items-baseline justify-between text-[13px] font-medium">
