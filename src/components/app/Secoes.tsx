@@ -3,12 +3,13 @@
 import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Shield, Shirt, Sparkles, Stamp, UsersRound } from "lucide-react";
+import { Clapperboard, LayoutGrid, Shield, Shirt, Sparkles, Stamp, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SECOES = [
   { href: "/biblioteca", rotulo: "Biblioteca", icone: LayoutGrid },
   { href: "/novo", rotulo: "Nova arte", icone: Sparkles },
+  { href: "/videos", rotulo: "Vídeos", icone: Clapperboard },
   { href: "/elenco", rotulo: "Elenco", icone: UsersRound },
   { href: "/clubes", rotulo: "Clubes", icone: Shield },
   { href: "/uniformes", rotulo: "Uniformes", icone: Shirt },

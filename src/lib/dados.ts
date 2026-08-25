@@ -360,3 +360,50 @@ export async function listarPadroes(): Promise<PadraoSalvo[]> {
     opcoes: normalizar(p.opcoes),
   }));
 }
+
+/**
+ * Os videos da org, com o cenario servindo de capa.
+ *
+ * A capa e o `fundo_url` e nao o mp4: video sem render ainda nao tem arquivo, e
+ * a maioria nao vai ter por um bom tempo — a pessoa edita bastante antes de
+ * mandar renderizar. Usar o mp4 como capa deixaria a lista quase toda vazia.
+ */
+export async function listarVideos(): Promise<VideoNaLista[]> {
+  if (!LIGADO) return [];
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("videos")
+    .select("id, fundo_url, mp4_url, criado_em, pedidos(nome_jogador, clube, adversario, tipo)")
+    .order("criado_em", { ascending: false });
+
+  estourar("listar os vídeos", error);
+
+  const linhas = data ?? [];
+  const capas = await assinarVarios(BALDE.videos, linhas.map((v) => v.fundo_url as string));
+
+  return linhas.map((v, i) => {
+    const p = (Array.isArray(v.pedidos) ? v.pedidos[0] : v.pedidos) as
+      | { nome_jogador?: string; clube?: string; adversario?: string; tipo?: string }
+      | null;
+    return {
+      id: v.id as string,
+      capa: capas[i],
+      renderizado: Boolean(v.mp4_url),
+      criado_em: v.criado_em as string,
+      nome: p?.nome_jogador ?? "Vídeo",
+      contexto: [p?.clube, p?.adversario].filter(Boolean).join(" × "),
+      tipo: p?.tipo ?? "",
+    };
+  });
+}
+
+export type VideoNaLista = {
+  id: string;
+  capa: string | null;
+  renderizado: boolean;
+  criado_em: string;
+  nome: string;
+  contexto: string;
+  tipo: string;
+};
