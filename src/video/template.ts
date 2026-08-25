@@ -13,41 +13,17 @@
  */
 
 import { z } from "zod";
-import { zColor } from "@remotion/zod-types";
 
-/* =========================================================================
-   FONTES — personalidades, e nao nomes de arquivo.
+/**
+ * As CHAVES de fonte vivem aqui, e os desenhos vivem em fontes.ts.
+ *
+ * O esquema precisa da lista para validar, e o servidor precisa do esquema — mas
+ * o servidor nao pode carregar o Remotion. Duplicar so os nomes e o preco de
+ * manter este arquivo livre de motor de video.
+ */
+export const CHAVES_DE_FONTE = ["cartaz", "estadio", "bloco", "jornal", "veloz"] as const;
+export type Fonte = (typeof CHAVES_DE_FONTE)[number];
 
-   A escolha e por CARATER ("condensada", "pesada"), porque e assim que quem
-   monta o post pensa. O nome tecnico da familia e detalhe de implementacao.
-
-   Cuidado conhecido: estas sao fontes de SISTEMA. No navegador de quem edita e
-   no Chromium do render local elas existem; num servidor de render enxuto, nao.
-   Quando o render sair da maquina, elas precisam ir junto como arquivo.
-   ========================================================================= */
-
-export const FONTES = {
-  condensada: {
-    rotulo: "Condensada",
-    nota: "Estreita e alta, como cartaz de jogo",
-    familia: "Impact, 'Arial Narrow', 'Arial Black', sans-serif",
-    inclinacao: -8,
-  },
-  pesada: {
-    rotulo: "Pesada",
-    nota: "Larga e sólida, mais institucional",
-    familia: "'Arial Black', Arial, sans-serif",
-    inclinacao: 0,
-  },
-  reta: {
-    rotulo: "Reta",
-    nota: "Sem inclinação, moderna e limpa",
-    familia: "'Segoe UI', system-ui, Arial, sans-serif",
-    inclinacao: 0,
-  },
-} as const;
-
-export type Fonte = keyof typeof FONTES;
 
 /* =========================================================================
    INTRO — a abertura, copiada da referencia do Criciuma.
@@ -78,6 +54,11 @@ export const TRANSICOES = {
   whip: { rotulo: "Whip", nota: "Arrasto lateral borrado, como virar a câmera" },
   punch: { rotulo: "Punch", nota: "Avanço rápido com desfoque" },
   fecha: { rotulo: "Fecha e abre", nota: "O quadro escurece e volta" },
+  desliza: { rotulo: "Deslize", nota: "O quadro escorrega para o lado e volta" },
+  sobe: { rotulo: "Sobe", nota: "Empurra de baixo para cima" },
+  tremor: { rotulo: "Tremor", nota: "Sacode curto, de impacto" },
+  gira: { rotulo: "Giro", nota: "Inclina e desinclina, com um leve avanço" },
+  estica: { rotulo: "Estica", nota: "Alonga na horizontal, como fita passando" },
 } as const;
 
 export type Transicao = keyof typeof TRANSICOES;
@@ -177,9 +158,13 @@ export const EsquemaOpcoes = z.object({
   intensidade: z.number().min(0).max(2),
   intro: z.enum(["nenhuma", "escudo", "escudo-logo"]),
   transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
-  fonte: z.enum(["condensada", "pesada", "reta"]),
-  corTexto: zColor(),
-  corBarra: zColor(),
+  fonte: z.enum(CHAVES_DE_FONTE),
+  /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
+     arrastaria o Remotion para dentro deste arquivo de novo. O preco e o
+     Studio mostrar um campo de texto em vez de um seletor — na tela do produto
+     o seletor de cor e nativo e continua igual. */
+  corTexto: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    corBarra: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
 export const EsquemaMatchday = z.object({
@@ -242,7 +227,7 @@ export const OPCOES_PADRAO: Opcoes = {
   intensidade: 1,
   intro: "escudo-logo",
   transicao: "whip",
-  fonte: "condensada",
+  fonte: "cartaz",
   corTexto: "#ffffff",
   /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a
      referencia — na arte do Criciuma ela e laranja viva atravessando a linha —,

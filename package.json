@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
+    "@remotion/google-fonts": "^4.0.517",
+    "@remotion/transitions": "^4.0.517",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "clsx": "^2.1.1",

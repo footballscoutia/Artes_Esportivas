@@ -352,7 +352,11 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
       </div>
 
       <div className="flex flex-col gap-5">
-        <EscolhasDeVideo opcoes={opcoes} aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))} />
+        <EscolhasDeVideo
+          opcoes={opcoes}
+          aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
+          amostraDoTexto={clube || nome || "GOLAÇO"}
+        />
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}
 

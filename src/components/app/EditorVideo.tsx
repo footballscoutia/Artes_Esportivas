@@ -6,15 +6,14 @@ import { Check, Download, RotateCcw, Save, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Matchday } from "@/video/Matchday";
 import {
-  FONTES,
   INTROS,
   OPCOES_PADRAO,
   TEMPLATES,
-  TRANSICOES,
   type Camadas,
   type Dados,
   type Opcoes,
 } from "@/video/template";
+import { EscolhasDeVideo } from "@/components/app/EscolhasDeVideo";
 import { salvarVideo } from "@/lib/acoes";
 import { cn } from "@/lib/utils";
 
@@ -210,6 +209,25 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
     };
   }, []);
 
+  /**
+   * Leva o preview ate o corte e toca.
+   *
+   * A transicao dura um terco de segundo no meio do video: sem isto, escolher
+   * uma seria escolher no escuro — ninguem vai arrastar a linha do tempo ate o
+   * instante certo para conferir cada uma das dez.
+   *
+   * Comeca um pouco ANTES do corte porque a transicao tem entrada: parar em
+   * cima dele mostraria so o pico, que e o quadro que menos informa.
+   */
+  function verTransicao() {
+    const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.confronto;
+    const f = opcoes.duracao / 8;
+    const inicioDaArte = INTROS[opcoes.intro].dura * f * FPS;
+    const alvo = Math.max(0, Math.round(inicioDaArte + (tpl.corte * f - 0.7) * FPS));
+    player.current?.seekTo(Math.min(alvo, quadros - 1));
+    player.current?.play();
+  }
+
   async function renderizar() {
     setRenderizando(true);
     setProgresso(0);
@@ -285,76 +303,16 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
       </div>
 
       <div className="flex flex-col gap-5 lg:max-h-[74vh] lg:overflow-y-auto lg:pr-1">
-        <div>
-          <p className="mb-2 text-[13px] font-medium">
-            Template <span className="text-muted-2 font-normal">a receita da animação</span>
-          </p>
-          <div className="flex flex-col gap-2">
-            {Object.values(TEMPLATES).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => mexer("template", t.id as Opcoes["template"])}
-                className={cn(
-                  "rounded-card border px-3 py-2 text-left transition-colors",
-                  opcoes.template === t.id
-                    ? "border-accent bg-accent/10 ring-1 ring-accent/40"
-                    : "border-line hover:border-line-2",
-                )}
-              >
-                <span className="flex items-center gap-1.5 text-[13px] font-medium">
-                  {opcoes.template === t.id && <Check className="size-3.5 shrink-0 text-accent" />}
-                  {t.nome}
-                </span>
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-2">
-                  {t.descricao}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="border-t border-line pt-5">
-          <Escolha
-            titulo="Intro"
-            ajuda="a abertura"
-            itens={INTROS}
-            atual={opcoes.intro}
-            aoEscolher={(v) => mexer("intro", v)}
-          />
-        </div>
-
-        <div className="border-t border-line pt-5">
-          <Escolha
-            titulo="Transição"
-            ajuda="o corte do meio"
-            itens={TRANSICOES}
-            atual={opcoes.transicao}
-            aoEscolher={(v) => mexer("transicao", v)}
-          />
-        </div>
-
-        <div className="border-t border-line pt-5">
-          <Escolha
-            titulo="Fonte"
-            ajuda="a tipografia"
-            itens={FONTES}
-            atual={opcoes.fonte}
-            aoEscolher={(v) => mexer("fonte", v)}
+          <EscolhasDeVideo
+            opcoes={opcoes}
+            aoMudar={mexer}
+            amostraDoTexto={dados.clube || dados.nome || "GOLAÇO"}
+            aoVerTransicao={verTransicao}
           />
         </div>
 
         <div className="flex flex-col gap-4 border-t border-line pt-5">
-          <Deslizante
-            rotulo="Duração"
-            ajuda="segundos"
-            valor={opcoes.duracao}
-            min={4}
-            max={20}
-            passo={0.5}
-            aoMudar={(v) => mexer("duracao", v)}
-            formatar={(v) => `${v}s`}
-          />
           <Deslizante
             rotulo="Texto"
             ajuda="tamanho"

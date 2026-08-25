@@ -1,13 +1,14 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { FONTES } from "@/video/fontes";
 import {
-  FONTES,
   INTROS,
   TEMPLATES,
   TRANSICOES,
   type Opcoes,
 } from "@/video/template";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,6 +27,7 @@ export function Grupo<T extends string>({
   atual,
   aoEscolher,
   colunas = 1,
+  amostra,
 }: {
   titulo: string;
   ajuda?: string;
@@ -33,6 +35,8 @@ export function Grupo<T extends string>({
   atual: T;
   aoEscolher: (v: T) => void;
   colunas?: 1 | 2;
+  /** Amostra visual da opção, desenhada dentro do próprio botão. */
+  amostra?: (chave: string) => ReactNode;
 }) {
   return (
     <div>
@@ -56,6 +60,7 @@ export function Grupo<T extends string>({
               {atual === chave && <Check className="size-3.5 shrink-0 text-accent" />}
               {item.rotulo}
             </span>
+            {amostra?.(chave)}
             {item.nota && (
               <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-2">
                 {item.nota}
@@ -77,10 +82,16 @@ export function EscolhasDeVideo({
   opcoes,
   aoMudar,
   colunas = 1,
+  amostraDoTexto = "GOLAÇO",
+  aoVerTransicao,
 }: {
   opcoes: Opcoes;
   aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
   colunas?: 1 | 2;
+  /** A palavra desenhada na amostra de fonte. O nome do clube diz mais. */
+  amostraDoTexto?: string;
+  /** No editor, escolher uma transição leva o preview até o corte. */
+  aoVerTransicao?: () => void;
 }) {
   const totalComIntro = opcoes.duracao + INTROS[opcoes.intro].dura;
 
@@ -104,15 +115,49 @@ export function EscolhasDeVideo({
         titulo="Transição do meio"
         itens={TRANSICOES}
         atual={opcoes.transicao}
-        aoEscolher={(v) => aoMudar("transicao", v)}
+        aoEscolher={(v) => {
+          aoMudar("transicao", v);
+          /* Escolher leva o preview ao corte e toca: transicao dura um terco de
+             segundo no meio do video, e ninguem vai procura-la arrastando a
+             linha do tempo para conferir. */
+          aoVerTransicao?.();
+        }}
         colunas={colunas}
       />
+      {/**
+        * A fonte se mostra NA propria opcao.
+        *
+        * "Anton", "Bebas Neue" e "Teko" nao dizem nada para quem monta post, e
+        * uma lista de cinco nomes vira tentativa e erro: escolhe, olha o video,
+        * volta, escolhe outra. Desenhar a palavra na fonte transforma a lista
+        * numa decisao de um olhar — e funciona antes de o video existir, que e
+        * onde um preview de verdade seria impossivel.
+        */}
       <Grupo
         titulo="Fonte"
         itens={FONTES}
         atual={opcoes.fonte}
         aoEscolher={(v) => aoMudar("fonte", v)}
         colunas={colunas}
+        amostra={(chave) => {
+          const f = FONTES[chave as keyof typeof FONTES];
+          return (
+            <span
+              className="mt-1.5 block truncate"
+              style={{
+                fontFamily: f.familia,
+                fontWeight: f.peso,
+                fontSize: 30,
+                letterSpacing: 30 * f.aperto,
+                transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
+                transformOrigin: "left center",
+                lineHeight: 1.1,
+              }}
+            >
+              {amostraDoTexto}
+            </span>
+          );
+        }}
       />
 
       <label className="flex flex-col gap-1.5">

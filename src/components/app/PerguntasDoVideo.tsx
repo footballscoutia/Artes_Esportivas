@@ -26,9 +26,11 @@ type Props = {
   aoFechar: () => void;
   gerando: boolean;
   aoGerar: (opcoes: Opcoes) => void;
+  /** A palavra usada na amostra de fonte. O nome do clube diz mais. */
+  amostra?: string;
 };
 
-export function PerguntasDoVideo({ aberto, aoFechar, gerando, aoGerar }: Props) {
+export function PerguntasDoVideo({ aberto, aoFechar, gerando, aoGerar, amostra }: Props) {
   const [o, setO] = useState<Opcoes>(OPCOES_PADRAO);
 
   return (
@@ -55,6 +57,7 @@ export function PerguntasDoVideo({ aberto, aoFechar, gerando, aoGerar }: Props) 
         opcoes={o}
         aoMudar={(k, v) => setO((a) => ({ ...a, [k]: v }))}
         colunas={2}
+        amostraDoTexto={amostra || "GOLAÇO"}
       />
     </Drawer>
   );

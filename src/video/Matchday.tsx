@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { FONTE_DE_APOIO, FONTES } from "./fontes";
 import {
-  FONTES,
   INTROS,
   ROTEIROS,
   TEMPLATES,
@@ -101,13 +101,43 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
    */
   const janela = 0.16 * f * fps;
   const pico = Math.max(0, 1 - Math.abs(quadro - corte) / janela) * opcoes.intensidade;
+  /* A direcao inverte no corte: antes dele o quadro SAI, depois ele ENTRA. E o
+     que separa uma transicao de um solavanco — sem a inversao, a imagem iria e
+     voltaria pelo mesmo lado, que le como falha de render. */
+  const lado = quadro < corte ? -1 : 1;
+
   const clarao = opcoes.transicao === "flash" ? pico : 0;
   const escurece = opcoes.transicao === "fecha" ? pico : 0;
-  const arrasto = opcoes.transicao === "whip" ? pico : 0;
-  const avanco = opcoes.transicao === "punch" ? pico : 0;
+
+  /**
+   * Cada transicao devolve como o quadro se deforma no instante.
+   *
+   * Todas moram na mesma tabela em vez de virarem `if` espalhados: acrescentar
+   * uma e escrever uma linha, e nenhuma pode esquecer de zerar o que a outra
+   * mexeu — o que nao esta na linha simplesmente nao acontece.
+   */
+  const efeitos: Record<string, { x?: number; y?: number; escala?: number; rot?: number; esticaX?: number; borrao?: number }> = {
+    corte: {},
+    flash: {},
+    fecha: {},
+    whip: { x: lado * 190 * pico, borrao: 16 * pico },
+    punch: { escala: 0.24 * pico, borrao: 11 * pico },
+    desliza: { x: lado * 300 * pico },
+    sobe: { y: lado * 260 * pico },
+    tremor: { x: Math.sin(quadro * 1.9) * 26 * pico, y: Math.cos(quadro * 2.3) * 18 * pico },
+    gira: { rot: lado * 4 * pico, escala: 0.12 * pico },
+    estica: { esticaX: 0.5 * pico, borrao: 7 * pico },
+  };
+  const ef = efeitos[opcoes.transicao] ?? {};
   const deformar = {
-    transform: `translateX(${arrasto * (quadro < corte ? -1 : 1) * 190}px) scale(${1 + avanco * 0.24})`,
-    filter: arrasto + avanco > 0.02 ? `blur(${(arrasto * 16 + avanco * 11).toFixed(1)}px)` : undefined,
+    transform: [
+      `translate(${(ef.x ?? 0).toFixed(1)}px, ${(ef.y ?? 0).toFixed(1)}px)`,
+      `scale(${1 + (ef.escala ?? 0) + (ef.esticaX ?? 0)}, ${1 + (ef.escala ?? 0)})`,
+      ef.rot ? `rotate(${ef.rot.toFixed(2)}deg)` : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    filter: (ef.borrao ?? 0) > 0.4 ? `blur(${(ef.borrao ?? 0).toFixed(1)}px)` : undefined,
   };
 
   const e = opcoes.escalaTexto;
@@ -178,14 +208,14 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             const p = entra(quadro, tempos[i] ?? tempos[tempos.length - 1], 0.6, fps, opcoes);
 
             if (linha.papel === "etiqueta")
-              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={22 * e} p={p} />;
+              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={26 * e} p={p} />;
             if (linha.papel === "destaque")
               return (
                 <Titulo
                   key={i}
                   texto={texto}
                   cor={opcoes.corTexto}
-                  corpo={104 * e}
+                  corpo={132 * e}
                   fonte={opcoes.fonte}
                   p={p}
                 />
@@ -197,7 +227,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   texto={texto}
                   cor={opcoes.corTexto}
                   corBarra={opcoes.corBarra}
-                  corpo={54 * e}
+                  corpo={64 * e}
                   fonte={opcoes.fonte}
                   p={p}
                 />
@@ -207,7 +237,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                 key={i}
                 texto={texto}
                 cor={opcoes.corTexto}
-                corpo={21 * e}
+                corpo={24 * e}
                 fonte={opcoes.fonte}
                 p={p}
               />
@@ -319,7 +349,8 @@ function Intro({
       <div
         style={{
           opacity: pNome,
-          fontFamily: '"Arial Black", Arial, sans-serif',
+          fontFamily: FONTE_DE_APOIO,
+          fontWeight: 600,
           fontSize: 34,
           letterSpacing: 15,
           color: opcoes.corTexto,
@@ -357,7 +388,8 @@ function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo:
       style={{
         opacity: p,
         transform: `translateX(${-24 * (1 - p)}px)`,
-        fontFamily: '"Arial Black", Arial, sans-serif',
+        fontFamily: FONTE_DE_APOIO,
+        fontWeight: 600,
         fontSize: corpo,
         letterSpacing: corpo * 0.42,
         color: cor,
@@ -373,15 +405,20 @@ function Titulo({
   texto, cor, corpo, p, fonte,
 }: { texto: string; cor: string; corpo: number; p: number; fonte: Opcoes["fonte"] }) {
   if (p <= 0) return null;
+  const f = FONTES[fonte];
   return (
     <div
       style={{
         opacity: p,
         transform: [`translateX(${-40 * (1 - p)}px)`, inclinacaoDe(fonte)].filter(Boolean).join(" "),
-        fontFamily: FONTES[fonte].familia,
+        fontFamily: f.familia,
+        fontWeight: f.peso,
         fontSize: corpo,
         lineHeight: 0.94,
-        letterSpacing: -1,
+        /* O aperto vem da FONTE porque cada desenho de letra tem o seu: Anton
+           ja nasce apertada e pede folga, Archivo Black e larga e pede aperto.
+           Um valor unico para todas produziria uma boa e quatro erradas. */
+        letterSpacing: corpo * f.aperto,
         color: cor,
         whiteSpace: "nowrap",
         textShadow: "0 6px 26px rgba(0,0,0,.55)",
@@ -429,6 +466,7 @@ function LinhaDoConfronto({
       <span
         style={{
           fontFamily: FONTES[fonte].familia,
+          fontWeight: FONTES[fonte].peso,
           fontSize: corpo,
           lineHeight: 1.06,
           color: cor,
@@ -440,7 +478,12 @@ function LinhaDoConfronto({
       </span>
       <span
         style={{
+          /* A barra tem TETO. Com `flex: 1` puro, um adversario curto como
+             "FLAMENGO" deixava um retangulo branco atravessando o quadro
+             inteiro, que le como erro de layout e nao como gesto grafico. Ela
+             continua elastica, mas para de crescer. */
           flex: 1,
+          maxWidth: corpo * 5.5,
           background: corBarra,
           /* Cresce da esquerda junto com a entrada, como uma varredura. */
           transformOrigin: "left center",
@@ -466,7 +509,8 @@ function Tarja({
         clipPath: `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`,
         background: "rgba(6,6,6,.82)",
         padding: `${corpo * 0.5}px ${corpo * 0.9}px`,
-        fontFamily: '"Arial Black", Arial, sans-serif',
+        fontFamily: FONTE_DE_APOIO,
+        fontWeight: 600,
         fontSize: corpo,
         letterSpacing: corpo * 0.14,
         color: cor,
