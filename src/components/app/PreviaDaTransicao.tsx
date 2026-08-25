@@ -1,0 +1,119 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { FONTES } from "@/video/fontes";
+import {
+  deformacaoDaTransicao,
+  estiloDaDeformacao,
+  type Opcoes,
+} from "@/video/template";
+
+/**
+ * A transição acontecendo, na fonte que a pessoa escolheu.
+ *
+ * Uma lista de dez nomes — "Whip", "Punch", "Estica" — não é escolha, é
+ * adivinhação. E a prévia dentro do vídeo pronto só existe DEPOIS de gerar, que
+ * é tarde demais: a pergunta acontece antes.
+ *
+ * Então a prévia mostra o que dá para mostrar sem o vídeo existir: a palavra,
+ * na fonte escolhida, sofrendo a mesma deformação que o quadro inteiro vai
+ * sofrer. A conta é literalmente a de `deformacaoDaTransicao`, importada — e
+ * não uma imitação dela, porque imitação diverge e prévia que mente é pior que
+ * prévia nenhuma.
+ *
+ * UM relógio para todas as prévias, no componente pai. Dez `requestAnimationFrame`
+ * independentes fariam dez animações fora de fase, e comparar duas coisas que
+ * não acontecem ao mesmo tempo é justamente o que a pessoa não consegue fazer.
+ */
+
+/** Um ciclo completo — pausa, transição, pausa — em milissegundos. */
+const CICLO = 2600;
+
+export function useRelogioDaPrevia(ligado: boolean) {
+  const [t, setT] = useState(0);
+  const quadro = useRef(0);
+
+  useEffect(() => {
+    if (!ligado) return;
+    let vivo = true;
+    const passo = () => {
+      if (!vivo) return;
+      setT(((Date.now() % CICLO) / CICLO));
+      quadro.current = requestAnimationFrame(passo);
+    };
+    quadro.current = requestAnimationFrame(passo);
+    return () => {
+      vivo = false;
+      cancelAnimationFrame(quadro.current);
+    };
+  }, [ligado]);
+
+  return t;
+}
+
+export function PreviaDaTransicao({
+  transicao,
+  fonte,
+  intensidade,
+  texto,
+  t,
+}: {
+  transicao: string;
+  fonte: Opcoes["fonte"];
+  intensidade: number;
+  texto: string;
+  /** 0..1 do ciclo, vindo do relógio compartilhado. */
+  t: number;
+}) {
+  const f = FONTES[fonte];
+
+  /**
+   * O ciclo é maior que a transição: ela ocupa uma FATIA dele e o resto é
+   * repouso. Uma transição em laço contínuo vira tremeliques sem começo nem
+   * fim, e não dá para ver o gesto — é a pausa que revela o movimento.
+   */
+  const FATIA = 0.34;
+  const inicio = 0.33;
+  const dentro = t > inicio && t < inicio + FATIA;
+  const u = dentro ? (t - inicio) / FATIA : t <= inicio ? 0 : 1;
+
+  const def = deformacaoDaTransicao(transicao, u, intensidade, t * 60);
+  const estilo = estiloDaDeformacao(def);
+
+  return (
+    <span className="relative mt-1.5 block h-[52px] overflow-hidden rounded-field bg-bg-2">
+      <span
+        className="absolute inset-0 grid place-items-center"
+        style={{ transform: estilo.transform, filter: estilo.filter }}
+      >
+        <span
+          className="truncate px-2"
+          style={{
+            fontFamily: f.familia,
+            fontWeight: f.peso,
+            fontSize: 26,
+            letterSpacing: 26 * f.aperto,
+            transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
+            color: "var(--text)",
+            lineHeight: 1.1,
+          }}
+        >
+          {texto}
+        </span>
+      </span>
+
+      {def.clarao > 0.01 && (
+        <span
+          className="absolute inset-0"
+          style={{ background: "#fff", opacity: def.clarao * 0.55 }}
+        />
+      )}
+      {def.escurece > 0.01 && (
+        <span
+          className="absolute inset-0"
+          style={{ background: "#000", opacity: def.escurece * 0.9 }}
+        />
+      )}
+    </span>
+  );
+}

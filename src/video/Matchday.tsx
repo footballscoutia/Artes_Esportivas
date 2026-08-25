@@ -4,6 +4,8 @@ import { FONTE_DE_APOIO, FONTES } from "./fontes";
 import {
   INTROS,
   ROTEIROS,
+  deformacaoDaTransicao,
+  estiloDaDeformacao,
   TEMPLATES,
   type Camadas,
   type Dados,
@@ -99,46 +101,15 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
    * A escolha muda o EFEITO, nao o instante — o corte acontece de qualquer
    * jeito, e a transicao so decide como a emenda e disfarcada.
    */
+  /* A janela do corte. A conta vem de `deformacaoDaTransicao` — a MESMA que o
+     seletor usa para a previa. Duas copias divergiriam, e uma previa que
+     mente e pior que nenhuma. */
   const janela = 0.16 * f * fps;
-  const pico = Math.max(0, 1 - Math.abs(quadro - corte) / janela) * opcoes.intensidade;
-  /* A direcao inverte no corte: antes dele o quadro SAI, depois ele ENTRA. E o
-     que separa uma transicao de um solavanco — sem a inversao, a imagem iria e
-     voltaria pelo mesmo lado, que le como falha de render. */
-  const lado = quadro < corte ? -1 : 1;
-
-  const clarao = opcoes.transicao === "flash" ? pico : 0;
-  const escurece = opcoes.transicao === "fecha" ? pico : 0;
-
-  /**
-   * Cada transicao devolve como o quadro se deforma no instante.
-   *
-   * Todas moram na mesma tabela em vez de virarem `if` espalhados: acrescentar
-   * uma e escrever uma linha, e nenhuma pode esquecer de zerar o que a outra
-   * mexeu — o que nao esta na linha simplesmente nao acontece.
-   */
-  const efeitos: Record<string, { x?: number; y?: number; escala?: number; rot?: number; esticaX?: number; borrao?: number }> = {
-    corte: {},
-    flash: {},
-    fecha: {},
-    whip: { x: lado * 190 * pico, borrao: 16 * pico },
-    punch: { escala: 0.24 * pico, borrao: 11 * pico },
-    desliza: { x: lado * 300 * pico },
-    sobe: { y: lado * 260 * pico },
-    tremor: { x: Math.sin(quadro * 1.9) * 26 * pico, y: Math.cos(quadro * 2.3) * 18 * pico },
-    gira: { rot: lado * 4 * pico, escala: 0.12 * pico },
-    estica: { esticaX: 0.5 * pico, borrao: 7 * pico },
-  };
-  const ef = efeitos[opcoes.transicao] ?? {};
-  const deformar = {
-    transform: [
-      `translate(${(ef.x ?? 0).toFixed(1)}px, ${(ef.y ?? 0).toFixed(1)}px)`,
-      `scale(${1 + (ef.escala ?? 0) + (ef.esticaX ?? 0)}, ${1 + (ef.escala ?? 0)})`,
-      ef.rot ? `rotate(${ef.rot.toFixed(2)}deg)` : "",
-    ]
-      .filter(Boolean)
-      .join(" "),
-    filter: (ef.borrao ?? 0) > 0.4 ? `blur(${(ef.borrao ?? 0).toFixed(1)}px)` : undefined,
-  };
+  const u = (quadro - (corte - janela)) / (janela * 2);
+  const def = deformacaoDaTransicao(opcoes.transicao, u, opcoes.intensidade, quadro);
+  const deformar = estiloDaDeformacao(def);
+  const clarao = def.clarao;
+  const escurece = def.escurece;
 
   const e = opcoes.escalaTexto;
 
@@ -336,7 +307,7 @@ function Intro({
         opacity: 1 - sai,
       }}
     >
-      {camadas.escudo && (
+      {opcoes.intro !== "logo" && camadas.escudo && (
         <Img
           src={camadas.escudo}
           style={{
@@ -346,6 +317,7 @@ function Intro({
           }}
         />
       )}
+      {opcoes.intro !== "logo" && (
       <div
         style={{
           opacity: pNome,
@@ -359,8 +331,19 @@ function Intro({
       >
         {dados.clube.toUpperCase()}
       </div>
-      {opcoes.intro === "escudo-logo" && camadas.logo && (
-        <Img src={camadas.logo} style={{ width: 210, opacity: pLogo * 0.9, marginTop: 26 }} />
+      )}
+      {(opcoes.intro === "escudo-logo" || opcoes.intro === "logo") && camadas.logo && (
+        <Img
+          src={camadas.logo}
+          style={{
+            /* Sozinha ela e o assunto, e nao a assinatura: entra maior e no
+               tempo do escudo, em vez de depois dele. */
+            width: opcoes.intro === "logo" ? 420 : 210,
+            opacity: (opcoes.intro === "logo" ? p : pLogo) * 0.95,
+            transform: opcoes.intro === "logo" ? `scale(${0.86 + 0.14 * p})` : undefined,
+            marginTop: opcoes.intro === "logo" ? 0 : 26,
+          }}
+        />
       )}
     </AbsoluteFill>
   );

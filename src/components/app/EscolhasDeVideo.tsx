@@ -3,6 +3,10 @@
 import { Check } from "lucide-react";
 import { FONTES } from "@/video/fontes";
 import {
+  PreviaDaTransicao,
+  useRelogioDaPrevia,
+} from "@/components/app/PreviaDaTransicao";
+import {
   INTROS,
   TEMPLATES,
   TRANSICOES,
@@ -94,6 +98,10 @@ export function EscolhasDeVideo({
   aoVerTransicao?: () => void;
 }) {
   const totalComIntro = opcoes.duracao + INTROS[opcoes.intro].dura;
+  /* Um relogio so, no pai, para as dez previas andarem em fase. Dez timers
+     independentes produziriam dez animacoes desencontradas, e comparar coisas
+     que nao acontecem ao mesmo tempo e justamente o que nao da para fazer. */
+  const t = useRelogioDaPrevia(true);
 
   return (
     <div className="flex flex-col gap-5">
@@ -109,19 +117,6 @@ export function EscolhasDeVideo({
         itens={INTROS}
         atual={opcoes.intro}
         aoEscolher={(v) => aoMudar("intro", v)}
-        colunas={colunas}
-      />
-      <Grupo
-        titulo="Transição do meio"
-        itens={TRANSICOES}
-        atual={opcoes.transicao}
-        aoEscolher={(v) => {
-          aoMudar("transicao", v);
-          /* Escolher leva o preview ao corte e toca: transicao dura um terco de
-             segundo no meio do video, e ninguem vai procura-la arrastando a
-             linha do tempo para conferir. */
-          aoVerTransicao?.();
-        }}
         colunas={colunas}
       />
       {/**
@@ -158,6 +153,33 @@ export function EscolhasDeVideo({
             </span>
           );
         }}
+      />
+
+      {/**
+        * A transicao vem DEPOIS da fonte de proposito.
+        *
+        * A previa de cada transicao e desenhada com a fonte ja escolhida, entao
+        * perguntar na ordem inversa mostraria dez animacoes numa tipografia que
+        * a pessoa ainda vai trocar.
+        */}
+      <Grupo
+        titulo="Transição do meio"
+        itens={TRANSICOES}
+        atual={opcoes.transicao}
+        aoEscolher={(v) => {
+          aoMudar("transicao", v);
+          aoVerTransicao?.();
+        }}
+        colunas={colunas}
+        amostra={(chave) => (
+          <PreviaDaTransicao
+            transicao={chave}
+            fonte={opcoes.fonte}
+            intensidade={opcoes.intensidade}
+            texto={amostraDoTexto}
+            t={t}
+          />
+        )}
       />
 
       <label className="flex flex-col gap-1.5">
