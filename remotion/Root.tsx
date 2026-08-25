@@ -1,7 +1,15 @@
+/**
+ * Entrada do CLI do Remotion. A composicao NAO mora aqui — ela vive em
+ * src/video/, de onde o app tambem a importa para o <Player>.
+ *
+ * Um lugar so: o que a pessoa ve no editor e literalmente o mesmo componente
+ * que o servidor renderiza em mp4. Duplicar a composicao seria garantir que um
+ * dia os dois divergem, e o preview passaria a mentir.
+ */
 import React from "react";
 import { Composition, staticFile } from "remotion";
-import { Matchday, type PropsMatchday } from "./Matchday";
-import { EsquemaMatchday, OPCOES_PADRAO } from "./template";
+import { Matchday, type PropsMatchday } from "@/video/Matchday";
+import { EsquemaMatchday, OPCOES_PADRAO } from "@/video/template";
 
 /**
  * O catalogo de composicoes. `calculateMetadata` deixa a DURACAO vir das props,

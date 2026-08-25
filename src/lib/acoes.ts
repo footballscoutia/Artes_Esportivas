@@ -11,6 +11,7 @@ import { produzirArte, SemReferencia } from "./gerar";
 import { materiaisDaArte, marcaPadraoDaOrg, uniformeDaArte } from "./materiais";
 import { paletaDoEscudo, type Paleta } from "./paleta";
 import { normalizar } from "./padroes";
+import { EsquemaOpcoes, OPCOES_PADRAO } from "@/video/template";
 import { BALDE, baixar, subir } from "./storage";
 import {
   POSICOES_LOGO,
@@ -808,4 +809,42 @@ export async function apagarPadrao(id: string): Promise<Resultado> {
   if (error) return falha(`Não consegui apagar: ${error.message}`);
   revalidatePath("/novo");
   return { ok: true, dados: undefined };
+}
+
+/**
+ * Grava as escolhas do editor de video.
+ *
+ * So as OPCOES: `fundo_url` e `atleta_url` sao o que custou geracao e nao mudam
+ * nunca — regerar camadas cria um video novo, e nao uma edicao deste. Deixar a
+ * acao encostar nelas seria abrir caminho para uma edicao apagar material pago.
+ */
+export async function salvarVideo(id: string, opcoes: unknown): Promise<Resultado> {
+  const usuario = await usuarioAtual();
+  if (!usuario) return falha("Sessão expirada. Entre de novo.");
+
+  const sb = await criarClienteServidor();
+  const { data, error } = await sb
+    .from("videos")
+    .update({ opcoes: normalizarOpcoesDeVideo(opcoes), atualizado_em: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+
+  if (error) return falha(`Não consegui salvar: ${error.message}`);
+  if (!data?.length) return falha("Vídeo não encontrado.");
+
+  revalidatePath(`/video/${id}`);
+  return { ok: true, dados: undefined };
+}
+
+/**
+ * Fronteira do documento do editor.
+ *
+ * O `EsquemaMatchday` valida o conjunto inteiro — dados, camadas e opcoes —, e
+ * aqui so as opcoes atravessam. Valor fora de faixa cai no padrao em vez de ir
+ * para o banco: um `duracao: 0` gravado hoje viraria um video de zero quadro
+ * meses depois, longe de quem o digitou.
+ */
+function normalizarOpcoesDeVideo(cru: unknown) {
+  const r = EsquemaOpcoes.safeParse(cru);
+  return r.success ? r.data : OPCOES_PADRAO;
 }

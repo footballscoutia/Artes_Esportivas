@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Clapperboard,
   Download,
   History,
   Layers,
@@ -68,6 +69,29 @@ export function DetalhePedido({
 
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
+
+  /**
+   * "Fazer video" nao renderiza nada: ele so produz e guarda as CAMADAS caras,
+   * e leva a pessoa para o editor. A montagem acontece no navegador, de graca.
+   */
+  const [fazendoVideo, setFazendoVideo] = useState(false);
+
+  async function virarVideo() {
+    setFazendoVideo(true);
+    try {
+      const r = await fetch("/api/video", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pedido_id: pedido.id }),
+      });
+      const corpo = await r.json();
+      if (!r.ok) throw new Error(corpo?.erro ?? "Falha ao gerar as camadas.");
+      router.push(`/video/${corpo.video_id}`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao gerar as camadas.");
+      setFazendoVideo(false);
+    }
+  }
   const [aba, setAba] = useState<Aba>("detalhes");
   /**
    * Guarda o ID, nao o objeto. Guardando o objeto, um router.refresh() troca as
@@ -442,6 +466,19 @@ export function DetalhePedido({
               <RefreshCw size={15} className={gerando ? "animate-spin" : ""} />
               {gerando ? "Gerando…" : "Gerar outra"}
             </Button>
+            <Button
+              variante="sutil"
+              className="w-full"
+              disabled={fazendoVideo}
+              onClick={virarVideo}
+            >
+              <Clapperboard size={15} />
+              {fazendoVideo ? "Gerando camadas…" : "Fazer vídeo"}
+            </Button>
+            <p className="text-[11px] leading-relaxed text-muted-2">
+              O vídeo gera duas camadas novas — o cenário e o atleta recortado — e custa duas
+              gerações. Depois disso, editar é de graça.
+            </p>
           </footer>
         </Card>
       </div>
