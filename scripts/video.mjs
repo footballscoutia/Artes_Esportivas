@@ -98,6 +98,59 @@ const ANIMACOES = {
 };
 
 /* =========================================================================
+   ENQUADRAMENTOS — recortes nomeados da mesma placa.
+
+   E o que torna a transicao possivel sem gerar imagem nova: uma segunda cena
+   nao precisa de outra placa, precisa de outro RECORTE. Cortar de um plano
+   aberto para um fechado no rosto e edicao de verdade, e custa zero.
+
+   Valores em fracao do quadro: {escala, cx, cy}, com cx/cy em 0..1 marcando o
+   centro do recorte.
+   ========================================================================= */
+
+const ENQUADRAMENTOS = {
+  cheio: { escala: 1.02, cx: 0.5, cy: 0.5 },
+  detalhe: { escala: 1.34, cx: 0.5, cy: 0.3 },
+  baixo: { escala: 1.22, cx: 0.5, cy: 0.72 },
+  lateral: { escala: 1.18, cx: 0.32, cy: 0.45 },
+};
+
+/* =========================================================================
+   TRANSICOES — o que acontece nos poucos quadros em volta de um corte.
+
+   Cada uma recebe `u` de 0 a 1 atravessando o corte (0.5 e o corte em si) e
+   devolve como o fundo deve ser deformado naquele quadro. O corte de verdade —
+   a troca de cena — quem faz e o motor; a transicao so disfarça a emenda.
+
+   O borrao direcional sai de um truque de resize: espremer a largura e devolver
+   ao tamanho borra SO na horizontal. O `blur` do sharp e isotropico e nao
+   serviria — e num whip de cinco quadros ninguem percebe a diferenca entre um
+   borrao direcional exato e este.
+   ========================================================================= */
+
+const TRANSICOES = {
+  corte: () => ({}),
+
+  flash: (u) => ({ veu: { cor: "#ffffff", opacidade: (1 - Math.abs(u - 0.5) * 2) * 0.5 } }),
+
+  whip: (u) => {
+    const pico = 1 - Math.abs(u - 0.5) * 2;
+    return {
+      /* Sai para a esquerda, entra pela direita: a direcao inverte no corte. */
+      deslocX: (u < 0.5 ? -1 : 1) * pico * L * 0.42,
+      borraoX: 1 + pico * 22,
+    };
+  },
+
+  punch: (u) => {
+    const pico = 1 - Math.abs(u - 0.5) * 2;
+    return { escalaExtra: pico * 0.3, desfoque: pico * 14 };
+  },
+
+  faixa: (u) => ({ faixa: u, veu: { cor: "#000000", opacidade: (1 - Math.abs(u - 0.5) * 2) * 0.25 } }),
+};
+
+/* =========================================================================
    TEMPLATES — a descricao de uma receita inteira.
 
    `em` e `dura` estao em SEGUNDOS de uma linha do tempo de referencia de 8s. O
@@ -108,9 +161,20 @@ const ANIMACOES = {
 const TEMPLATES = {
   "escudo-abre": {
     nome: "Abertura com escudo",
-    descricao: "Escudo se montando no preto, corte com flash, texto em camadas.",
+    descricao: "Escudo se montando, corte com flash, whip no meio e volta em close.",
     abertura: { tipo: "escudo", ate: 1.0 },
-    transicao: "flash",
+    entrada: "flash",
+    /* Duas cenas da MESMA placa, em enquadramentos diferentes. E o que da a
+       transicao do meio algo para ligar — sem a segunda cena, um whip seria
+       um borrao no meio de um plano so, que le como defeito e nao como corte. */
+    cenas: [
+      { ate: 4.4, enquadramento: "cheio", camera: "push-in" },
+      { ate: 8.0, enquadramento: "detalhe", camera: "push-in" },
+    ],
+    transicoes: ["whip"],
+    /* O bloco sai antes do corte e volta depois: e o que as referencias fazem,
+       e o que faz a segunda cena parecer um segundo tempo em vez de repeticao. */
+    reentrada: { saiEm: 4.05, voltaEm: 4.6, dura: 0.45 },
     fecho: { tipo: "fade", ultimos: 0.75 },
     elementos: [
       { id: "campeonato", campo: "campeonato", estilo: "etiqueta", em: 3.0, dura: 0.5, como: "surge" },
@@ -123,9 +187,15 @@ const TEMPLATES = {
 
   direto: {
     nome: "Direto na arte",
-    descricao: "Sem abertura. O texto sobe de baixo, mais lento, e a camera afasta.",
+    descricao: "Sem abertura. Punch no meio, texto sobe de baixo, camera afasta.",
     abertura: null,
-    transicao: null,
+    entrada: null,
+    cenas: [
+      { ate: 3.2, enquadramento: "cheio", camera: "push-out" },
+      { ate: 8.0, enquadramento: "baixo", camera: "push-in" },
+    ],
+    transicoes: ["punch"],
+    reentrada: { saiEm: 2.9, voltaEm: 3.4, dura: 0.4 },
     fecho: { tipo: "fade", ultimos: 0.6 },
     camera: "push-out",
     elementos: [
@@ -139,9 +209,15 @@ const TEMPLATES = {
 
   cartaz: {
     nome: "Cartaz",
-    descricao: "Tudo centralizado, entra junto, quase parado. Para arte que fala sozinha.",
+    descricao: "Centralizado e quieto, com uma faixa varrendo entre os dois tempos.",
     abertura: { tipo: "logo", ate: 0.8 },
-    transicao: "corte",
+    entrada: "corte",
+    cenas: [
+      { ate: 4.6, enquadramento: "cheio", camera: "estatico" },
+      { ate: 8.0, enquadramento: "lateral", camera: "estatico" },
+    ],
+    transicoes: ["faixa"],
+    reentrada: { saiEm: 4.3, voltaEm: 4.8, dura: 0.5 },
     fecho: { tipo: "fade", ultimos: 0.5 },
     camera: "estatico",
     alinhamento: "centro",
@@ -154,6 +230,9 @@ const TEMPLATES = {
     ],
   },
 };
+
+/** Quanto dura uma transicao, em segundos da linha do tempo de referencia. */
+const DURACAO_TRANSICAO = 0.34;
 
 /* =========================================================================
    PARAMETROS — o que o usuario mexeria na tela. Nenhum deles passa pelo modelo.
@@ -368,6 +447,15 @@ function topoDoBloco(zona, alturaTotal) {
    DESENHO — um quadro, a partir do template + parametros + layout.
    ========================================================================= */
 
+/** O mesmo fator de saida-e-volta, para o veu acompanhar o bloco. */
+function reentradaDoVeu(k, tpl, tempo) {
+  if (!tpl.reentrada) return 1;
+  const { saiEm, voltaEm, dura } = tpl.reentrada;
+  const saida = progresso(k, { em: saiEm, dura: dura * 0.6 }, tempo, linear);
+  const volta = progresso(k, { em: voltaEm, dura }, tempo);
+  return Math.max(0, Math.min(1, 1 - saida + volta));
+}
+
 function camadaDeUmQuadro(k, ctx) {
   const { tpl, p, dados, layout, tempo } = ctx;
   const partes = [];
@@ -408,10 +496,28 @@ function camadaDeUmQuadro(k, ctx) {
   }
 
   /* ---- transicao ---- */
-  if (tpl.transicao === "flash") {
+  if (tpl.entrada === "flash") {
     const f = 1 - progresso(k - quadroAbertura, { em: 0, dura: 0.2 }, tempo, linear);
     if (f > 0.01) partes.push(`<rect width="${L}" height="${A}" fill="#fff" opacity="${(f * 0.45).toFixed(3)}"/>`);
   }
+
+  /**
+   * O bloco de texto SAI antes do corte e VOLTA depois.
+   *
+   * Sem isto a segunda cena seria a mesma tipografia parada sobre um
+   * enquadramento novo, e o corte leria como falha de continuidade em vez de
+   * segundo tempo. Nas referencias da agencia o texto sempre reaparece — e
+   * reaparece mais rapido que na primeira vez, porque a informacao ja e
+   * conhecida e nao precisa ser lida de novo com calma.
+   */
+  const reentrada = (() => {
+    if (!tpl.reentrada) return { fator: 1, dy: 0 };
+    const { saiEm, voltaEm, dura } = tpl.reentrada;
+    const saida = progresso(k, { em: saiEm, dura: dura * 0.6 }, tempo, linear);
+    const volta = progresso(k, { em: voltaEm, dura }, tempo);
+    const fator = Math.min(1, 1 - saida + volta);
+    return { fator: Math.max(0, fator), dy: (1 - volta) * (saida > 0.99 ? 26 : 0) };
+  })();
 
   /* ---- o bloco de texto ---- */
   /**
@@ -426,7 +532,8 @@ function camadaDeUmQuadro(k, ctx) {
    * antes da primeira letra le como falha de render.
    */
   if (dados.veu) {
-    const entrada = Math.max(...layout.linhas.map((l) => progresso(k, l.el, tempo)), 0);
+      const entrada =
+        Math.max(...layout.linhas.map((l) => progresso(k, l.el, tempo)), 0) * reentradaDoVeu(k, tpl, tempo);
     if (entrada > 0.01) {
       const folga = 34;
       partes.push(
@@ -457,7 +564,12 @@ function camadaDeUmQuadro(k, ctx) {
     }
     const est = ANIMACOES[el.como](pr);
     const dx = est.dx ?? 0;
-    const dy = est.dy ?? 0;
+    const dy = (est.dy ?? 0) + reentrada.dy;
+    est.opacidade = (est.opacidade ?? 1) * reentrada.fator;
+    if (est.opacidade < 0.01) {
+      y += altura + 10;
+      continue;
+    }
     const base = y + corpo * 0.86;
 
     /* Barra ou tarja atras do texto, quando o elemento pede fundo. */
@@ -526,7 +638,41 @@ function camadaDeUmQuadro(k, ctx) {
   return partes.join("\n");
 }
 
-/** O fundo de um quadro: preto na abertura, placa com o movimento pedido depois. */
+/**
+ * Em que cena o quadro cai, e se ele esta atravessando um corte.
+ *
+ * Devolve tambem `u`: 0 a 1 cruzando a transicao, com 0.5 no corte exato. A
+ * troca de cena acontece em 0.5 — antes dele o motor ainda desenha a cena que
+ * sai, depois ja desenha a que entra, e a transicao so disfarca a emenda.
+ */
+function ondeEstamos(k, tpl, tempo) {
+  const fps = tempo.fps;
+  const seg = (x) => x * tempo.fator * fps;
+  const cenas = tpl.cenas ?? [{ ate: 8.0, enquadramento: "cheio" }];
+
+  let indice = cenas.length - 1;
+  for (let i = 0; i < cenas.length; i++) {
+    if (k < seg(cenas[i].ate)) { indice = i; break; }
+  }
+
+  /* Perto de um corte? O corte de uma cena e o `ate` da anterior. */
+  const meiaJanela = seg(DURACAO_TRANSICAO) / 2;
+  for (let i = 0; i < cenas.length - 1; i++) {
+    const corte = seg(cenas[i].ate);
+    if (k > corte - meiaJanela && k < corte + meiaJanela) {
+      const u = (k - (corte - meiaJanela)) / (meiaJanela * 2);
+      return {
+        cena: cenas[u < 0.5 ? i : i + 1],
+        indice: u < 0.5 ? i : i + 1,
+        transicao: tpl.transicoes?.[i] ?? "corte",
+        u,
+      };
+    }
+  }
+  return { cena: cenas[indice], indice, transicao: null, u: null };
+}
+
+/** O fundo de um quadro: preto na abertura, a cena recortada da placa depois. */
 async function fundoDoQuadro(k, placa, ctx) {
   const { tpl, p, tempo } = ctx;
   const quadroAbertura = tpl.abertura ? tpl.abertura.ate * tempo.fator * tempo.fps : 0;
@@ -535,28 +681,69 @@ async function fundoDoQuadro(k, placa, ctx) {
     return sharp({ create: { width: L, height: A, channels: 3, background: "#000" } }).png().toBuffer();
   }
 
-  const t = (k - quadroAbertura) / Math.max(1, tempo.total - quadroAbertura);
-  const amplitude = 0.08 * p.intensidade;
-  const modo = p.camera;
+  const onde = ondeEstamos(k, tpl, tempo);
+  const enq = ENQUADRAMENTOS[onde.cena.enquadramento] ?? ENQUADRAMENTOS.cheio;
+  const efeito = onde.transicao ? TRANSICOES[onde.transicao](onde.u) : {};
 
-  let escala = 1.02;
+  /* Progresso DENTRO da cena, para a camera nao reiniciar o curso a cada corte
+     nem continuar de onde parou como se nada tivesse acontecido. */
+  const seg = (x) => x * tempo.fator * tempo.fps;
+  const cenas = tpl.cenas ?? [{ ate: 8.0 }];
+  const de = onde.indice === 0 ? quadroAbertura : seg(cenas[onde.indice - 1].ate);
+  const ate = seg(cenas[onde.indice].ate);
+  const t = Math.min(1, Math.max(0, (k - de) / Math.max(1, ate - de)));
+
+  const amplitude = 0.08 * p.intensidade;
+  const modo = onde.cena.camera ?? p.camera;
+  let escala = enq.escala;
   let deslocX = 0;
-  if (modo === "push-in") escala = 1.02 + amplitude * t;
-  else if (modo === "push-out") escala = 1.02 + amplitude * (1 - t);
+  if (modo === "push-in") escala = enq.escala + amplitude * t;
+  else if (modo === "push-out") escala = enq.escala + amplitude * (1 - t);
   else if (modo === "pan") {
-    escala = 1.02 + amplitude;
+    escala = enq.escala + amplitude;
     deslocX = (t - 0.5) * amplitude * L * 0.9;
-  } else escala = 1.02; // estatico
+  }
+
+  escala += efeito.escalaExtra ?? 0;
+  deslocX += efeito.deslocX ?? 0;
 
   const lc = Math.round(L / escala);
   const ac = Math.round(A / escala);
-  const left = Math.max(0, Math.min(L - lc, Math.round((L - lc) / 2 + deslocX)));
+  const left = Math.max(0, Math.min(L - lc, Math.round((L - lc) * enq.cx + deslocX)));
+  const top = Math.max(0, Math.min(A - ac, Math.round((A - ac) * enq.cy)));
 
-  return sharp(placa)
-    .extract({ left, top: Math.round((A - ac) / 2), width: lc, height: ac })
-    .resize(L, A)
-    .png()
-    .toBuffer();
+  let img = sharp(placa).extract({ left, top, width: lc, height: ac }).resize(L, A);
+
+  /* Borrao direcional por resize: espremer a largura e devolver borra so na
+     horizontal. O blur do sharp e isotropico e nao daria a leitura de whip. */
+  if (efeito.borraoX > 1.5) {
+    const estreito = Math.max(8, Math.round(L / efeito.borraoX));
+    img = sharp(await img.resize(estreito, A, { fit: "fill" }).png().toBuffer()).resize(L, A, { fit: "fill" });
+  }
+  if (efeito.desfoque > 0.4) img = img.blur(efeito.desfoque);
+
+  let saida = await img.png().toBuffer();
+
+  /* A faixa: uma diagonal varrendo, com a cor do clube na aresta. Sem duas
+     placas nao da para revelar "a proxima imagem" — o que a aresta revela e o
+     proprio corte, e a barra e o que o olho segue enquanto ele acontece. */
+  if (efeito.faixa !== undefined) {
+    const x = (efeito.faixa * 1.6 - 0.3) * L;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${A}">
+      <polygon points="${x},${A} ${x + L * 0.34},0 ${x + L * 0.46},0 ${x + L * 0.12},${A}"
+               fill="${ctx.dados.corClube}"/>
+    </svg>`;
+    saida = await sharp(saida).composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).png().toBuffer();
+  }
+
+  if (efeito.veu && efeito.veu.opacidade > 0.01) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${A}">
+      <rect width="${L}" height="${A}" fill="${efeito.veu.cor}" opacity="${efeito.veu.opacidade.toFixed(3)}"/>
+    </svg>`;
+    saida = await sharp(saida).composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).png().toBuffer();
+  }
+
+  return saida;
 }
 
 /* -------------------------------------------------------------- a placa */
