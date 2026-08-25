@@ -11,7 +11,9 @@
     "db:schema": "node scripts/sql.mjs sql/001_schema.sql",
     "db:sql": "node scripts/sql.mjs",
     "vercel:env": "node scripts/vercel-env.mjs",
-    "vercel:env:dry": "node scripts/vercel-env.mjs --dry"
+    "vercel:env:dry": "node scripts/vercel-env.mjs --dry",
+    "studio": "remotion studio remotion/index.ts --port 3002",
+    "video": "remotion render remotion/index.ts matchday out/remotion/matchday.mp4"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
