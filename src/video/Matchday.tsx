@@ -4,9 +4,12 @@ import { FONTE_DE_APOIO, FONTES } from "./fontes";
 import {
   INTROS,
   ROTEIROS,
+  ENTRADAS,
   deformacaoDaTransicao,
   duracaoDaTransicao,
   estiloDaDeformacao,
+  estiloDaEntrada,
+  progressoDaLetra,
   TEMPLATES,
   type Camadas,
   type Dados,
@@ -180,7 +183,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             const p = entra(quadro, tempos[i] ?? tempos[tempos.length - 1], 0.6, fps, opcoes);
 
             if (linha.papel === "etiqueta")
-              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={26 * e} p={p} />;
+              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={26 * e} p={p} entrada={opcoes.entradaTexto} />;
             if (linha.papel === "destaque")
               return (
                 <Titulo
@@ -189,6 +192,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   cor={opcoes.corTexto}
                   corpo={132 * e}
                   fonte={opcoes.fonte}
+                  entrada={opcoes.entradaTexto}
                   p={p}
                 />
               );
@@ -201,6 +205,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   corBarra={opcoes.corBarra}
                   corpo={64 * e}
                   fonte={opcoes.fonte}
+                  entrada={opcoes.entradaTexto}
                   p={p}
                 />
               );
@@ -211,6 +216,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                 cor={opcoes.corTexto}
                 corpo={24 * e}
                 fonte={opcoes.fonte}
+                entrada={opcoes.entradaTexto}
                 p={p}
               />
             );
@@ -350,6 +356,70 @@ function Intro({
   );
 }
 
+/* ---------------------------------------------------------- entrada do texto */
+
+/**
+ * Aplica a entrada escolhida a um texto — inteiro ou letra a letra.
+ *
+ * As de linha inteira sao um `transform` no bloco. As por letra precisam
+ * quebrar o texto em pedacos, e ai vem o cuidado que nao e obvio: o ESPACO
+ * entra como ` ` num span proprio. Espaco comum no fim de um
+ * `inline-block` e descartado pelo navegador, e a frase sairia grudada —
+ * exatamente o defeito que ja apareceu no titulo da landing page deste
+ * projeto.
+ */
+function TextoComEntrada({
+  texto,
+  entrada,
+  p,
+}: {
+  texto: string;
+  entrada: string;
+  p: number;
+}) {
+  const meta = ENTRADAS[entrada as keyof typeof ENTRADAS];
+
+  if (!meta?.porLetra) {
+    const e = estiloDaEntrada(entrada, p);
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          opacity: e.opacity,
+          transform: e.transform,
+          filter: e.filter,
+          clipPath: e.clipPath,
+        }}
+      >
+        {texto}
+      </span>
+    );
+  }
+
+  const letras = [...texto];
+  return (
+    <span style={{ display: "inline-block" }}>
+      {letras.map((c, i) => {
+        const pl = progressoDaLetra(p, i, letras.length, entrada);
+        if (c === " ") return <span key={i}>{" "}</span>;
+        const desloca = entrada === "onda" ? (1 - pl) * 34 : (1 - pl) * 12;
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              opacity: pl,
+              transform: `translateY(${desloca.toFixed(1)}px)`,
+            }}
+          >
+            {c}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 /* ------------------------------------------------------------- as linhas */
 
 /**
@@ -365,13 +435,13 @@ function inclinacaoDe(fonte: Opcoes["fonte"]) {
   return g === 0 ? undefined : `skewX(${g}deg)`;
 }
 
-function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+function Etiqueta({
+  texto, cor, corpo, p, entrada,
+}: { texto: string; cor: string; corpo: number; p: number; entrada: string }) {
   if (p <= 0) return null;
   return (
     <div
       style={{
-        opacity: p,
-        transform: `translateX(${-24 * (1 - p)}px)`,
         fontFamily: FONTE_DE_APOIO,
         fontWeight: 600,
         fontSize: corpo,
@@ -380,21 +450,30 @@ function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo:
         whiteSpace: "nowrap",
       }}
     >
-      {texto.toUpperCase()}
+      <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
     </div>
   );
 }
 
 function Titulo({
-  texto, cor, corpo, p, fonte,
-}: { texto: string; cor: string; corpo: number; p: number; fonte: Opcoes["fonte"] }) {
+  texto, cor, corpo, p, fonte, entrada,
+}: {
+  texto: string;
+  cor: string;
+  corpo: number;
+  p: number;
+  fonte: Opcoes["fonte"];
+  entrada: string;
+}) {
   if (p <= 0) return null;
   const f = FONTES[fonte];
   return (
     <div
       style={{
-        opacity: p,
-        transform: [`translateX(${-40 * (1 - p)}px)`, inclinacaoDe(fonte)].filter(Boolean).join(" "),
+        /* A inclinacao da fonte fica NO bloco e a entrada vai por dentro: se
+           as duas dividissem o mesmo `transform`, uma sobrescreveria a outra e a
+           letra perderia a inclinacao durante a animacao. */
+        transform: inclinacaoDe(fonte),
         fontFamily: f.familia,
         fontWeight: f.peso,
         fontSize: corpo,
@@ -408,7 +487,7 @@ function Titulo({
         textShadow: "0 6px 26px rgba(0,0,0,.55)",
       }}
     >
-      {texto.toUpperCase()}
+      <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
     </div>
   );
 }
@@ -427,6 +506,7 @@ function LinhaDoConfronto({
   corpo,
   p,
   fonte,
+  entrada,
 }: {
   texto: string;
   cor: string;
@@ -434,6 +514,7 @@ function LinhaDoConfronto({
   corpo: number;
   p: number;
   fonte: Opcoes["fonte"];
+  entrada: string;
 }) {
   if (p <= 0) return null;
   return (
@@ -458,7 +539,7 @@ function LinhaDoConfronto({
           textShadow: "0 4px 18px rgba(0,0,0,.5)",
         }}
       >
-        {texto.toUpperCase()}
+        <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
       </span>
       <span
         style={{
@@ -480,16 +561,24 @@ function LinhaDoConfronto({
 }
 
 function Tarja({
-  texto, cor, corpo, p, fonte,
-}: { texto: string; cor: string; corpo: number; p: number; fonte: Opcoes["fonte"] }) {
+  texto, cor, corpo, p, fonte, entrada,
+}: {
+  texto: string;
+  cor: string;
+  corpo: number;
+  p: number;
+  fonte: Opcoes["fonte"];
+  entrada: string;
+}) {
   if (p <= 0 || !texto) return null;
   return (
     <div
       style={{
         opacity: 1,
         transform: inclinacaoDe(fonte),
-        /* O recorte revela a tarja da esquerda para a direita, em vez de a
-           fazer aparecer inteira: entrada de barra que so acende le como falha. */
+        /* A tarja tem recorte proprio e nao herda a entrada escolhida: ela e um
+           RECIPIENTE, e um recipiente que cai do ceu ou entra letra a letra le
+           como erro. O texto dentro dela e que segue a escolha. */
         clipPath: `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`,
         background: "rgba(6,6,6,.82)",
         padding: `${corpo * 0.5}px ${corpo * 0.9}px`,
@@ -501,7 +590,7 @@ function Tarja({
         whiteSpace: "nowrap",
       }}
     >
-      {texto.toUpperCase()}
+      <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
     </div>
   );
 }

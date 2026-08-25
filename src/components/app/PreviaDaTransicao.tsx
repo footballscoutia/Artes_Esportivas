@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FONTES } from "@/video/fontes";
 import {
+  ENTRADAS,
   deformacaoDaTransicao,
   duracaoDaTransicao,
   estiloDaDeformacao,
+  estiloDaEntrada,
+  progressoDaLetra,
   type Opcoes,
 } from "@/video/template";
 
@@ -127,6 +130,87 @@ export function PreviaDaTransicao({
           style={{ background: "#000", opacity: def.escurece * 0.9 }}
         />
       )}
+    </span>
+  );
+}
+
+/**
+ * A entrada do texto acontecendo, na fonte escolhida.
+ *
+ * Mesma logica da previa de transicao, e o mesmo calculo do video — importado,
+ * nao imitado. A diferenca e que aqui o gesto ocupa a PRIMEIRA parte do ciclo e
+ * o resto e repouso: entrada tem comeco e fim, e mostrar so o meio dela nao
+ * diria nada.
+ */
+export function PreviaDaEntrada({
+  entrada,
+  fonte,
+  texto,
+  t,
+}: {
+  entrada: string;
+  fonte: Opcoes["fonte"];
+  texto: string;
+  t: number;
+}) {
+  const f = FONTES[fonte];
+  const FATIA = 0.5;
+  const p = Math.max(0, Math.min(1, t / FATIA));
+  const meta = ENTRADAS[entrada as keyof typeof ENTRADAS];
+  const e = estiloDaEntrada(entrada, p);
+
+  const base: React.CSSProperties = {
+    fontFamily: f.familia,
+    fontWeight: f.peso,
+    fontSize: 24,
+    letterSpacing: 24 * f.aperto,
+    color: "var(--text)",
+    lineHeight: 1.1,
+    whiteSpace: "nowrap",
+  };
+
+  return (
+    <span className="relative mt-1.5 block h-[52px] overflow-hidden rounded-field bg-bg-2">
+      <span className="absolute inset-0 grid place-items-center">
+        <span
+          style={{
+            ...base,
+            transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
+          }}
+        >
+          {meta?.porLetra ? (
+            [...texto].map((c, i) => {
+              const pl = progressoDaLetra(p, i, [...texto].length, entrada);
+              if (c === " ") return <span key={i}>{" "}</span>;
+              const d = entrada === "onda" ? (1 - pl) * 22 : (1 - pl) * 8;
+              return (
+                <span
+                  key={i}
+                  style={{
+                    display: "inline-block",
+                    opacity: pl,
+                    transform: `translateY(${d.toFixed(1)}px)`,
+                  }}
+                >
+                  {c}
+                </span>
+              );
+            })
+          ) : (
+            <span
+              style={{
+                display: "inline-block",
+                opacity: e.opacity,
+                transform: e.transform,
+                filter: e.filter,
+                clipPath: e.clipPath,
+              }}
+            >
+              {texto}
+            </span>
+          )}
+        </span>
+      </span>
     </span>
   );
 }

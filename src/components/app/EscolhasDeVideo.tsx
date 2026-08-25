@@ -3,10 +3,12 @@
 import { Check } from "lucide-react";
 import { FONTES } from "@/video/fontes";
 import {
+  PreviaDaEntrada,
   PreviaDaTransicao,
   useRelogioDaPrevia,
 } from "@/components/app/PreviaDaTransicao";
 import {
+  ENTRADAS,
   INTROS,
   duracaoDaTransicao,
   TEMPLATES,
@@ -154,6 +156,25 @@ export function EscolhasDeVideo({
             </span>
           );
         }}
+      />
+
+      {/* Entra entre a fonte e a transicao: e efeito de TEXTO, desenhado na
+          fonte que acabou de ser escolhida, e nao no quadro inteiro. */}
+      <Grupo
+        titulo="Como o texto aparece"
+        ajuda="a entrada de cada linha"
+        itens={ENTRADAS}
+        atual={opcoes.entradaTexto}
+        aoEscolher={(v) => aoMudar("entradaTexto", v)}
+        colunas={colunas}
+        amostra={(chave) => (
+          <PreviaDaEntrada
+            entrada={chave}
+            fonte={opcoes.fonte}
+            texto={amostraDoTexto}
+            t={t}
+          />
+        )}
       />
 
       {/**

@@ -141,6 +141,86 @@ export function deformacaoDaTransicao(
   }
 }
 
+/* =========================================================================
+   ENTRADAS DE TEXTO — como cada linha aparece.
+
+   Ate aqui havia uma só, cravada: deslizar da esquerda com fade. Todo vídeo
+   gerado tinha exatamente o mesmo gesto de texto, e é a coisa que mais se
+   repara quando se vê dois posts seguidos da mesma agência.
+
+   `porLetra` separa as que animam a linha inteira das que animam caractere a
+   caractere. A distinção é do componente, não do gesto: as de linha inteira
+   são um `transform`, e as por letra precisam quebrar o texto em pedaços.
+   ========================================================================= */
+
+export const ENTRADAS = {
+  deslize: { rotulo: "Deslize", nota: "Entra da esquerda, com fade", porLetra: false },
+  sobe: { rotulo: "Sobe", nota: "Vem de baixo, como legenda de TV", porLetra: false },
+  escala: { rotulo: "Escala", nota: "Cresce a partir do centro", porLetra: false },
+  desfoca: { rotulo: "Desfoque", nota: "Entra fora de foco e assenta", porLetra: false },
+  varre: { rotulo: "Varredura", nota: "Revelado da esquerda, como uma cortina", porLetra: false },
+  cai: { rotulo: "Queda", nota: "Despenca de cima e para seco", porLetra: false },
+  letra: { rotulo: "Letra a letra", nota: "Cada caractere entra em sequência", porLetra: true },
+  onda: { rotulo: "Onda", nota: "As letras sobem em cascata", porLetra: true },
+} as const;
+
+export type Entrada = keyof typeof ENTRADAS;
+
+export type EstiloDeEntrada = {
+  opacity: number;
+  transform?: string;
+  filter?: string;
+  clipPath?: string;
+};
+
+/**
+ * O estado de uma entrada num progresso `p` de 0 a 1.
+ *
+ * Mesma razão de `deformacaoDaTransicao` estar aqui: a prévia do seletor precisa
+ * do MESMO cálculo, e duas cópias divergem no dia em que alguém afina uma delas.
+ */
+export function estiloDaEntrada(nome: string, p: number): EstiloDeEntrada {
+  if (p >= 1) return { opacity: 1 };
+  const resto = 1 - p;
+
+  switch (nome) {
+    case "sobe":
+      return { opacity: p, transform: `translateY(${resto * 46}px)` };
+    case "escala":
+      return { opacity: p, transform: `scale(${0.82 + 0.18 * p})` };
+    case "desfoca":
+      return { opacity: p, filter: `blur(${(resto * 13).toFixed(1)}px)` };
+    case "varre":
+      /* Opacidade cheia de propósito: quem revela é o recorte. Somar fade
+         faria a cortina parecer uma transparência, que é outro gesto. */
+      return { opacity: 1, clipPath: `inset(0 ${(resto * 100).toFixed(1)}% 0 0)` };
+    case "cai":
+      return { opacity: Math.min(1, p * 2), transform: `translateY(${-resto * 70}px)` };
+    case "letra":
+    case "onda":
+      /* Por letra, o pedaço é desenhado pelo componente; aqui a linha inteira
+         só não atrapalha. */
+      return { opacity: 1 };
+    default:
+      return { opacity: p, transform: `translateX(${-resto * 40}px)` };
+  }
+}
+
+/**
+ * O progresso de UMA letra, dentro de uma linha que entra caractere a caractere.
+ *
+ * O atraso é proporcional à posição, e não fixo por letra: uma linha de trinta
+ * caracteres com 60ms cada levaria quase dois segundos, e o bloco inteiro
+ * chegaria atrasado. Assim a linha toda cabe sempre no mesmo tempo, seja
+ * "VASCO" ou "SÃO JANUÁRIO".
+ */
+export function progressoDaLetra(p: number, indice: number, total: number, nome: string) {
+  const espalhamento = nome === "onda" ? 0.65 : 0.5;
+  const atraso = total <= 1 ? 0 : (indice / (total - 1)) * espalhamento;
+  const janela = 1 - espalhamento;
+  return Math.max(0, Math.min(1, (p - atraso) / Math.max(0.001, janela)));
+}
+
 /**
  * Quanto dura a janela do corte, em segundos da linha do tempo de referencia.
  *
@@ -262,6 +342,8 @@ export const EsquemaOpcoes = z.object({
      duracao real depende da duracao do video: um whip de 0,32s num video de 6s
      e o mesmo gesto que num de 15s, e cravar segundos quebraria essa relacao. */
   velocidadeTransicao: z.number().min(0.4).max(2.5),
+  /* Como cada linha de texto APARECE. Ate aqui havia uma so, cravada. */
+  entradaTexto: z.enum(["deslize", "sobe", "escala", "desfoca", "varre", "cai", "letra", "onda"]),
   intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]),
   transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
   fonte: z.enum(CHAVES_DE_FONTE),
@@ -332,6 +414,7 @@ export const OPCOES_PADRAO: Opcoes = {
   velocidade: 1,
   intensidade: 1,
   velocidadeTransicao: 1,
+  entradaTexto: "deslize",
   intro: "escudo-logo",
   transicao: "whip",
   fonte: "cartaz",
