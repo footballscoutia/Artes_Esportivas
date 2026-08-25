@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "remotion-studio",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["remotion", "studio", "remotion/index.ts", "--port", "3002"],
+      "port": 3002
+    },
+    {
       "name": "artes-esportivas",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

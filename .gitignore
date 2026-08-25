@@ -47,3 +47,6 @@ next-env.d.ts
 
 # arquivos de trabalho da skill de design (decisoes, capturas de revisao)
 /.impeccable/
+
+# camadas geradas para o Remotion ler com staticFile() — nao versionadas
+/public/video/
