@@ -102,23 +102,36 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais }: Props) 
   }, [quadros]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="surface overflow-hidden rounded-card">
-        <Player
-          ref={player}
-          component={Matchday}
-          inputProps={props}
-          durationInFrames={quadros}
-          fps={FPS}
-          compositionWidth={1080}
-          compositionHeight={1920}
-          style={{ width: "100%" }}
-          controls
-          loop
-        />
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {/**
+       * O preview e limitado pela ALTURA, e nao pela largura.
+       *
+       * Uma composicao 9:16 a `width: 100%` numa coluna larga vira um monstro
+       * vertical: o video some para fora da tela e a pessoa edita rolando a
+       * pagina, sem nunca ver o quadro inteiro. Em video vertical quem manda e
+       * a altura disponivel — a largura sai dela.
+       */}
+      <div className="flex items-start justify-center">
+        <div
+          className="surface overflow-hidden rounded-card"
+          style={{ height: "min(74vh, 720px)", aspectRatio: "9 / 16" }}
+        >
+          <Player
+            ref={player}
+            component={Matchday}
+            inputProps={props}
+            durationInFrames={quadros}
+            fps={FPS}
+            compositionWidth={1080}
+            compositionHeight={1920}
+            style={{ width: "100%", height: "100%" }}
+            controls
+            loop
+          />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 lg:max-h-[74vh] lg:overflow-y-auto lg:pr-1">
         <div>
           <p className="mb-2 text-[13px] font-medium">
             Template <span className="text-muted-2 font-normal">a receita da animação</span>

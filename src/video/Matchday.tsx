@@ -1,24 +1,20 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  ENQUADRAMENTOS,
-  ESTILOS,
-  TEMPLATES,
-  textoDo,
-  type Camada,
-  type Camadas,
-  type Dados,
-  type Elemento,
-  type Opcoes,
-} from "./template";
+import { TEMPLATES, type Camadas, type Dados, type Opcoes } from "./template";
 
 /**
- * A composicao. O mesmo componente que o Player toca ao vivo no navegador e o
- * que o servidor renderiza em mp4 — que e a razao inteira de ter vindo para ca.
+ * A composicao, refeita em cima das referencias da agencia.
  *
- * Renderizar 180 quadros com `sharp` levava mais de um minuto, e nao existe
- * editor interativo em cima disso. Aqui o preview e o produto final saem da
- * MESMA descricao, e nao de dois caminhos que precisam ser mantidos iguais.
+ * A PRIMEIRA VERSAO ERRAVA O ALVO, e vale registrar por que: eu trouxe da arte
+ * PARADA a regra de "o nome atravessa o atleta" e apliquei aqui. Nos videos do
+ * Marcio nao e assim. O atleta fica inteiro e quieto ocupando os dois tercos de
+ * baixo, e o texto e um bloco COMPACTO num canto, sobre area vazia. Sao dois
+ * generos diferentes, e eu misturei.
+ *
+ * Pior: o enquadramento com zoom foi desenhado para o FUNDO, onde fechar o
+ * quadro so corta cenario. Aplicado a camada do atleta, ele cortava a cabeca
+ * dele. Aqui o atleta praticamente nao escala — o paralaxe e de poucos por
+ * cento, o suficiente para o olho ler profundidade e longe de recortar o corpo.
  */
 
 export type PropsMatchday = {
@@ -27,269 +23,289 @@ export type PropsMatchday = {
   opcoes: Opcoes;
 };
 
-const DURACAO_TRANSICAO = 0.34;
-
-/** Progresso 0..1 de uma entrada, com o easing de saida que o genero usa. */
-function entrada(quadro: number, em: number, dura: number, fps: number, o: Opcoes) {
-  const fator = o.duracao / 8;
-  return interpolate(
-    quadro,
-    [em * fator * fps, (em * fator + dura / o.velocidade) * fps],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: (t) => 1 - Math.pow(1 - t, 3) },
-  );
-}
-
-/** Em que cena o quadro cai, e se atravessa um corte. */
-function ondeEstamos(quadro: number, tpl: (typeof TEMPLATES)[string], fps: number, o: Opcoes) {
-  const seg = (x: number) => x * (o.duracao / 8) * fps;
-  const meia = seg(DURACAO_TRANSICAO) / 2;
-
-  for (let i = 0; i < tpl.cenas.length - 1; i++) {
-    const corte = seg(tpl.cenas[i].ate);
-    if (quadro > corte - meia && quadro < corte + meia) {
-      const u = (quadro - (corte - meia)) / (meia * 2);
-      const indice = u < 0.5 ? i : i + 1;
-      return { indice, transicao: tpl.transicoes[i] ?? "corte", u, de: i === 0 ? 0 : seg(tpl.cenas[i - 1].ate) };
-    }
-  }
-
-  let indice = tpl.cenas.length - 1;
-  for (let i = 0; i < tpl.cenas.length; i++) {
-    if (quadro < seg(tpl.cenas[i].ate)) {
-      indice = i;
-      break;
-    }
-  }
-  return { indice, transicao: null as null | string, u: null as null | number, de: indice === 0 ? 0 : seg(tpl.cenas[indice - 1].ate) };
-}
-
-/**
- * O bloco de texto sai antes do corte e volta depois.
- *
- * Sem isto a segunda cena seria a mesma tipografia parada sobre um
- * enquadramento novo, e o corte leria como falha de continuidade.
- */
-function reentrada(quadro: number, tpl: (typeof TEMPLATES)[string], fps: number, o: Opcoes) {
-  if (!tpl.reentrada) return 1;
-  const fator = o.duracao / 8;
-  const { saiEm, voltaEm, dura } = tpl.reentrada;
-  const sai = interpolate(quadro, [saiEm * fator * fps, (saiEm + dura * 0.6) * fator * fps], [0, 1], {
+/** Entrada 0..1 com o easing de saida que o genero usa. */
+function entra(quadro: number, em: number, dura: number, fps: number, o: Opcoes) {
+  const f = o.duracao / 8;
+  return interpolate(quadro, [em * f * fps, (em * f + dura / o.velocidade) * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
+    easing: (t) => 1 - Math.pow(1 - t, 3),
   });
-  const volta = interpolate(quadro, [voltaEm * fator * fps, (voltaEm + dura) * fator * fps], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  return Math.max(0, Math.min(1, 1 - sai + volta));
-}
-
-function Linha({
-  el,
-  dados,
-  opcoes,
-  quadro,
-  fps,
-  fator,
-}: {
-  el: Elemento;
-  dados: Dados;
-  opcoes: Opcoes;
-  quadro: number;
-  fps: number;
-  fator: number;
-}) {
-  const texto = textoDo(el, dados);
-  if (!texto) return null;
-
-  const e = ESTILOS[el.estilo];
-  const p = entrada(quadro, el.em, el.dura, fps, opcoes);
-  if (p <= 0) return null;
-
-  const corpo = e.corpo * opcoes.escalaTexto;
-  let dx = 0;
-  let dy = 0;
-  let opacidade = p;
-  let recorte: string | undefined;
-
-  if (el.como === "desliza-esquerda") dx = -90 * (1 - p);
-  if (el.como === "sobe") dy = 60 * (1 - p);
-  if (el.como === "varre") {
-    opacidade = 1;
-    recorte = `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`;
-  }
-
-  const comFundo = Boolean(el.fundo);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: `${el.y * 100}%`,
-        left: `${(el.x ?? 0.045) * 100}%`,
-        right: comFundo ? "4.5%" : undefined,
-        transform: `translate(${dx}px, ${dy}px)`,
-        opacity: opacidade,
-        clipPath: recorte,
-        background: comFundo ? (el.fundo === "clube" ? opcoes.corBarra : "rgba(8,8,8,.78)") : undefined,
-        padding: comFundo ? `${corpo * 0.34}px ${corpo * 0.6}px` : undefined,
-        /* `nowrap` é deliberado: o nome PRECISA transbordar o quadro quando for
-           largo demais. Quebrar em duas linhas destruiria a leitura do gênero,
-           em que a tipografia atravessa o atleta e sobra dos dois lados. */
-        whiteSpace: "nowrap",
-        fontFamily: e.fonte,
-        fontSize: corpo,
-        letterSpacing: e.tracking,
-        color: opcoes.corTexto,
-        lineHeight: 1,
-      }}
-    >
-      {texto}
-    </div>
-  );
-}
-
-function Bloco({
-  camada,
-  ...resto
-}: {
-  camada: Camada;
-  tpl: (typeof TEMPLATES)[string];
-  dados: Dados;
-  opcoes: Opcoes;
-  quadro: number;
-  fps: number;
-  fator: number;
-}) {
-  const { tpl, dados, opcoes, quadro, fps, fator } = resto;
-  const visivel = reentrada(quadro, tpl, fps, opcoes);
-  if (visivel < 0.01) return null;
-
-  return (
-    <AbsoluteFill style={{ opacity: visivel }}>
-      {tpl.elementos
-        .filter((el) => el.camada === camada)
-        .map((el) => (
-          <Linha key={el.id} el={el} dados={dados} opcoes={opcoes} quadro={quadro} fps={fps} fator={fator} />
-        ))}
-    </AbsoluteFill>
-  );
 }
 
 export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) => {
   const quadro = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.atravessa;
-  const fator = opcoes.duracao / 8;
+  const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.confronto;
+  const f = opcoes.duracao / 8;
+  const t = quadro / Math.max(1, durationInFrames);
 
-  const onde = ondeEstamos(quadro, tpl, fps, opcoes);
-  const cena = tpl.cenas[onde.indice];
-  const enq = ENQUADRAMENTOS[cena.enquadramento];
+  /**
+   * O movimento e DISCRETO de proposito.
+   *
+   * Nas referencias a camera quase nao anda: o que da vida e o texto entrando
+   * em camadas, nao o zoom. Fundo e atleta andam pouco, e em velocidades
+   * levemente diferentes — e a DIFERENCA que le como profundidade, nao a
+   * quantidade. Iguais, seria zoom; muito, corta o atleta.
+   */
+  const forca = 0.05 * opcoes.intensidade;
+  const zoomFundo = 1.0 + forca * t;
+  const zoomAtleta = 1.0 + forca * 0.45 * t;
 
-  const ate = cena.ate * fator * fps;
-  const t = Math.min(1, Math.max(0, (quadro - onde.de) / Math.max(1, ate - onde.de)));
-  const amplitude = 0.1 * opcoes.intensidade;
+  const entradaAtleta = entra(quadro, 0, 1.0, fps, opcoes);
 
-  const zoomCena =
-    cena.camera === "push-in"
-      ? enq.escala + amplitude * t
-      : cena.camera === "push-out"
-        ? enq.escala + amplitude * (1 - t)
-        : enq.escala;
-
-  /* O efeito da transicao deforma o quadro inteiro. O corte de verdade — a
-     troca de cena — quem faz e o `ondeEstamos`; isto so disfarca a emenda. */
-  const pico = onde.u === null ? 0 : 1 - Math.abs(onde.u - 0.5) * 2;
-  const whip = onde.transicao === "whip" ? pico : 0;
-  const punch = onde.transicao === "punch" ? pico : 0;
-  const flash = onde.transicao === "flash" ? pico : 0;
-
-  /* A força do whip acompanha a `intensidade` em vez de ser constante: é uma
-     das opções que o editor vai mexer, e 420px de arrasto com 26px de borrão
-     lia como borrão de foco, não como corte. */
-  const deslocX = whip * (onde.u! < 0.5 ? -1 : 1) * 260 * opcoes.intensidade;
-  const borrao = (whip * 15 + punch * 11) * opcoes.intensidade;
-  const zoom = zoomCena + punch * 0.28;
-
-  /* PARALAXE: o atleta fecha mais rapido que o fundo. A diferenca entre as duas
-     velocidades e o efeito inteiro — iguais, seria zoom. */
-  const zoomFundo = zoom;
-  const zoomAtleta = zoom + amplitude * t * 0.9;
-
-  const entradaAtleta = interpolate(quadro, [0, 0.8 * fator * fps], [0, 1], {
+  const fecho = interpolate(quadro, [durationInFrames - 0.6 * fps, durationInFrames], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const fecho = interpolate(
-    quadro,
-    [durationInFrames - 0.7 * fps, durationInFrames],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
+  /* O corte do meio: o bloco de texto sai e volta, e um clarao curto marca a
+     emenda. Sem a saida do texto, a segunda metade seria a primeira parada. */
+  const corte = tpl.corte * f * fps;
+  const sai = interpolate(quadro, [corte - 0.3 * f * fps, corte], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const volta = interpolate(quadro, [corte + 0.12 * f * fps, corte + 0.5 * f * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const visivel = Math.max(0, Math.min(1, 1 - sai + volta));
+  const clarao =
+    1 -
+    Math.min(1, Math.abs(quadro - corte) / (0.14 * f * fps));
 
-  const comum: React.CSSProperties = {
-    filter: borrao > 0.5 ? `blur(${borrao}px)` : undefined,
-  };
+  const e = opcoes.escalaTexto;
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#000", overflow: "hidden" }}>
-      <AbsoluteFill style={{ ...comum, transform: `translateX(${deslocX}px) scale(${zoomFundo})` }}>
+    <AbsoluteFill style={{ backgroundColor: "#050505", overflow: "hidden" }}>
+      <AbsoluteFill style={{ transform: `scale(${zoomFundo})` }}>
         <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </AbsoluteFill>
 
-      <AbsoluteFill style={{ ...comum, transform: `translateX(${deslocX}px) scale(${zoomFundo})` }}>
-        <Bloco camada="atras" tpl={tpl} dados={dados} opcoes={opcoes} quadro={quadro} fps={fps} fator={fator} />
-      </AbsoluteFill>
-
-      {/* A sombra de contato entre o texto e o atleta: sem ela o recorte flutua,
-          e figura flutuando é o que denuncia colagem antes de tudo. */}
-      <AbsoluteFill style={{ ...comum, transform: `translateX(${deslocX}px) scale(${zoomAtleta})` }}>
+      <AbsoluteFill
+        style={{
+          transform: `scale(${zoomAtleta}) translateY(${(1 - entradaAtleta) * 26}px)`,
+          opacity: entradaAtleta,
+        }}
+      >
+        {/* Sombra de contato: sem chao, o recorte flutua e denuncia colagem. */}
         <div
           style={{
             position: "absolute",
-            left: "20%",
-            right: "20%",
-            bottom: "6%",
-            height: 90,
+            left: "18%",
+            right: "18%",
+            bottom: "3%",
+            height: 110,
             borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(0,0,0,.72) 0%, rgba(0,0,0,.26) 60%, rgba(0,0,0,0) 100%)",
+            background:
+              "radial-gradient(ellipse at center, rgba(0,0,0,.7) 0%, rgba(0,0,0,.25) 58%, rgba(0,0,0,0) 100%)",
           }}
         />
-        <Img
-          src={camadas.atleta}
+        <Img src={camadas.atleta} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </AbsoluteFill>
+
+      {/**
+       * O BLOCO, empilhado como na referencia.
+       *
+       * Cada linha e um filho de um flex column, e nao um elemento posicionado
+       * por coordenada absoluta. E o que mantem o conjunto alinhado quando o
+       * texto muda de tamanho: "SAO JANUARIO" e "ARENA DA BAIXADA" tem larguras
+       * diferentes, e com coordenadas cravadas uma das duas sairia torta.
+       */}
+      <AbsoluteFill style={{ opacity: visivel }}>
+        <div
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: entradaAtleta,
-            transform: `translateY(${(1 - entradaAtleta) * 40}px)`,
+            position: "absolute",
+            top: `${tpl.blocoTopo * 100}%`,
+            left: "6%",
+            right: "6%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 8 * e,
+          }}
+        >
+          {dados.campeonato && (
+            <Etiqueta
+              texto={dados.campeonato}
+              cor={opcoes.corTexto}
+              corpo={22 * e}
+              p={entra(quadro, tpl.tempos.campeonato, 0.5, fps, opcoes)}
+            />
+          )}
+
+          <Titulo
+            texto={dados.clube}
+            cor={opcoes.corTexto}
+            corpo={104 * e}
+            p={entra(quadro, tpl.tempos.clube, 0.7, fps, opcoes)}
+          />
+
+          {dados.adversario && (
+            <LinhaDoConfronto
+              texto={`X ${dados.adversario}`}
+              cor={opcoes.corTexto}
+              corBarra={opcoes.corBarra}
+              corpo={54 * e}
+              p={entra(quadro, tpl.tempos.confronto, 0.6, fps, opcoes)}
+            />
+          )}
+
+          <Tarja
+            texto={[dados.data, dados.hora, dados.estadio].filter(Boolean).join("   ·   ")}
+            cor={opcoes.corTexto}
+            corpo={21 * e}
+            p={entra(quadro, tpl.tempos.dados, 0.55, fps, opcoes)}
+          />
+        </div>
+      </AbsoluteFill>
+
+      {camadas.logo && (
+        <Img
+          src={camadas.logo}
+          style={{
+            position: "absolute",
+            right: "6%",
+            top: "4%",
+            width: 150,
+            opacity: entra(quadro, 0.6, 0.8, fps, opcoes) * 0.9,
           }}
         />
-      </AbsoluteFill>
+      )}
 
-      <AbsoluteFill>
-        <Bloco camada="frente" tpl={tpl} dados={dados} opcoes={opcoes} quadro={quadro} fps={fps} fator={fator} />
-        {camadas.logo && (
-          <Img
-            src={camadas.logo}
-            style={{
-              position: "absolute",
-              right: 64,
-              bottom: 64,
-              width: 240,
-              opacity: interpolate(quadro, [1.2 * fator * fps, 1.8 * fator * fps], [0, 0.95], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              }),
-            }}
-          />
-        )}
-      </AbsoluteFill>
-
-      {flash > 0.01 && <AbsoluteFill style={{ backgroundColor: "#fff", opacity: flash * 0.45 }} />}
+      {clarao > 0 && (
+        <AbsoluteFill style={{ backgroundColor: "#fff", opacity: clarao * 0.22 * opcoes.intensidade }} />
+      )}
       {fecho > 0 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: fecho }} />}
     </AbsoluteFill>
   );
 };
+
+/* ------------------------------------------------------------- as linhas */
+
+/** A inclinacao e o que da o ar esportivo — a referencia usa condensada itálica. */
+const INCLINA = "skewX(-8deg)";
+const CONDENSADA = "Impact, 'Arial Narrow', 'Arial Black', sans-serif";
+
+function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+  if (p <= 0) return null;
+  return (
+    <div
+      style={{
+        opacity: p,
+        transform: `translateX(${-24 * (1 - p)}px)`,
+        fontFamily: '"Arial Black", Arial, sans-serif',
+        fontSize: corpo,
+        letterSpacing: corpo * 0.42,
+        color: cor,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {texto.toUpperCase()}
+    </div>
+  );
+}
+
+function Titulo({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+  if (p <= 0) return null;
+  return (
+    <div
+      style={{
+        opacity: p,
+        transform: `translateX(${-40 * (1 - p)}px) ${INCLINA}`,
+        fontFamily: CONDENSADA,
+        fontSize: corpo,
+        lineHeight: 0.94,
+        letterSpacing: -1,
+        color: cor,
+        whiteSpace: "nowrap",
+        textShadow: "0 6px 26px rgba(0,0,0,.55)",
+      }}
+    >
+      {texto.toUpperCase()}
+    </div>
+  );
+}
+
+/**
+ * A linha do confronto: o texto, e uma BARRA que come o resto da largura.
+ *
+ * E o gesto que mais marca a referencia. A barra nao tem largura propria — ela
+ * e `flex: 1` e ocupa o que sobrar, entao adversario curto ou longo produz o
+ * mesmo desenho, sem ninguem calcular nada.
+ */
+function LinhaDoConfronto({
+  texto,
+  cor,
+  corBarra,
+  corpo,
+  p,
+}: {
+  texto: string;
+  cor: string;
+  corBarra: string;
+  corpo: number;
+  p: number;
+}) {
+  if (p <= 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        gap: corpo * 0.28,
+        width: "100%",
+        opacity: p,
+        transform: INCLINA,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: CONDENSADA,
+          fontSize: corpo,
+          lineHeight: 1.06,
+          color: cor,
+          whiteSpace: "nowrap",
+          textShadow: "0 4px 18px rgba(0,0,0,.5)",
+        }}
+      >
+        {texto.toUpperCase()}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          background: corBarra,
+          /* Cresce da esquerda junto com a entrada, como uma varredura. */
+          transformOrigin: "left center",
+          transform: `scaleX(${p})`,
+          minWidth: 0,
+        }}
+      />
+    </div>
+  );
+}
+
+function Tarja({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+  if (p <= 0 || !texto) return null;
+  return (
+    <div
+      style={{
+        opacity: 1,
+        transform: INCLINA,
+        /* O recorte revela a tarja da esquerda para a direita, em vez de a
+           fazer aparecer inteira: entrada de barra que so acende le como falha. */
+        clipPath: `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`,
+        background: "rgba(6,6,6,.82)",
+        padding: `${corpo * 0.5}px ${corpo * 0.9}px`,
+        fontFamily: '"Arial Black", Arial, sans-serif',
+        fontSize: corpo,
+        letterSpacing: corpo * 0.14,
+        color: cor,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {texto.toUpperCase()}
+    </div>
+  );
+}
