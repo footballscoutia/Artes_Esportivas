@@ -309,6 +309,7 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
             aoMudar={mexer}
             amostraDoTexto={dados.clube || dados.nome || "GOLAÇO"}
             aoVerTransicao={verTransicao}
+            escudoUrl={camadas.escudo}
           />
         </div>
 

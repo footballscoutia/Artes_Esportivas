@@ -6,6 +6,7 @@ import {
   ROTEIROS,
   ENTRADAS,
   deformacaoDaTransicao,
+  estiloDoIntro,
   duracaoDaTransicao,
   estiloDaDeformacao,
   estiloDaEntrada,
@@ -171,10 +172,22 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             /* A tarja junta data, hora e estadio; as outras linhas sao um campo
                so. E a unica excecao, e ela mora aqui em vez de virar tres
                entradas no roteiro — tres entradas produziriam tres tarjas. */
+            /* A tarja junta tres campos, entao ela filtra os ocultos um a um em
+               vez de sumir inteira: esconder o estadio nao pode levar junto a
+               data. As outras linhas sao um campo so e somem de vez. */
+            const escondido = (c: string) => opcoes.ocultos.includes(c);
             const texto =
               linha.papel === "tarja"
-                ? [dados.data, dados.hora, dados.estadio].filter(Boolean).join("   ·   ")
-                : `${linha.prefixo ?? ""}${dados[linha.campo]}`;
+                ? [
+                    escondido("data") ? "" : dados.data,
+                    escondido("hora") ? "" : dados.hora,
+                    escondido("estadio") ? "" : dados.estadio,
+                  ]
+                    .filter(Boolean)
+                    .join("   ·   ")
+                : escondido(linha.campo)
+                  ? ""
+                  : `${linha.prefixo ?? ""}${dados[linha.campo]}`;
             if (!texto.trim()) return null;
 
             /* Os tempos seguem a ORDEM da linha no roteiro, e nao o nome do
@@ -284,11 +297,14 @@ function Intro({
   dura: number;
 }) {
   const fim = dura * fps;
-  const p = interpolate(quadro, [0.08 * fps, 0.62 * fps], [0, 1], {
+  const p = interpolate(quadro, [0.08 * fps, 0.68 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: (t) => 1 - Math.pow(1 - t, 3),
   });
+  /* O gesto vem do catalogo, e nao mais cravado aqui. E a mesma funcao que a
+     previa do seletor usa. */
+  const gesto = estiloDoIntro(opcoes.introEfeito, p);
   const pNome = interpolate(quadro, [0.34 * fps, 0.86 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -319,8 +335,10 @@ function Intro({
           src={camadas.escudo}
           style={{
             width: 300,
-            opacity: p,
-            transform: `scale(${0.78 + 0.22 * p})`,
+            opacity: gesto.opacity,
+            transform: gesto.transform,
+            filter: gesto.filter,
+            clipPath: gesto.clipPath,
           }}
         />
       )}
@@ -346,8 +364,13 @@ function Intro({
             /* Sozinha ela e o assunto, e nao a assinatura: entra maior e no
                tempo do escudo, em vez de depois dele. */
             width: opcoes.intro === "logo" ? 420 : 210,
-            opacity: (opcoes.intro === "logo" ? p : pLogo) * 0.95,
-            transform: opcoes.intro === "logo" ? `scale(${0.86 + 0.14 * p})` : undefined,
+            /* Sozinha, a logo E o gesto da intro. Acompanhada, ela assina
+               depois do escudo e entra simples — duas coisas fazendo o mesmo
+               movimento ao mesmo tempo brigam em vez de somar. */
+            opacity: opcoes.intro === "logo" ? gesto.opacity : pLogo * 0.95,
+            transform: opcoes.intro === "logo" ? gesto.transform : undefined,
+            filter: opcoes.intro === "logo" ? gesto.filter : undefined,
+            clipPath: opcoes.intro === "logo" ? gesto.clipPath : undefined,
             marginTop: opcoes.intro === "logo" ? 0 : 26,
           }}
         />

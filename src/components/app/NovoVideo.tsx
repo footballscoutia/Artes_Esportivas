@@ -423,6 +423,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           opcoes={opcoes}
           aoMudar={(k, v) => setOpcoes((o) => ({ ...o, [k]: v }))}
           amostraDoTexto={clube || nome || "GOLAÇO"}
+          escudoUrl={clubeDoAtleta?.escudo_url ?? undefined}
         />
 
         {erro && <p className="text-[12px] leading-relaxed text-danger">{erro}</p>}

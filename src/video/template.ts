@@ -48,6 +48,70 @@ export const INTROS = {
 export type Intro = keyof typeof INTROS;
 
 /* =========================================================================
+   EFEITOS DE INTRO — COMO a abertura entra, separado de O QUE entra.
+
+   As quatro intros animavam identicamente: escala com fade. Trocar o conteudo
+   nao mudava o gesto, entao dois videos com intros diferentes ainda abriam
+   igual — que e justamente o que se repara em posts seguidos.
+
+   Separar segue a mesma decomposicao das entradas de texto: conteudo e forma
+   sao perguntas diferentes, e cruzar as duas listas da mais combinacoes que
+   somar itens numa lista so.
+   ========================================================================= */
+
+export const INTRO_EFEITOS = {
+  cresce: { rotulo: "Cresce", nota: "Surge pequeno e assenta no tamanho" },
+  encolhe: { rotulo: "Encolhe", nota: "Entra grande demais e recua" },
+  sobe: { rotulo: "Sobe", nota: "Vem de baixo, firme" },
+  gira: { rotulo: "Giro", nota: "Roda até parar de frente" },
+  impacto: { rotulo: "Impacto", nota: "Chega seco, com um tranco" },
+  desfoca: { rotulo: "Desfoque", nota: "Entra fora de foco e resolve" },
+  revela: { rotulo: "Revelação", nota: "Descoberto de baixo para cima" },
+  pisca: { rotulo: "Pisca", nota: "Aparece piscando, como painel ligando" },
+} as const;
+
+export type IntroEfeito = keyof typeof INTRO_EFEITOS;
+
+/**
+ * O estado do elemento da intro num progresso `p` de 0 a 1.
+ *
+ * Como nas transicoes e nas entradas de texto: a conta mora no contrato porque
+ * a previa do seletor precisa da MESMA, e copia divergente vira previa que
+ * mente.
+ */
+export function estiloDoIntro(nome: string, p: number): EstiloDeEntrada {
+  const resto = 1 - p;
+  switch (nome) {
+    case "encolhe":
+      return { opacity: Math.min(1, p * 1.6), transform: `scale(${1 + resto * 0.9})` };
+    case "sobe":
+      return { opacity: p, transform: `translateY(${resto * 90}px)` };
+    case "gira":
+      return {
+        opacity: p,
+        transform: `rotate(${resto * -35}deg) scale(${0.8 + 0.2 * p})`,
+      };
+    case "impacto":
+      /* Passa do ponto e volta: um objeto que para exatamente onde chega nao
+         tem peso. O excesso e curto e so na cauda do movimento. */
+      return {
+        opacity: Math.min(1, p * 2.4),
+        transform: `scale(${p < 0.72 ? 0.55 + 0.63 * (p / 0.72) : 1.18 - 0.18 * ((p - 0.72) / 0.28)})`,
+      };
+    case "desfoca":
+      return { opacity: p, filter: `blur(${(resto * 22).toFixed(1)}px)` };
+    case "revela":
+      return { opacity: 1, clipPath: `inset(${(resto * 100).toFixed(1)}% 0 0 0)` };
+    case "pisca":
+      /* Tres piscadas antes de firmar. O `p * 9` e o que produz os pulsos; a
+         rampa do final e o que impede a intro de terminar apagada. */
+      return { opacity: p > 0.62 ? 1 : Math.abs(Math.sin(p * 9)) * p * 1.4 };
+    default:
+      return { opacity: p, transform: `scale(${0.78 + 0.22 * p})` };
+  }
+}
+
+/* =========================================================================
    TRANSICOES — o que acontece nos poucos quadros em volta do corte do meio.
    ========================================================================= */
 
@@ -344,7 +408,19 @@ export const EsquemaOpcoes = z.object({
   velocidadeTransicao: z.number().min(0.4).max(2.5),
   /* Como cada linha de texto APARECE. Ate aqui havia uma so, cravada. */
   entradaTexto: z.enum(["deslize", "sobe", "escala", "desfoca", "varre", "cai", "letra", "onda"]),
+  /**
+   * O que NAO aparece. Lista do que sai, e nao do que fica.
+   *
+   * Assim um campo novo no roteiro nasce VISIVEL: guardando o que fica, todo
+   * video antigo passaria a esconder o campo recem-criado, porque ele nao
+   * estaria na lista gravada meses atras.
+   *
+   * Mesma logica da arte parada, onde campo em branco derruba a linha inteira
+   * do prompt em vez de virar aspas vazias que o modelo tenta preencher.
+   */
+  ocultos: z.array(z.string()),
   intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]),
+  introEfeito: z.enum(["cresce", "encolhe", "sobe", "gira", "impacto", "desfoca", "revela", "pisca"]),
   transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
   fonte: z.enum(CHAVES_DE_FONTE),
   /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
@@ -377,6 +453,22 @@ export type Opcoes = z.infer<typeof EsquemaOpcoes>;
  * grande, e no matchday isso é o clube enquanto num gol é o nome do atleta. O
  * desenho não precisa saber de tipo nenhum — só de papéis.
  */
+/**
+ * O que dá para tirar do vídeo, e como se chama na tela.
+ *
+ * O NOME do atleta e o DESTAQUE de cada roteiro não entram aqui: um vídeo de
+ * gol sem o nome de quem fez o gol não é um vídeo mais limpo, é um vídeo sem
+ * assunto.
+ */
+export const OCULTAVEIS: Record<string, string> = {
+  campeonato: "Campeonato",
+  adversario: "Adversário",
+  clube: "Clube",
+  data: "Data",
+  hora: "Horário",
+  estadio: "Estádio",
+};
+
 export type Papel = "etiqueta" | "destaque" | "confronto" | "tarja";
 
 export type Roteiro = { papel: Papel; campo: keyof Dados; prefixo?: string }[];
@@ -415,7 +507,9 @@ export const OPCOES_PADRAO: Opcoes = {
   intensidade: 1,
   velocidadeTransicao: 1,
   entradaTexto: "deslize",
+  ocultos: [],
   intro: "escudo-logo",
+  introEfeito: "cresce",
   transicao: "whip",
   fonte: "cartaz",
   corTexto: "#ffffff",

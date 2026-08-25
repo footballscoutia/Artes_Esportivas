@@ -5,6 +5,7 @@ import { FONTES } from "@/video/fontes";
 import {
   ENTRADAS,
   deformacaoDaTransicao,
+  estiloDoIntro,
   duracaoDaTransicao,
   estiloDaDeformacao,
   estiloDaEntrada,
@@ -208,6 +209,52 @@ export function PreviaDaEntrada({
             >
               {texto}
             </span>
+          )}
+        </span>
+      </span>
+    </span>
+  );
+}
+/**
+ * A intro acontecendo, com o escudo de verdade quando ele existe.
+ *
+ * Sem escudo carregado — atleta ainda nao escolhido — cai num escudo generico
+ * desenhado em SVG. E melhor que nada: o gesto e o que esta sendo escolhido, e
+ * ele se le igual num brasao qualquer.
+ */
+export function PreviaDoIntro({
+  efeito,
+  escudoUrl,
+  t,
+}: {
+  efeito: string;
+  escudoUrl?: string;
+  t: number;
+}) {
+  /* O gesto ocupa a primeira metade e o resto e repouso: abertura tem comeco
+     e fim, e um laco continuo nao deixa ver onde ela assenta. */
+  const p = Math.max(0, Math.min(1, t / 0.55));
+  const e = estiloDoIntro(efeito, p);
+
+  return (
+    <span className="relative mt-1.5 block h-[62px] overflow-hidden rounded-field bg-black/70">
+      <span className="absolute inset-0 grid place-items-center">
+        <span
+          style={{
+            opacity: e.opacity,
+            transform: e.transform,
+            filter: e.filter,
+            clipPath: e.clipPath,
+            display: "inline-flex",
+          }}
+        >
+          {escudoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={escudoUrl} alt="" style={{ height: 40, width: "auto" }} />
+          ) : (
+            <svg width="30" height="36" viewBox="0 0 30 36" aria-hidden>
+              <path d="M15 1 L29 6 V19 C29 27 22 33 15 35 C8 33 1 27 1 19 V6 Z" fill="currentColor" opacity="0.85" />
+            </svg>
           )}
         </span>
       </span>

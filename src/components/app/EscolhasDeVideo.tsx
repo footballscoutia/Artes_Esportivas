@@ -5,11 +5,14 @@ import { FONTES } from "@/video/fontes";
 import {
   PreviaDaEntrada,
   PreviaDaTransicao,
+  PreviaDoIntro,
   useRelogioDaPrevia,
 } from "@/components/app/PreviaDaTransicao";
 import {
   ENTRADAS,
   INTROS,
+  INTRO_EFEITOS,
+  OCULTAVEIS,
   duracaoDaTransicao,
   TEMPLATES,
   TRANSICOES,
@@ -57,19 +60,19 @@ export function Grupo<T extends string>({
             type="button"
             onClick={() => aoEscolher(chave as T)}
             className={cn(
-              "rounded-card border px-3 py-2 text-left transition-colors",
+              "rounded-card border px-2.5 py-1.5 text-left transition-colors",
               atual === chave
                 ? "border-accent bg-accent/10 ring-1 ring-accent/40"
                 : "border-line hover:border-line-2",
             )}
           >
-            <span className="flex items-center gap-1.5 text-[13px] font-medium">
-              {atual === chave && <Check className="size-3.5 shrink-0 text-accent" />}
+            <span className="flex items-center gap-1 text-[12px] font-medium leading-tight">
+              {atual === chave && <Check className="size-3 shrink-0 text-accent" />}
               {item.rotulo}
             </span>
             {amostra?.(chave)}
             {item.nota && (
-              <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-2">
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted-2">
                 {item.nota}
               </span>
             )}
@@ -91,6 +94,7 @@ export function EscolhasDeVideo({
   colunas = 1,
   amostraDoTexto = "GOLAÇO",
   aoVerTransicao,
+  escudoUrl,
 }: {
   opcoes: Opcoes;
   aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
@@ -99,6 +103,8 @@ export function EscolhasDeVideo({
   amostraDoTexto?: string;
   /** No editor, escolher uma transição leva o preview até o corte. */
   aoVerTransicao?: () => void;
+  /** O escudo real, para a prévia da intro não usar um genérico. */
+  escudoUrl?: string;
 }) {
   const totalComIntro = opcoes.duracao + INTROS[opcoes.intro].dura;
   /* Um relogio so, no pai, para as dez previas andarem em fase. Dez timers
@@ -107,7 +113,15 @@ export function EscolhasDeVideo({
   const t = useRelogioDaPrevia(true);
 
   return (
-    <div className="flex flex-col gap-5">
+    /**
+     * Duas colunas, e não uma lista descendo.
+     *
+     * Numa coluna só, oito grupos com prévia produziam uma página que rolava
+     * muito mais que o conteúdo ao lado — e metade da largura ficava vazia. O
+     * problema não era o número de opções: era o formato de lista para algo
+     * que se compara lado a lado.
+     */
+    <div className="grid items-start gap-x-5 gap-y-5 min-[900px]:grid-cols-2">
       <Grupo
         titulo="Arranjo"
         itens={ARRANJOS}
@@ -117,11 +131,28 @@ export function EscolhasDeVideo({
       />
       <Grupo
         titulo="Intro"
+        ajuda="o que aparece na abertura"
         itens={INTROS}
         atual={opcoes.intro}
         aoEscolher={(v) => aoMudar("intro", v)}
         colunas={colunas}
       />
+
+      {/* So faz sentido perguntar COMO se existe algo entrando. Sem intro, um
+          seletor de efeito seria um controle que nao controla nada. */}
+      {opcoes.intro !== "nenhuma" && (
+        <Grupo
+          titulo="Efeito da intro"
+          ajuda="como ela entra"
+          itens={INTRO_EFEITOS}
+          atual={opcoes.introEfeito}
+          aoEscolher={(v) => aoMudar("introEfeito", v)}
+          colunas={colunas}
+          amostra={(chave) => (
+            <PreviaDoIntro efeito={chave} escudoUrl={escudoUrl} t={t} />
+          )}
+        />
+      )}
       {/**
         * A fonte se mostra NA propria opcao.
         *
@@ -231,6 +262,44 @@ export function EscolhasDeVideo({
           <span>rápida</span>
         </span>
       </label>
+
+      {/**
+        * O que aparece no vídeo — a mesma ideia da arte parada, onde campo em
+        * branco derruba a linha inteira. Um vídeo de gol não precisa dizer a
+        * que horas foi o jogo, e mandá-lo dizer é ruído com aparência de dado.
+        */}
+      <div>
+        <p className="mb-2 text-[13px] font-medium">
+          O que aparece <span className="text-muted-2 font-normal">desligue o que sobra</span>
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(OCULTAVEIS).map(([chave, rotulo]) => {
+            const visivel = !opcoes.ocultos.includes(chave);
+            return (
+              <button
+                key={chave}
+                type="button"
+                onClick={() =>
+                  aoMudar(
+                    "ocultos",
+                    visivel
+                      ? [...opcoes.ocultos, chave]
+                      : opcoes.ocultos.filter((c) => c !== chave),
+                  )
+                }
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
+                  visivel
+                    ? "border-accent bg-accent/10 font-medium"
+                    : "border-line text-muted-2 line-through",
+                )}
+              >
+                {rotulo}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="flex items-baseline justify-between text-[13px] font-medium">
