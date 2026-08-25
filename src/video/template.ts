@@ -15,6 +15,73 @@
 import { z } from "zod";
 import { zColor } from "@remotion/zod-types";
 
+/* =========================================================================
+   FONTES — personalidades, e nao nomes de arquivo.
+
+   A escolha e por CARATER ("condensada", "pesada"), porque e assim que quem
+   monta o post pensa. O nome tecnico da familia e detalhe de implementacao.
+
+   Cuidado conhecido: estas sao fontes de SISTEMA. No navegador de quem edita e
+   no Chromium do render local elas existem; num servidor de render enxuto, nao.
+   Quando o render sair da maquina, elas precisam ir junto como arquivo.
+   ========================================================================= */
+
+export const FONTES = {
+  condensada: {
+    rotulo: "Condensada",
+    nota: "Estreita e alta, como cartaz de jogo",
+    familia: "Impact, 'Arial Narrow', 'Arial Black', sans-serif",
+    inclinacao: -8,
+  },
+  pesada: {
+    rotulo: "Pesada",
+    nota: "Larga e sólida, mais institucional",
+    familia: "'Arial Black', Arial, sans-serif",
+    inclinacao: 0,
+  },
+  reta: {
+    rotulo: "Reta",
+    nota: "Sem inclinação, moderna e limpa",
+    familia: "'Segoe UI', system-ui, Arial, sans-serif",
+    inclinacao: 0,
+  },
+} as const;
+
+export type Fonte = keyof typeof FONTES;
+
+/* =========================================================================
+   INTRO — a abertura, copiada da referencia do Criciuma.
+
+   Nao custa geracao: o escudo e a logo ja estao cadastrados, e a abertura e
+   desenhada em codigo. Por isso ela e uma escolha barata de oferecer.
+   ========================================================================= */
+
+export const INTROS = {
+  nenhuma: { rotulo: "Sem intro", nota: "Começa direto na arte", dura: 0 },
+  escudo: { rotulo: "Escudo do clube", nota: "O escudo surge no preto e o nome embaixo", dura: 1.3 },
+  "escudo-logo": {
+    rotulo: "Escudo + sua logo",
+    nota: "O escudo surge, e a sua marca assina embaixo dele",
+    dura: 1.7,
+  },
+} as const;
+
+export type Intro = keyof typeof INTROS;
+
+/* =========================================================================
+   TRANSICOES — o que acontece nos poucos quadros em volta do corte do meio.
+   ========================================================================= */
+
+export const TRANSICOES = {
+  corte: { rotulo: "Corte seco", nota: "Sem efeito nenhum" },
+  flash: { rotulo: "Estouro", nota: "Um clarão branco curto" },
+  whip: { rotulo: "Whip", nota: "Arrasto lateral borrado, como virar a câmera" },
+  punch: { rotulo: "Punch", nota: "Avanço rápido com desfoque" },
+  fecha: { rotulo: "Fecha e abre", nota: "O quadro escurece e volta" },
+} as const;
+
+export type Transicao = keyof typeof TRANSICOES;
+
 /**
  * O template descreve UM ARRANJO, e nao mais uma lista de elementos soltos.
  *
@@ -88,6 +155,8 @@ export const EsquemaCamadas = z.object({
   fundo: z.string(),
   atleta: z.string(),
   logo: z.string().optional(),
+  /* O escudo nao e camada gerada: vem do cadastro do clube, e so a intro o usa. */
+  escudo: z.string().optional(),
 });
 
 export const EsquemaOpcoes = z.object({
@@ -98,6 +167,9 @@ export const EsquemaOpcoes = z.object({
   escalaTexto: z.number().min(0.6).max(2),
   velocidade: z.number().min(0.5).max(2),
   intensidade: z.number().min(0).max(2),
+  intro: z.enum(["nenhuma", "escudo", "escudo-logo"]),
+  transicao: z.enum(["corte", "flash", "whip", "punch", "fecha"]),
+  fonte: z.enum(["condensada", "pesada", "reta"]),
   corTexto: zColor(),
   corBarra: zColor(),
 });
@@ -118,6 +190,9 @@ export const OPCOES_PADRAO: Opcoes = {
   escalaTexto: 1,
   velocidade: 1,
   intensidade: 1,
+  intro: "escudo-logo",
+  transicao: "whip",
+  fonte: "condensada",
   corTexto: "#ffffff",
   /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a
      referencia — na arte do Criciuma ela e laranja viva atravessando a linha —,

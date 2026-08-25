@@ -28,9 +28,20 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
 
   const { data: pedido } = await sb
     .from("pedidos")
-    .select("nome_jogador, clube, adversario, data_jogo, hora_jogo, estadio, campeonato")
+    .select("nome_jogador, clube, adversario, data_jogo, hora_jogo, estadio, campeonato, clube_id")
     .eq("id", video.pedido_id)
     .maybeSingle();
+
+  /**
+   * O escudo e a logo NÃO são camadas geradas: vêm do cadastro, e só a intro os
+   * usa. Por isso ficam fora da tabela `videos` — trocar a logo da agência deve
+   * valer para todos os vídeos, e não congelar no que existia quando cada um
+   * foi criado.
+   */
+  const [{ data: clube }, { data: marca }] = await Promise.all([
+    sb.from("clubes").select("escudo_url").eq("id", pedido?.clube_id).maybeSingle(),
+    sb.from("marcas").select("imagem_url").eq("ativa", true).limit(1).maybeSingle(),
+  ]);
 
   /**
    * URLs ASSINADAS, e nao caminhos.
@@ -40,9 +51,11 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
    * curta, que e o preco de nao deixar as camadas publicas — quem recarregar
    * depois do prazo recebe links novos, porque esta pagina e servidor.
    */
-  const [fundo, atleta] = await Promise.all([
+  const [fundo, atleta, escudo, logo] = await Promise.all([
     assinar(BALDE.videos, video.fundo_url),
     assinar(BALDE.videos, video.atleta_url),
+    assinar(BALDE.referencias, clube?.escudo_url ?? null),
+    assinar(BALDE.marcas, marca?.imagem_url ?? null),
   ]);
 
   if (!fundo || !atleta) notFound();
@@ -69,7 +82,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
 
       <EditorVideo
         videoId={video.id}
-        camadas={{ fundo, atleta }}
+        camadas={{ fundo, atleta, escudo: escudo ?? undefined, logo: logo ?? undefined }}
         dados={{
           clube: pedido?.clube ?? "",
           adversario: pedido?.adversario ?? "",

@@ -30,6 +30,7 @@ const padrao: PropsMatchday = {
     fundo: staticFile("video/fundo.png"),
     atleta: staticFile("video/atleta.png"),
     logo: staticFile("video/logo.png"),
+    escudo: staticFile("video/escudo.png"),
   },
   opcoes: OPCOES_PADRAO,
 };

@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { TEMPLATES, type Camadas, type Dados, type Opcoes } from "./template";
+import { FONTES, INTROS, TEMPLATES, type Camadas, type Dados, type Opcoes } from "./template";
 
 /**
  * A composicao, refeita em cima das referencias da agencia.
@@ -34,11 +34,24 @@ function entra(quadro: number, em: number, dura: number, fps: number, o: Opcoes)
 }
 
 export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) => {
-  const quadro = useCurrentFrame();
+  const quadroBruto = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const tpl = TEMPLATES[opcoes.template] ?? TEMPLATES.confronto;
   const f = opcoes.duracao / 8;
-  const t = quadro / Math.max(1, durationInFrames);
+
+  /**
+   * A intro consome quadros do INICIO, e o resto da composicao nao fica sabendo.
+   *
+   * Deslocando o relogio aqui, toda a coreografia continua escrita em segundos
+   * "a partir do inicio da arte". Sem isso, ligar a intro exigiria somar a
+   * duracao dela em cada tempo de cada linha — e alguem esqueceria um.
+   */
+  const duraIntro = INTROS[opcoes.intro].dura * f;
+  const quadroIntro = duraIntro * fps;
+  const quadro = quadroBruto - quadroIntro;
+  const emIntro = quadroBruto < quadroIntro;
+  const restante = Math.max(1, durationInFrames - quadroIntro);
+  const t = Math.max(0, quadro) / restante;
 
   /**
    * O movimento e DISCRETO de proposito.
@@ -71,21 +84,36 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
     extrapolateRight: "clamp",
   });
   const visivel = Math.max(0, Math.min(1, 1 - sai + volta));
-  const clarao =
-    1 -
-    Math.min(1, Math.abs(quadro - corte) / (0.14 * f * fps));
+
+  /**
+   * O pico da transicao: 1 no corte exato, 0 nas beiradas da janela.
+   *
+   * A escolha muda o EFEITO, nao o instante — o corte acontece de qualquer
+   * jeito, e a transicao so decide como a emenda e disfarcada.
+   */
+  const janela = 0.16 * f * fps;
+  const pico = Math.max(0, 1 - Math.abs(quadro - corte) / janela) * opcoes.intensidade;
+  const clarao = opcoes.transicao === "flash" ? pico : 0;
+  const escurece = opcoes.transicao === "fecha" ? pico : 0;
+  const arrasto = opcoes.transicao === "whip" ? pico : 0;
+  const avanco = opcoes.transicao === "punch" ? pico : 0;
+  const deformar = {
+    transform: `translateX(${arrasto * (quadro < corte ? -1 : 1) * 190}px) scale(${1 + avanco * 0.24})`,
+    filter: arrasto + avanco > 0.02 ? `blur(${(arrasto * 16 + avanco * 11).toFixed(1)}px)` : undefined,
+  };
 
   const e = opcoes.escalaTexto;
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#050505", overflow: "hidden" }}>
-      <AbsoluteFill style={{ transform: `scale(${zoomFundo})` }}>
+      <AbsoluteFill style={{ transform: `scale(${zoomFundo}) ${deformar.transform}`, filter: deformar.filter }}>
         <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </AbsoluteFill>
 
       <AbsoluteFill
         style={{
-          transform: `scale(${zoomAtleta}) translateY(${(1 - entradaAtleta) * 26}px)`,
+          transform: `scale(${zoomAtleta}) translateY(${(1 - entradaAtleta) * 26}px) ${deformar.transform}`,
+          filter: deformar.filter,
           opacity: entradaAtleta,
         }}
       >
@@ -139,6 +167,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             texto={dados.clube}
             cor={opcoes.corTexto}
             corpo={104 * e}
+            fonte={opcoes.fonte}
             p={entra(quadro, tpl.tempos.clube, 0.7, fps, opcoes)}
           />
 
@@ -148,6 +177,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
               cor={opcoes.corTexto}
               corBarra={opcoes.corBarra}
               corpo={54 * e}
+              fonte={opcoes.fonte}
               p={entra(quadro, tpl.tempos.confronto, 0.6, fps, opcoes)}
             />
           )}
@@ -156,6 +186,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             texto={[dados.data, dados.hora, dados.estadio].filter(Boolean).join("   ·   ")}
             cor={opcoes.corTexto}
             corpo={21 * e}
+            fonte={opcoes.fonte}
             p={entra(quadro, tpl.tempos.dados, 0.55, fps, opcoes)}
           />
         </div>
@@ -174,19 +205,126 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
         />
       )}
 
-      {clarao > 0 && (
-        <AbsoluteFill style={{ backgroundColor: "#fff", opacity: clarao * 0.22 * opcoes.intensidade }} />
-      )}
+      {clarao > 0.01 && <AbsoluteFill style={{ backgroundColor: "#fff", opacity: clarao * 0.5 }} />}
+      {escurece > 0.01 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: escurece * 0.9 }} />}
       {fecho > 0 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: fecho }} />}
+
+      {emIntro && (
+        <Intro
+          camadas={camadas}
+          dados={dados}
+          opcoes={opcoes}
+          quadro={quadroBruto}
+          fps={fps}
+          dura={duraIntro}
+        />
+      )}
     </AbsoluteFill>
   );
 };
 
+/* ---------------------------------------------------------------- intro */
+
+/**
+ * A abertura, copiada da referencia do Criciuma: escudo surgindo no preto, o
+ * nome do clube abaixo, e — quando pedido — a marca da agencia assinando.
+ *
+ * Ela nao custa geracao. Escudo e logo ja estao cadastrados, e tudo aqui e
+ * desenhado. Por isso e uma escolha barata de oferecer: ligar a intro nao muda
+ * o preco do video, so o tempo dele.
+ *
+ * O escudo entra com ESCALA e nao so com opacidade. Objeto que so acende le
+ * como imagem carregando; objeto que cresce um pouco le como abertura.
+ */
+function Intro({
+  camadas,
+  dados,
+  opcoes,
+  quadro,
+  fps,
+  dura,
+}: {
+  camadas: Camadas;
+  dados: Dados;
+  opcoes: Opcoes;
+  quadro: number;
+  fps: number;
+  dura: number;
+}) {
+  const fim = dura * fps;
+  const p = interpolate(quadro, [0.08 * fps, 0.62 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: (t) => 1 - Math.pow(1 - t, 3),
+  });
+  const pNome = interpolate(quadro, [0.34 * fps, 0.86 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const pLogo = interpolate(quadro, [0.78 * fps, 1.3 * fps], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  /* Sai escurecendo nos ultimos quadros, para o corte para a arte nao ser um
+     salto de preto cheio para imagem cheia. */
+  const sai = interpolate(quadro, [fim - 0.18 * fps, fim], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#050505",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 34,
+        opacity: 1 - sai,
+      }}
+    >
+      {camadas.escudo && (
+        <Img
+          src={camadas.escudo}
+          style={{
+            width: 300,
+            opacity: p,
+            transform: `scale(${0.78 + 0.22 * p})`,
+          }}
+        />
+      )}
+      <div
+        style={{
+          opacity: pNome,
+          fontFamily: '"Arial Black", Arial, sans-serif',
+          fontSize: 34,
+          letterSpacing: 15,
+          color: opcoes.corTexto,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {dados.clube.toUpperCase()}
+      </div>
+      {opcoes.intro === "escudo-logo" && camadas.logo && (
+        <Img src={camadas.logo} style={{ width: 210, opacity: pLogo * 0.9, marginTop: 26 }} />
+      )}
+    </AbsoluteFill>
+  );
+}
+
 /* ------------------------------------------------------------- as linhas */
 
-/** A inclinacao e o que da o ar esportivo — a referencia usa condensada itálica. */
-const INCLINA = "skewX(-8deg)";
-const CONDENSADA = "Impact, 'Arial Narrow', 'Arial Black', sans-serif";
+/**
+ * A inclinacao ANDA JUNTO da familia, e nao e um controle separado.
+ *
+ * Inclinar uma fonte que ja nasce reta produz italico falso, que e um dos
+ * defeitos tipograficos mais visiveis que existem. Entao cada personalidade
+ * traz a sua inclinacao: a condensada pede -8 graus, a reta pede zero, e nao
+ * ha combinacao possivel entre as duas coisas que produza o erro.
+ */
+function inclinacaoDe(fonte: Opcoes["fonte"]) {
+  const g = FONTES[fonte].inclinacao;
+  return g === 0 ? undefined : `skewX(${g}deg)`;
+}
 
 function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
   if (p <= 0) return null;
@@ -207,14 +345,16 @@ function Etiqueta({ texto, cor, corpo, p }: { texto: string; cor: string; corpo:
   );
 }
 
-function Titulo({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+function Titulo({
+  texto, cor, corpo, p, fonte,
+}: { texto: string; cor: string; corpo: number; p: number; fonte: Opcoes["fonte"] }) {
   if (p <= 0) return null;
   return (
     <div
       style={{
         opacity: p,
-        transform: `translateX(${-40 * (1 - p)}px) ${INCLINA}`,
-        fontFamily: CONDENSADA,
+        transform: [`translateX(${-40 * (1 - p)}px)`, inclinacaoDe(fonte)].filter(Boolean).join(" "),
+        fontFamily: FONTES[fonte].familia,
         fontSize: corpo,
         lineHeight: 0.94,
         letterSpacing: -1,
@@ -241,12 +381,14 @@ function LinhaDoConfronto({
   corBarra,
   corpo,
   p,
+  fonte,
 }: {
   texto: string;
   cor: string;
   corBarra: string;
   corpo: number;
   p: number;
+  fonte: Opcoes["fonte"];
 }) {
   if (p <= 0) return null;
   return (
@@ -257,12 +399,12 @@ function LinhaDoConfronto({
         gap: corpo * 0.28,
         width: "100%",
         opacity: p,
-        transform: INCLINA,
+        transform: inclinacaoDe(fonte),
       }}
     >
       <span
         style={{
-          fontFamily: CONDENSADA,
+          fontFamily: FONTES[fonte].familia,
           fontSize: corpo,
           lineHeight: 1.06,
           color: cor,
@@ -286,13 +428,15 @@ function LinhaDoConfronto({
   );
 }
 
-function Tarja({ texto, cor, corpo, p }: { texto: string; cor: string; corpo: number; p: number }) {
+function Tarja({
+  texto, cor, corpo, p, fonte,
+}: { texto: string; cor: string; corpo: number; p: number; fonte: Opcoes["fonte"] }) {
   if (p <= 0 || !texto) return null;
   return (
     <div
       style={{
         opacity: 1,
-        transform: INCLINA,
+        transform: inclinacaoDe(fonte),
         /* O recorte revela a tarja da esquerda para a direita, em vez de a
            fazer aparecer inteira: entrada de barra que so acende le como falha. */
         clipPath: `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`,

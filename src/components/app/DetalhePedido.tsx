@@ -30,6 +30,8 @@ import {
 } from "@/lib/types";
 import { cn, formatarData, tempoRelativo } from "@/lib/utils";
 import { gerarOutra, recompor } from "@/lib/acoes";
+import { PerguntasDoVideo } from "@/components/app/PerguntasDoVideo";
+import type { Opcoes as OpcoesDeVideo } from "@/video/template";
 
 type Aba = "detalhes" | "camadas" | "historico";
 
@@ -75,14 +77,15 @@ export function DetalhePedido({
    * e leva a pessoa para o editor. A montagem acontece no navegador, de graca.
    */
   const [fazendoVideo, setFazendoVideo] = useState(false);
+  const [perguntando, setPerguntando] = useState(false);
 
-  async function virarVideo() {
+  async function virarVideo(opcoes: OpcoesDeVideo) {
     setFazendoVideo(true);
     try {
       const r = await fetch("/api/video", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pedido_id: pedido.id }),
+        body: JSON.stringify({ pedido_id: pedido.id, opcoes }),
       });
       const corpo = await r.json();
       if (!r.ok) throw new Error(corpo?.erro ?? "Falha ao gerar as camadas.");
@@ -470,18 +473,24 @@ export function DetalhePedido({
               variante="sutil"
               className="w-full"
               disabled={fazendoVideo}
-              onClick={virarVideo}
+              onClick={() => setPerguntando(true)}
             >
               <Clapperboard size={15} />
               {fazendoVideo ? "Gerando camadas…" : "Fazer vídeo"}
             </Button>
-            <p className="text-[11px] leading-relaxed text-muted-2">
-              O vídeo gera duas camadas novas — o cenário e o atleta recortado — e custa duas
-              gerações. Depois disso, editar é de graça.
-            </p>
           </footer>
         </Card>
       </div>
+
+      <PerguntasDoVideo
+        aberto={perguntando}
+        aoFechar={() => setPerguntando(false)}
+        gerando={fazendoVideo}
+        aoGerar={(o) => {
+          setPerguntando(false);
+          void virarVideo(o);
+        }}
+      />
     </div>
   );
 }

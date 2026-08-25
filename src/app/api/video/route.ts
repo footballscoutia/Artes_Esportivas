@@ -6,12 +6,17 @@ import { usuarioAtual } from "@/lib/dados";
 import { materiaisDaArte, uniformeDaArte } from "@/lib/materiais";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { OPCOES_PADRAO } from "@/video/template";
+import { EsquemaOpcoes, OPCOES_PADRAO } from "@/video/template";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-const Corpo = z.object({ pedido_id: z.string().uuid() });
+const Corpo = z.object({
+  pedido_id: z.string().uuid(),
+  /* As escolhas feitas ANTES de gerar. Ausentes = padrao, para quem chamar a
+     rota sem passar pela tela continuar funcionando. */
+  opcoes: EsquemaOpcoes.optional(),
+});
 
 /**
  * Produz as CAMADAS de um video a partir de um pedido, e registra o video.
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
         org_id: pedido.org_id,
         fundo_url: camadas.fundo_path,
         atleta_url: camadas.atleta_path,
-        opcoes: OPCOES_PADRAO,
+        opcoes: corpo.data.opcoes ?? OPCOES_PADRAO,
         custo_usd: camadas.custo_usd,
         criado_por: usuario.id,
       })

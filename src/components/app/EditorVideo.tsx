@@ -5,7 +5,16 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { Check, RotateCcw, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Matchday } from "@/video/Matchday";
-import { OPCOES_PADRAO, TEMPLATES, type Camadas, type Dados, type Opcoes } from "@/video/template";
+import {
+  FONTES,
+  INTROS,
+  OPCOES_PADRAO,
+  TEMPLATES,
+  TRANSICOES,
+  type Camadas,
+  type Dados,
+  type Opcoes,
+} from "@/video/template";
 import { salvarVideo } from "@/lib/acoes";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +79,60 @@ function Deslizante({
         className="accent-accent"
       />
     </label>
+  );
+}
+
+/**
+ * Um grupo de escolhas com rotulo e explicacao.
+ *
+ * A NOTA de cada opcao nao e enfeite: "Whip" e "Punch" nao querem dizer nada
+ * para quem monta post, e um seletor com cinco nomes tecnicos vira tentativa e
+ * erro. A frase curta transforma a lista em decisao.
+ */
+function Escolha<T extends string>({
+  titulo,
+  ajuda,
+  itens,
+  atual,
+  aoEscolher,
+}: {
+  titulo: string;
+  ajuda: string;
+  itens: Record<string, { rotulo: string; nota?: string }>;
+  atual: T;
+  aoEscolher: (v: T) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[13px] font-medium">
+        {titulo} <span className="text-muted-2 font-normal">{ajuda}</span>
+      </p>
+      <div className="flex flex-col gap-1.5">
+        {Object.entries(itens).map(([chave, item]) => (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => aoEscolher(chave as T)}
+            className={cn(
+              "rounded-card border px-3 py-2 text-left transition-colors",
+              atual === chave
+                ? "border-accent bg-accent/10 ring-1 ring-accent/40"
+                : "border-line hover:border-line-2",
+            )}
+          >
+            <span className="flex items-center gap-1.5 text-[13px] font-medium">
+              {atual === chave && <Check className="size-3.5 shrink-0 text-accent" />}
+              {item.rotulo}
+            </span>
+            {item.nota && (
+              <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-2">
+                {item.nota}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -159,6 +222,36 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais }: Props) 
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="border-t border-line pt-5">
+          <Escolha
+            titulo="Intro"
+            ajuda="a abertura"
+            itens={INTROS}
+            atual={opcoes.intro}
+            aoEscolher={(v) => mexer("intro", v)}
+          />
+        </div>
+
+        <div className="border-t border-line pt-5">
+          <Escolha
+            titulo="Transição"
+            ajuda="o corte do meio"
+            itens={TRANSICOES}
+            atual={opcoes.transicao}
+            aoEscolher={(v) => mexer("transicao", v)}
+          />
+        </div>
+
+        <div className="border-t border-line pt-5">
+          <Escolha
+            titulo="Fonte"
+            ajuda="a tipografia"
+            itens={FONTES}
+            atual={opcoes.fonte}
+            aoEscolher={(v) => mexer("fonte", v)}
+          />
         </div>
 
         <div className="flex flex-col gap-4 border-t border-line pt-5">
