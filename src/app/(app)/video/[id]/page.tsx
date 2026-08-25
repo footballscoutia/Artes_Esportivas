@@ -21,7 +21,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
 
   const { data: video } = await sb
     .from("videos")
-    .select("id, fundo_url, atleta_url, opcoes, pedido_id")
+    .select("id, fundo_url, atleta_url, opcoes, pedido_id, marca_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -41,7 +41,9 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
    */
   const [{ data: clube }, { data: marca }] = await Promise.all([
     sb.from("clubes").select("escudo_url").eq("id", pedido?.clube_id).maybeSingle(),
-    sb.from("marcas").select("imagem_url").eq("ativa", true).limit(1).maybeSingle(),
+    video.marca_id
+      ? sb.from("marcas").select("imagem_url").eq("id", video.marca_id).maybeSingle()
+      : sb.from("marcas").select("imagem_url").eq("ativa", true).limit(1).maybeSingle(),
   ]);
 
   /**

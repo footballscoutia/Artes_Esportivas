@@ -39,6 +39,11 @@ const Dados = z.object({
   jogador_id: z.string().uuid().optional().nullable(),
   clube_id: z.string().uuid().optional().nullable(),
   adversario_id: z.string().uuid().optional().nullable(),
+  /* Insumo da camada do atleta: precisa ser decidido ANTES de gerar, porque
+     depois o atleta ja esta desenhado vestindo o que vestiu. */
+  uniforme_id: z.string().uuid().optional().nullable(),
+  /* Nao entra na geracao: so assina o video, no canto e na intro. */
+  marca_id: z.string().uuid().optional().nullable(),
 });
 
 const Corpo = z
@@ -126,7 +131,15 @@ export async function POST(req: Request) {
 
   if (!pedido) return NextResponse.json({ erro: "Não consegui preparar o pedido." }, { status: 404 });
 
-  const [{ data: clube }, { data: uniforme }] = await Promise.all([
+  /**
+   * O uniforme escolhido vence o "primeiro ativo do clube".
+   *
+   * A queda para o primeiro ativo continua existindo para o atalho a partir de
+   * uma arte, onde ninguem escolheu nada — mas ela e queda, e nao regra: com
+   * dois uniformes cadastrados, escolher o errado veste o atleta de outra
+   * temporada e ninguem confere.
+   */
+  const [{ data: clube }, { data: uniformePadrao }] = await Promise.all([
     sb
       .from("clubes")
       .select("nome, nome_curto, cor_primaria, cor_secundaria")
@@ -140,6 +153,7 @@ export async function POST(req: Request) {
       .limit(1)
       .maybeSingle(),
   ]);
+  const uniformeId = corpo.data.dados?.uniforme_id ?? uniformePadrao?.id ?? null;
 
   try {
     const { foto, referencia } = await materiaisDoVideo(pedido);
@@ -147,7 +161,7 @@ export async function POST(req: Request) {
     const camadas = await produzirCamadas({
       referencia,
       foto,
-      uniforme: await uniformeDaArte(uniforme?.id ?? null),
+      uniforme: await uniformeDaArte(uniformeId),
       clube: clube?.nome ?? pedido.clube ?? "clube",
       cores: [clube?.cor_primaria, clube?.cor_secundaria].filter(Boolean).join(" e "),
     });
@@ -162,6 +176,7 @@ export async function POST(req: Request) {
         fundo_url: camadas.fundo_path,
         atleta_url: camadas.atleta_path,
         opcoes: corpo.data.opcoes ?? OPCOES_PADRAO,
+        marca_id: corpo.data.dados?.marca_id ?? null,
         custo_usd: camadas.custo_usd,
         criado_por: usuario.id,
       })

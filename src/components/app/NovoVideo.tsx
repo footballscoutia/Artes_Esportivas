@@ -7,7 +7,15 @@ import { Check, Clapperboard, UserRound } from "lucide-react";
 import { Button, BotaoLink } from "@/components/ui/Button";
 import { Campo, Input } from "@/components/ui/Field";
 import { EscolhasDeVideo } from "@/components/app/EscolhasDeVideo";
-import { TIPOS, TIPO_META, type Clube, type Jogador, type Tipo } from "@/lib/types";
+import {
+  TIPOS,
+  TIPO_META,
+  type Clube,
+  type Jogador,
+  type Marca,
+  type Tipo,
+  type Uniforme,
+} from "@/lib/types";
 import { OPCOES_PADRAO, type Opcoes } from "@/video/template";
 import { cn } from "@/lib/utils";
 
@@ -23,12 +31,17 @@ import { cn } from "@/lib/utils";
  * ganharia um campo novo primeiro e a outra ficaria para tras.
  */
 
-type Props = { jogadores: Jogador[]; clubes: Clube[] };
+type Props = {
+  jogadores: Jogador[];
+  clubes: Clube[];
+  uniformes: Uniforme[];
+  marcas: Marca[];
+};
 
 /** Os tipos que fazem sentido em video vertical de rede social. */
 const TIPOS_DE_VIDEO = TIPOS.filter((t) => t !== "frase");
 
-export function NovoVideo({ jogadores, clubes }: Props) {
+export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
   const router = useRouter();
 
   const [tipo, setTipo] = useState<Tipo>("matchday");
@@ -42,6 +55,8 @@ export function NovoVideo({ jogadores, clubes }: Props) {
     campeonato: "",
     estadio: "",
   });
+  const [uniformeId, setUniformeId] = useState<string | null>(null);
+  const [marcaId, setMarcaId] = useState<string | null>(marcas[0]?.id ?? null);
   const [opcoes, setOpcoes] = useState<Opcoes>(OPCOES_PADRAO);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -50,11 +65,18 @@ export function NovoVideo({ jogadores, clubes }: Props) {
   const clubeDoAtleta = clubes.find((c) => c.id === jogador?.clube_id) ?? null;
   const adversario = clubes.find((c) => c.id === adversarioId) ?? null;
   const ehConfronto = tipo === "matchday";
+  /* So os mantos do clube do atleta: oferecer os outros seria oferecer o erro
+     mais caro possivel, porque o uniforme vai para a camada gerada. */
+  const mantos = uniformes.filter((u) => u.clube_id === clubeDoAtleta?.id);
 
   /* Escolher o atleta PREENCHE em vez de travar: o nome sai escrito no video e
      as vezes precisa sair diferente do cadastro — apelido, só o primeiro nome. */
   function escolherAtleta(j: Jogador) {
     setJogadorId(j.id);
+    /* Trocar de atleta zera o manto: um uniforme escolhido para o clube
+       anterior vestiria o novo atleta com a camisa de outro time, e o modelo
+       obedeceria sem reclamar. */
+    setUniformeId(null);
     setNome(j.nome);
     const c = clubes.find((x) => x.id === j.clube_id);
     setClube(c ? (c.nome_curto ?? c.nome) : (j.clube ?? ""));
@@ -82,6 +104,8 @@ export function NovoVideo({ jogadores, clubes }: Props) {
             jogador_id: jogadorId,
             clube_id: clubeDoAtleta?.id ?? null,
             adversario_id: ehConfronto ? adversarioId : null,
+            uniforme_id: uniformeId,
+            marca_id: marcaId,
           },
           /* O tipo viaja nas OPCOES tambem, porque e ele que escolhe o roteiro
              de linhas, e a composicao recebe opcoes e nao o pedido. */
@@ -195,6 +219,89 @@ export function NovoVideo({ jogadores, clubes }: Props) {
                     </span>
                   </button>
                 ))}
+            </div>
+          </div>
+        )}
+
+        {mantos.length > 0 && (
+          <div>
+            <p className="mb-3 text-[13px] font-medium">
+              Uniforme <span className="text-muted-2 font-normal">o manto que ele veste</span>
+            </p>
+            <div className="grid grid-cols-3 gap-3 min-[560px]:grid-cols-5">
+              <button
+                type="button"
+                onClick={() => setUniformeId(null)}
+                className={cn(
+                  "flex flex-col overflow-hidden rounded-card border text-left transition-colors",
+                  uniformeId === null
+                    ? "border-accent ring-1 ring-accent/40"
+                    : "border-line hover:border-line-2",
+                )}
+              >
+                <span className="grid aspect-[3/4] place-items-center bg-surface-2 px-2 text-center">
+                  <span className="text-[11px] leading-relaxed text-muted">
+                    O primeiro cadastrado
+                  </span>
+                </span>
+                <span className="border-t border-line px-2 py-1.5 text-[12px] font-medium">
+                  Padrão
+                </span>
+              </button>
+              {mantos.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => setUniformeId(u.id)}
+                  className={cn(
+                    "flex flex-col overflow-hidden rounded-card border text-left transition-colors",
+                    uniformeId === u.id
+                      ? "border-accent ring-1 ring-accent/40"
+                      : "border-line hover:border-line-2",
+                  )}
+                >
+                  <span className="relative block aspect-[3/4] bg-surface-2">
+                    {u.imagem_url && (
+                      <Image src={u.imagem_url} alt="" fill sizes="180px" className="object-cover" />
+                    )}
+                  </span>
+                  <span className="truncate border-t border-line px-2 py-1.5 text-[12px] font-medium">
+                    {u.nome}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {marcas.length > 1 && (
+          <div>
+            <p className="mb-3 text-[13px] font-medium">
+              Logo <span className="text-muted-2 font-normal">quem assina o vídeo</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3 min-[560px]:grid-cols-4">
+              {marcas.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMarcaId(m.id)}
+                  className={cn(
+                    "flex flex-col overflow-hidden rounded-card border transition-colors",
+                    marcaId === m.id
+                      ? "border-accent ring-1 ring-accent/40"
+                      : "border-line hover:border-line-2",
+                  )}
+                >
+                  <span className="relative block aspect-[3/2] bg-surface-2">
+                    {m.imagem_url && (
+                      <Image src={m.imagem_url} alt="" fill sizes="200px" className="object-contain p-3" />
+                    )}
+                  </span>
+                  <span className="truncate border-t border-line px-2 py-1.5 text-[12px] font-medium">
+                    {m.nome}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         )}

@@ -1,9 +1,14 @@
 import { BotaoLink } from "@/components/ui/Button";
 import { NovoVideo } from "@/components/app/NovoVideo";
-import { listarClubes, listarJogadores } from "@/lib/dados";
+import { listarClubes, listarJogadores, listarMarcas, listarUniformes } from "@/lib/dados";
 
 export default async function NovoVideoPage() {
-  const [jogadores, clubes] = await Promise.all([listarJogadores(), listarClubes()]);
+  const [jogadores, clubes, uniformes, marcas] = await Promise.all([
+    listarJogadores(),
+    listarClubes(),
+    listarUniformes(),
+    listarMarcas(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,7 +25,7 @@ export default async function NovoVideoPage() {
         </BotaoLink>
       </div>
 
-      <NovoVideo jogadores={jogadores} clubes={clubes} />
+      <NovoVideo jogadores={jogadores} clubes={clubes} uniformes={uniformes} marcas={marcas} />
     </div>
   );
 }
