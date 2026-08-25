@@ -1,7 +1,7 @@
 import React from "react";
 import { Composition, staticFile } from "remotion";
 import { Matchday, type PropsMatchday } from "./Matchday";
-import { OPCOES_PADRAO } from "./template";
+import { EsquemaMatchday, OPCOES_PADRAO } from "./template";
 
 /**
  * O catalogo de composicoes. `calculateMetadata` deixa a DURACAO vir das props,
@@ -34,6 +34,10 @@ export const RemotionRoot: React.FC = () => (
     height={1920}
     fps={30}
     durationInFrames={240}
+    /* O esquema vira o formulario do painel de props no Studio: seletor para o
+       template, campo com limite para os numeros, seletor de cor para as
+       cores. E o editor na forma mais crua que existe, sem tela escrita. */
+    schema={EsquemaMatchday}
     defaultProps={padrao}
     calculateMetadata={({ props }) => ({
       durationInFrames: Math.round((props.opcoes?.duracao ?? 8) * 30),

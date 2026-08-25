@@ -12,6 +12,9 @@
  * o servidor le para renderizar o mp4. Uma descricao, dois consumidores.
  */
 
+import { z } from "zod";
+import { zColor } from "@remotion/zod-types";
+
 export type Estilo = "etiqueta" | "titulo" | "subtitulo" | "dados";
 
 export const ESTILOS: Record<Estilo, { fonte: string; corpo: number; tracking: number }> = {
@@ -110,16 +113,55 @@ export const TEMPLATES: Record<string, Template> = {
   },
 };
 
-/** O que o editor mexe. Nenhum deles passa pelo modelo. */
-export type Opcoes = {
-  template: string;
-  duracao: number;
-  escalaTexto: number;
-  velocidade: number;
-  intensidade: number;
-  corTexto: string;
-  corBarra: string;
-};
+/* =========================================================================
+   O ESQUEMA — e daqui que sai o formulario do editor.
+
+   Nao e so validacao. O Remotion le este esquema e MONTA a interface de
+   controle sozinho: enum vira seletor, numero com min/max vira campo com
+   limite, cor vira seletor de cor. E o editor que voce pediu, na sua forma
+   mais crua, sem uma linha de tela escrita.
+
+   Por isso os tipos sao INFERIDOS do esquema em vez de declarados ao lado
+   dele: um tipo e um formulario que podem discordar viram, mais cedo ou mais
+   tarde, um controle que grava um valor que o codigo nao aceita.
+   ========================================================================= */
+
+export const EsquemaDados = z.object({
+  clube: z.string(),
+  adversario: z.string(),
+  data: z.string(),
+  hora: z.string(),
+  estadio: z.string(),
+  campeonato: z.string(),
+});
+
+export const EsquemaCamadas = z.object({
+  fundo: z.string(),
+  atleta: z.string(),
+  logo: z.string().optional(),
+});
+
+export const EsquemaOpcoes = z.object({
+  template: z.enum(["atravessa", "sobe-limpo"]),
+  /* Os limites nao sao enfeite: sao o que impede o editor de produzir um video
+     de 0,2s ou um texto de 40x que estoura o quadro. */
+  duracao: z.number().min(4).max(20),
+  escalaTexto: z.number().min(0.6).max(2),
+  velocidade: z.number().min(0.5).max(2),
+  intensidade: z.number().min(0).max(2),
+  corTexto: zColor(),
+  corBarra: zColor(),
+});
+
+export const EsquemaMatchday = z.object({
+  dados: EsquemaDados,
+  camadas: EsquemaCamadas,
+  opcoes: EsquemaOpcoes,
+});
+
+export type Dados = z.infer<typeof EsquemaDados>;
+export type Camadas = z.infer<typeof EsquemaCamadas>;
+export type Opcoes = z.infer<typeof EsquemaOpcoes>;
 
 export const OPCOES_PADRAO: Opcoes = {
   template: "atravessa",
@@ -129,21 +171,6 @@ export const OPCOES_PADRAO: Opcoes = {
   intensidade: 1,
   corTexto: "#ffffff",
   corBarra: "#0b0b0b",
-};
-
-export type Dados = {
-  clube: string;
-  adversario: string;
-  data: string;
-  hora: string;
-  estadio: string;
-  campeonato: string;
-};
-
-export type Camadas = {
-  fundo: string;
-  atleta: string;
-  logo?: string;
 };
 
 export function textoDo(el: Elemento, d: Dados): string {
