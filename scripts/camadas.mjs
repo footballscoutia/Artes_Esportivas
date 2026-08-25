@@ -82,6 +82,31 @@ function acharFfmpeg() {
 
 /* ------------------------------------------------------------- prompts */
 
+/**
+ * As regras que a arte parada aprendeu, agora nos prompts das camadas.
+ *
+ * A primeira versao deste script tinha prompt proprio e nenhuma delas — e o
+ * fundo saiu vermelho-escuro numa arte do Vasco, que e cor de rival, o defeito
+ * mais grave do produto. Nao foi o modelo desobedecendo: nao havia o que
+ * obedecer. Prompt novo escrito do zero comeca sem a memoria toda.
+ *
+ * Em producao isto nao se duplica: as regras vem do banco, como ja vem para a
+ * arte parada. Aqui elas estao inline porque este arquivo e prova, e o custo de
+ * ir buscar no banco esconderia o ponto.
+ */
+const REGRAS_COMUNS = [
+  "NADA de cor de outro clube. Par de cores reconhecível lê como identidade de time",
+  "seja qual for a forma que o carregue — vermelho e preto listrado, verde e branco,",
+  "tricolor. Num post de clube, vestir a arte com a cor do rival é o erro mais grave",
+  "que existe. As cores saem do clube desta arte e da referência, e de mais lugar nenhum.",
+  "",
+  "NADA de objeto reconhecível: monumento, estátua, arco, ponte, silhueta de cidade,",
+  "bandeira de qualquer espécie, taça, medalha, mapa, instrumento. O que o fundo PODE",
+  "ter é curto e fechado: faixa, filete, trama de linhas, textura, granulado, ruído,",
+  "recorte de papel rasgado, bloco de cor e degradê. Essa lista é um TETO e não um",
+  "cardápio — usar UM ou DOIS, nunca a coleção. Se sobrar área, ela fica limpa.",
+].join("\n");
+
 const SEM_TEXTO = [
   "ESTA IMAGEM NÃO TEM TEXTO NENHUM.",
   "Nenhuma palavra, letra, número, sigla, escudo, logo ou marca d'água — em lugar nenhum.",
@@ -90,18 +115,26 @@ const SEM_TEXTO = [
 
 function promptFundo({ clube, cores }) {
   return [
-    "Reproduza o ESTILO da imagem de referência: paleta, tratamento de fundo, textura,",
-    "iluminação e clima.",
+    "CENÁRIO PARA UMA ARTE ESPORTIVA — o fundo, sozinho.",
     "",
-    "NÃO DESENHE NENHUMA PESSOA. Esta imagem é só o CENÁRIO — estádio, luz, textura,",
-    "atmosfera. Nenhum atleta, nenhuma silhueta humana, nenhum rosto. A figura entra",
-    "depois, por cima, e o espaço dela precisa estar vazio.",
+    "Reproduza o ESTILO da imagem de referência: paleta, tratamento, textura, iluminação,",
+    "grão e clima. É o estilo DELA que manda, não uma foto de estádio genérica — se a",
+    "referência é gráfica e abstrata, este fundo é gráfico e abstrato.",
+    "",
+    "NÃO DESENHE NENHUMA PESSOA. Nenhum atleta, silhueta humana, rosto ou multidão.",
+    "A figura entra depois, por cima, e o espaço dela precisa estar vazio.",
+    "",
+    "A COMPOSIÇÃO É ESCURA no terço superior e no centro, onde a tipografia e o atleta",
+    "vão entrar. Luz e contraste ficam nas bordas e no fundo do quadro. Um centro claro",
+    "engoliria as duas camadas que vêm por cima.",
     "",
     SEM_TEXTO,
     "",
+    REGRAS_COMUNS,
+    "",
     "A imagem sangra até a borda: ocupa o quadro inteiro, sem moldura nem margem branca.",
-    `Ambiente ligado ao ${clube}.`,
-    cores ? `A paleta sai das cores do clube: ${cores}.` : "",
+    `Ambiente do ${clube}.`,
+    cores ? `A paleta sai das cores do clube: ${cores}. Elas dominam o fundo inteiro.` : "",
     "Formato vertical 9:16, alta resolução.",
   ]
     .filter(Boolean)
@@ -116,17 +149,25 @@ function promptAtleta({ clube }) {
     "sem degradê e sem reflexo — fundo infinito de estúdio. Nada de magenta no atleta:",
     "nem na pele, nem no uniforme, nem no cabelo.",
     "",
-    "O rosto é o da foto enviada, preservado. O atleta veste o uniforme da imagem de",
-    "referência do manto, e aparece de corpo inteiro, em pé, postura de jogo, recortado",
-    "com a silhueta inteira dentro do quadro e uma folga em volta.",
+    "O rosto é o da foto enviada, preservado.",
     "",
-    "Tratamento fotográfico com contraste forte, como pôster esportivo. A luz vem de cima",
-    "e de trás, deixando a borda do corpo definida contra o fundo.",
+    "POSTURA: momento de jogo, não pose de catálogo. Ele está em ação — comemorando,",
+    "conduzindo a bola, ou de braços abertos — com o peso em uma perna só e o corpo em",
+    "diagonal. Atleta parado de frente, braços ao lado do corpo, é foto de crachá e",
+    "não serve para esta arte.",
+    "",
+    "LUZ: contraluz forte definindo a borda do corpo, e sombra fechada no lado oposto.",
+    "Contraste alto, como pôster esportivo — a mesma qualidade de luz da imagem de",
+    "referência de estilo. Não é iluminação de estúdio chapada.",
+    "",
+    "O UNIFORME é o da imagem de referência do manto, com o ESCUDO do clube no peito e",
+    "os patrocínios nas mesmas posições, copiados como estão. Camisa lisa, sem escudo e",
+    "sem patrocínio, não é o uniforme do clube — é uma camisa branca qualquer.",
     "",
     SEM_TEXTO,
     "",
     `O atleta é do ${clube}.`,
-    "Formato vertical 9:16.",
+    "Corpo inteiro dentro do quadro, com folga em volta. Formato vertical 9:16.",
   ].join("\n");
 }
 
@@ -218,6 +259,68 @@ async function chavear(jpeg, { perto = 90, longe = 190, derrame = true } = {}) {
   return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
     .png()
     .toBuffer();
+}
+
+/* ------------------------------------------------------------ integracao */
+
+/**
+ * O que faz duas camadas geradas separado parecerem a MESMA foto.
+ *
+ * Fundo e atleta saem de chamadas independentes ao modelo, com luz e cor que
+ * nao conversam. Composicao de verdade nunca cola uma na outra crua: aplica um
+ * tratamento comum, e e isso que o olho le como "estavam juntos".
+ *
+ * Duas operacoes, as duas de graca:
+ *
+ *   TINTA — a cor media do fundo entra por cima do atleta em dose baixa. Nao e
+ *   para colorir; e para os dois compartilharem uma dominante, do jeito que dois
+ *   objetos no mesmo ambiente compartilham a luz que os banha.
+ *
+ *   SOMBRA — uma elipse borrada sob os pes. E a mais barata e a que mais
+ *   resolve: sem contato com o chao, qualquer recorte flutua, e figura
+ *   flutuando e o que denuncia colagem antes de qualquer outra coisa.
+ */
+async function corMediaDe(imagem) {
+  const { channels } = await sharp(imagem).resize(24, 42, { fit: "cover" }).stats();
+  const [r, g, b] = channels.map((c) => Math.round(c.mean));
+  return { r, g, b };
+}
+
+async function integrar(atleta, corDoFundo) {
+  const tingido = await sharp(atleta)
+    .composite([
+      {
+        input: {
+          create: {
+            width: L,
+            height: A,
+            channels: 4,
+            background: { ...corDoFundo, alpha: 0.18 },
+          },
+        },
+        /* `atop` pinta so onde ja ha pixel do atleta: o fundo transparente
+           continua transparente, e a tinta nao vira um retangulo colorido. */
+        blend: "atop",
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  /* Um pouco mais de contraste depois da tinta, senao ela achata a figura. */
+  return sharp(tingido).modulate({ brightness: 1.03 }).linear(1.08, -10).png().toBuffer();
+}
+
+/** A sombra vai ANTES do atleta na pilha, e por isso e uma camada propria. */
+async function sombraDeContato() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${A}">
+    <defs><radialGradient id="s">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.72"/>
+      <stop offset="60%" stop-color="#000" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient></defs>
+    <ellipse cx="${L / 2}" cy="${A - 150}" rx="${L * 0.30}" ry="46" fill="url(#s)"/>
+  </svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 /* ------------------------------------------------------------ coreografia */
@@ -398,7 +501,11 @@ async function main() {
       prompt: promptAtleta({ clube: clube?.nome ?? pedido.clube }),
       imagens: [
         { rotulo: "Imagem 1 — foto do atleta, preservar a identidade:", bytes: foto, mime: "image/png" },
-        { rotulo: "Imagem 2 — o uniforme que ele veste:", bytes: uniforme, mime: "image/jpeg" },
+        { rotulo: "Imagem 2 — o uniforme que ele veste, com escudo e patrocínios:", bytes: uniforme, mime: "image/jpeg" },
+        /* A referencia de estilo entra AQUI tambem, e nao so no fundo. Sem ela o
+           atleta saiu com luz chapada de catalogo: ele nao tinha de onde tirar
+           tratamento, so de onde tirar roupa. */
+        { rotulo: "Imagem 3 — referência de estilo: a qualidade de luz e o contraste saem dela:", bytes: referencia },
       ],
     });
     await writeFile(caminhoAtletaCru, cru);
@@ -413,6 +520,11 @@ async function main() {
   }
 
   fundo = await sharp(fundo).resize(L, A, { fit: "cover" }).png().toBuffer();
+
+  console.log("· integrando as camadas (tinta comum + sombra de contato)");
+  const corDoFundo = await corMediaDe(fundo);
+  atleta = await integrar(await sharp(atleta).resize(L, A, { fit: "cover" }).png().toBuffer(), corDoFundo);
+  const sombra = await sombraDeContato();
 
   const dados = {
     clube: clube?.nome_curto ?? pedido.clube ?? "",
@@ -458,6 +570,9 @@ async function main() {
     const quadro = await sharp(camadaFundo)
       .composite([
         { input: Buffer.from(svgAtras), top: 0, left: 0 },
+        /* A sombra entra entre o texto e o atleta: ela aterra a figura e, de
+           quebra, escurece o pe do quadro onde a tarja de dados vai cair. */
+        { input: sombra, top: 0, left: 0 },
         { input: entrada < 1 ? atletaEntrando : camadaAtleta, top: 0, left: 0 },
         { input: Buffer.from(svgFrente), top: 0, left: 0 },
       ])
