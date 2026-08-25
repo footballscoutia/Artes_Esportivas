@@ -6,17 +6,52 @@ import { usuarioAtual } from "@/lib/dados";
 import { materiaisDaArte, uniformeDaArte } from "@/lib/materiais";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { TIPOS } from "@/lib/types";
 import { EsquemaOpcoes, OPCOES_PADRAO } from "@/video/template";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
 
-const Corpo = z.object({
-  pedido_id: z.string().uuid(),
-  /* As escolhas feitas ANTES de gerar. Ausentes = padrao, para quem chamar a
-     rota sem passar pela tela continuar funcionando. */
-  opcoes: EsquemaOpcoes.optional(),
+/**
+ * Dois caminhos de entrada, um destino.
+ *
+ * `pedido_id` = video a partir de uma arte que ja existe, herdando atleta,
+ * confronto e datas dela. `dados` = video do zero, e ai o pedido nasce AQUI.
+ *
+ * O pedido nasce nos dois casos porque e ele que guarda o texto — nome,
+ * confronto, data, estadio. O video so aponta para ele. Guardar esses campos
+ * tambem em `videos` criaria duas verdades sobre o mesmo jogo, e um dia elas
+ * discordariam.
+ */
+const Dados = z.object({
+  tipo: z.enum(TIPOS),
+  nome: z.string().min(2).max(60),
+  clube: z.string().max(60).optional().nullable(),
+  adversario: z.string().max(60).optional().nullable(),
+  data_jogo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
+  hora_jogo: z.string().max(20).optional().nullable(),
+  campeonato: z.string().max(80).optional().nullable(),
+  estadio: z.string().max(80).optional().nullable(),
+  jogador_id: z.string().uuid().optional().nullable(),
+  clube_id: z.string().uuid().optional().nullable(),
+  adversario_id: z.string().uuid().optional().nullable(),
 });
+
+const Corpo = z
+  .object({
+    pedido_id: z.string().uuid().optional(),
+    dados: Dados.optional(),
+    /* As escolhas feitas ANTES de gerar. Ausentes = padrao, para quem chamar a
+       rota sem passar pela tela continuar funcionando. */
+    opcoes: EsquemaOpcoes.optional(),
+  })
+  .refine((c) => Boolean(c.pedido_id) !== Boolean(c.dados), {
+    message: "Informe um pedido existente OU os dados de um novo — nunca os dois.",
+  });
 
 /**
  * Produz as CAMADAS de um video a partir de um pedido, e registra o video.
@@ -48,17 +83,48 @@ export async function POST(req: Request) {
 
   const corpo = Corpo.safeParse(await req.json().catch(() => ({})));
   if (!corpo.success) {
-    return NextResponse.json({ erro: "Informe o pedido." }, { status: 400 });
+    return NextResponse.json(
+      { erro: corpo.error.issues[0]?.message ?? "Dados inválidos." },
+      { status: 400 },
+    );
   }
 
   const sb = await criarClienteServidor();
-  const { data: pedido } = await sb
-    .from("pedidos")
-    .select("id, org_id, clube, jogador_id, clube_id, adversario_id, tipo, formato")
-    .eq("id", corpo.data.pedido_id)
-    .maybeSingle();
+  const COLUNAS = "id, org_id, clube, jogador_id, clube_id, adversario_id, tipo, formato";
 
-  if (!pedido) return NextResponse.json({ erro: "Pedido não encontrado." }, { status: 404 });
+  /**
+   * Do zero, o pedido nasce aqui — e nasce `rascunho`, exatamente como o da
+   * arte parada. Cliente de SESSAO, para o `org_id` se preencher sozinho pelo
+   * default `minha_org()`: o cliente admin nao tem sessao e deixaria a coluna
+   * nula, jogando o pedido para fora da RLS de quem o criou.
+   *
+   * O formato e sempre `story_9x16`. Video de rede social nao existe em 4:5, e
+   * oferecer a escolha seria oferecer um caminho que so leva a erro.
+   */
+  const { data: pedido } = corpo.data.pedido_id
+    ? await sb.from("pedidos").select(COLUNAS).eq("id", corpo.data.pedido_id).maybeSingle()
+    : await sb
+        .from("pedidos")
+        .insert({
+          tipo: corpo.data.dados!.tipo,
+          formato: "story_9x16",
+          nome_jogador: corpo.data.dados!.nome,
+          clube: corpo.data.dados!.clube || null,
+          adversario: corpo.data.dados!.adversario || null,
+          data_jogo: corpo.data.dados!.data_jogo || null,
+          hora_jogo: corpo.data.dados!.hora_jogo || null,
+          campeonato: corpo.data.dados!.campeonato || null,
+          estadio: corpo.data.dados!.estadio || null,
+          jogador_id: corpo.data.dados!.jogador_id || null,
+          clube_id: corpo.data.dados!.clube_id || null,
+          adversario_id: corpo.data.dados!.adversario_id || null,
+          status: "rascunho",
+          criado_por: usuario.id,
+        })
+        .select(COLUNAS)
+        .single();
+
+  if (!pedido) return NextResponse.json({ erro: "Não consegui preparar o pedido." }, { status: 404 });
 
   const [{ data: clube }, { data: uniforme }] = await Promise.all([
     sb

@@ -27,8 +27,8 @@ export default async function VideosPage() {
               : `${videos.length} ${videos.length === 1 ? "vídeo" : "vídeos"}`}
           </p>
         </div>
-        <BotaoLink href="/biblioteca" variante="sutil" tamanho="sm">
-          Ir para a biblioteca
+        <BotaoLink href="/videos/novo" tamanho="sm">
+          Novo vídeo
         </BotaoLink>
       </div>
 
@@ -46,13 +46,18 @@ export default async function VideosPage() {
           <Clapperboard className="size-6 text-muted-2" />
           <p className="text-[14px] font-medium">Vídeos nascem de uma arte</p>
           <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted">
-            Abra uma arte na biblioteca e clique em <strong>Fazer vídeo</strong>. O MatchPost gera
-            duas camadas novas — o cenário e o atleta recortado — e leva você ao editor, onde
-            mexer em animação, ritmo e cores não custa nada.
+            Há dois caminhos: começar <strong>do zero</strong>, escolhendo atleta e confronto
+            aqui, ou abrir uma arte na biblioteca e clicar em <strong>Fazer vídeo</strong>, que
+            aproveita tudo o que já foi preenchido nela.
           </p>
-          <BotaoLink href="/biblioteca" tamanho="sm">
-            Escolher uma arte
-          </BotaoLink>
+          <div className="flex flex-wrap justify-center gap-2">
+            <BotaoLink href="/videos/novo" tamanho="sm">
+              Começar do zero
+            </BotaoLink>
+            <BotaoLink href="/biblioteca" variante="sutil" tamanho="sm">
+              Partir de uma arte
+            </BotaoLink>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
