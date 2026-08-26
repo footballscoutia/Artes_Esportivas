@@ -487,6 +487,7 @@ export function DetalhePedido({
         aoFechar={() => setPerguntando(false)}
         gerando={fazendoVideo}
         amostra={pedido.clube ?? pedido.nome_jogador}
+        tipo={pedido.tipo}
         aoGerar={(o) => {
           setPerguntando(false);
           void virarVideo(o);

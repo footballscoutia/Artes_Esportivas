@@ -175,7 +175,19 @@ export async function POST(req: Request) {
         org_id: pedido.org_id,
         fundo_url: camadas.fundo_path,
         atleta_url: camadas.atleta_path,
-        opcoes: corpo.data.opcoes ?? OPCOES_PADRAO,
+        /**
+         * O TIPO vem do PEDIDO, e vence o que veio nas opcoes.
+         *
+         * E ele que escolhe o roteiro de linhas da composicao. Pelo atalho da
+         * biblioteca, o painel de perguntas nao pergunta o tipo — a arte ja
+         * existe e ja tem um —, entao as opcoes chegavam com o "matchday" do
+         * padrao. Um pedido de gol virava video com campeonato, adversario e
+         * data: o roteiro errado, montado sem erro nenhum.
+         *
+         * Pelo caminho do zero as duas fontes concordam, e sobrescrever com a
+         * mesma coisa nao muda nada.
+         */
+        opcoes: { ...(corpo.data.opcoes ?? OPCOES_PADRAO), tipo: pedido.tipo },
         marca_id: corpo.data.dados?.marca_id ?? null,
         custo_usd: camadas.custo_usd,
         criado_por: usuario.id,

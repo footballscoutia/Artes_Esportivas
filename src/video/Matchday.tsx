@@ -237,8 +237,28 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
             const tempos = [tpl.tempos.campeonato, tpl.tempos.clube, tpl.tempos.confronto, tpl.tempos.dados];
             const p = entra(quadro, tempos[i] ?? tempos[tempos.length - 1], 0.6, fps, opcoes);
 
+            /* O tratamento vale para o BLOCO, e nao so para o titulo: tratar uma
+               linha e deixar as vizinhas chapadas nao cria hierarquia, cria duas
+               tipografias no mesmo quadro. As linhas pequenas recebem a versao
+               contida do mesmo acabamento. */
+            const acabamento = {
+              tratamento: opcoes.tratamento,
+              imagem: camadas.fundo,
+              destaque: opcoes.corBarra,
+            };
+
             if (linha.papel === "etiqueta")
-              return <Etiqueta key={i} texto={texto} cor={opcoes.corTexto} corpo={26 * e} p={p} entrada={opcoes.entradaTexto} />;
+              return (
+                <Etiqueta
+                  key={i}
+                  texto={texto}
+                  cor={opcoes.corTexto}
+                  corpo={26 * e}
+                  p={p}
+                  entrada={opcoes.entradaTexto}
+                  {...acabamento}
+                />
+              );
             if (linha.papel === "destaque")
               return (
                 <Titulo
@@ -248,9 +268,7 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   corpo={132 * e}
                   fonte={opcoes.fonte}
                   entrada={opcoes.entradaTexto}
-                  tratamento={opcoes.tratamento}
-                  imagem={camadas.fundo}
-                  destaque={opcoes.corBarra}
+                  {...acabamento}
                   p={p}
                 />
               );
@@ -264,6 +282,8 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   corpo={64 * e}
                   fonte={opcoes.fonte}
                   entrada={opcoes.entradaTexto}
+                  tratamento={opcoes.tratamento}
+                  imagem={camadas.fundo}
                   p={p}
                 />
               );
@@ -275,6 +295,8 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                 corpo={24 * e}
                 fonte={opcoes.fonte}
                 entrada={opcoes.entradaTexto}
+                forma={opcoes.tarja}
+                {...acabamento}
                 p={p}
               />
             );
@@ -550,8 +572,17 @@ function inclinacaoDe(fonte: Opcoes["fonte"]) {
 }
 
 function Etiqueta({
-  texto, cor, corpo, p, entrada,
-}: { texto: string; cor: string; corpo: number; p: number; entrada: string }) {
+  texto, cor, corpo, p, entrada, tratamento, imagem, destaque,
+}: {
+  texto: string;
+  cor: string;
+  corpo: number;
+  p: number;
+  entrada: string;
+  tratamento: string;
+  imagem?: string;
+  destaque?: string;
+}) {
   if (p <= 0) return null;
   return (
     <div
@@ -560,8 +591,8 @@ function Etiqueta({
         fontWeight: 600,
         fontSize: corpo,
         letterSpacing: corpo * 0.42,
-        color: cor,
         whiteSpace: "nowrap",
+        ...estiloDoTratamento(tratamento, { cor, corpo, imagem, destaque, apoio: true }),
       }}
     >
       <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
@@ -623,6 +654,8 @@ function LinhaDoConfronto({
   p,
   fonte,
   entrada,
+  tratamento,
+  imagem,
 }: {
   texto: string;
   cor: string;
@@ -631,6 +664,8 @@ function LinhaDoConfronto({
   p: number;
   fonte: Opcoes["fonte"];
   entrada: string;
+  tratamento: string;
+  imagem?: string;
 }) {
   if (p <= 0) return null;
   return (
@@ -650,9 +685,21 @@ function LinhaDoConfronto({
           fontWeight: FONTES[fonte].peso,
           fontSize: corpo,
           lineHeight: 1.06,
-          color: cor,
           whiteSpace: "nowrap",
-          textShadow: "0 4px 18px rgba(0,0,0,.5)",
+          /**
+           * A versao CONTIDA do tratamento, mesmo a 64px — e aqui a razao nao e
+           * tamanho, e vizinhanca.
+           *
+           * Renderizado com a versao cheia, o "longa" jogava uma diagonal de 35px
+           * para a direita, bem onde comeca a barra solida da mesma cor: as duas
+           * se fundiam e a linha inteira virava um bloco vermelho, sem palavra
+           * legivel dentro. O "bloco" fazia o mesmo em menor escala.
+           *
+           * Vale a regra tipografica de sempre: UMA linha carrega o acabamento
+           * cheio — o titulo —, e as outras acompanham numa versao mais quieta.
+           * Dois acabamentos pesados no mesmo bloco nao dobram o efeito, brigam.
+           */
+          ...estiloDoTratamento(tratamento, { cor, corpo, imagem, destaque: corBarra, apoio: true }),
         }}
       >
         <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
@@ -676,8 +723,22 @@ function LinhaDoConfronto({
   );
 }
 
+/**
+ * A LINHA DOS DADOS — data, hora e estadio, a menor letra do quadro.
+ *
+ * Ela existe porque um matchday sem quando e onde nao e um anuncio, e um post.
+ * Por muito tempo veio sempre dentro de um retangulo escuro; a placa resolvia
+ * legibilidade — letra de 24px sobre foto some — mas cobria a arte e lia como
+ * tarja de censura. Agora a placa e escolha, e o padrao e a letra solta, com o
+ * tratamento cuidando do contraste.
+ *
+ * A placa e o texto sao DOIS elementos, e nao um so. Nao ha como um mesmo
+ * elemento ter fundo proprio e `background-clip: text` ao mesmo tempo: o
+ * recorte da letra apagaria a placa. Com a placa por fora, "ouro com placa"
+ * simplesmente funciona.
+ */
 function Tarja({
-  texto, cor, corpo, p, fonte, entrada,
+  texto, cor, corpo, p, fonte, entrada, tratamento, imagem, destaque, forma,
 }: {
   texto: string;
   cor: string;
@@ -685,28 +746,40 @@ function Tarja({
   p: number;
   fonte: Opcoes["fonte"];
   entrada: string;
+  tratamento: string;
+  imagem?: string;
+  destaque?: string;
+  forma: Opcoes["tarja"];
 }) {
   if (p <= 0 || !texto) return null;
+  const comPlaca = forma === "placa";
   return (
     <div
       style={{
-        opacity: 1,
         transform: inclinacaoDe(fonte),
-        /* A tarja tem recorte proprio e nao herda a entrada escolhida: ela e um
+        /* O recorte e proprio e nao herda a entrada escolhida: a placa e um
            RECIPIENTE, e um recipiente que cai do ceu ou entra letra a letra le
-           como erro. O texto dentro dela e que segue a escolha. */
-        clipPath: `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)`,
-        background: "rgba(6,6,6,.82)",
-        padding: `${corpo * 0.5}px ${corpo * 0.9}px`,
-        fontFamily: FONTE_DE_APOIO,
-        fontWeight: 600,
-        fontSize: corpo,
-        letterSpacing: corpo * 0.14,
-        color: cor,
-        whiteSpace: "nowrap",
+           como erro. O texto dentro dela e que segue a escolha.
+           Sem placa nao ha recipiente, e a linha entra como as outras. */
+        clipPath: comPlaca ? `inset(0 ${((1 - p) * 100).toFixed(2)}% 0 0)` : undefined,
+        opacity: comPlaca ? 1 : p,
+        background: comPlaca ? "rgba(6,6,6,.82)" : undefined,
+        padding: comPlaca ? `${corpo * 0.5}px ${corpo * 0.9}px` : undefined,
       }}
     >
-      <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
+      <span
+        style={{
+          display: "inline-block",
+          fontFamily: FONTE_DE_APOIO,
+          fontWeight: 600,
+          fontSize: corpo,
+          letterSpacing: corpo * 0.14,
+          whiteSpace: "nowrap",
+          ...estiloDoTratamento(tratamento, { cor, corpo, imagem, destaque, apoio: true }),
+        }}
+      >
+        <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
+      </span>
     </div>
   );
 }

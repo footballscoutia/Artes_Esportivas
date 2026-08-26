@@ -28,10 +28,16 @@ type Props = {
   aoGerar: (opcoes: Opcoes) => void;
   /** A palavra usada na amostra de fonte. O nome do clube diz mais. */
   amostra?: string;
+  /**
+   * O tipo do pedido. Nao e uma pergunta aqui — a arte ja existe e ja tem um —,
+   * mas o painel precisa dele: e o tipo que escolhe o roteiro de linhas, e a
+   * forma da linha dos dados so faz sentido onde essa linha existe.
+   */
+  tipo: string;
 };
 
-export function PerguntasDoVideo({ aberto, aoFechar, gerando, aoGerar, amostra }: Props) {
-  const [o, setO] = useState<Opcoes>(OPCOES_PADRAO);
+export function PerguntasDoVideo({ aberto, aoFechar, gerando, aoGerar, amostra, tipo }: Props) {
+  const [o, setO] = useState<Opcoes>({ ...OPCOES_PADRAO, tipo });
 
   return (
     <Drawer

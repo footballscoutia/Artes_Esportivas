@@ -12,9 +12,11 @@ import {
   ENTRADAS,
   INTROS,
   TRATAMENTOS,
+  TARJAS,
   INTRO_EFEITOS,
   OCULTAVEIS,
   TEMPLATES,
+  temLinhaDeDados,
   type Opcoes,
 } from "@/video/template";
 import type { ReactNode } from "react";
@@ -242,6 +244,41 @@ export function EscolhasDeVideo({
           />
         )}
       />
+
+      {/**
+        * A forma da linha dos dados — e a pergunta so aparece quando ela existe.
+        *
+        * Data, hora e estadio so entram no matchday; num video de gol nao ha
+        * linha nenhuma para ter forma, e o controle seria um controle que nao
+        * controla nada, como o efeito de intro sem intro.
+        */}
+      {temLinhaDeDados(opcoes.tipo) && (
+        <Grupo
+          titulo="Linha dos dados"
+          ajuda="data, hora e estádio"
+          itens={TARJAS}
+          atual={opcoes.tarja}
+          aoEscolher={(v) => aoMudar("tarja", v)}
+          colunas={colunas}
+          amostra={(chave) => (
+            <span className="mt-1.5 flex h-[46px] items-center rounded-field bg-black/60 px-2">
+              <span
+                className={cn(
+                  "text-[10px] font-semibold tracking-[0.14em] text-white",
+                  chave === "placa" && "rounded-sm bg-black/85 px-1.5 py-1",
+                )}
+                style={
+                  chave === "placa"
+                    ? undefined
+                    : { WebkitTextStroke: "0.6px rgba(0,0,0,.85)", paintOrder: "stroke fill" }
+                }
+              >
+                QUI 30.07 · 20H30
+              </span>
+            </span>
+          )}
+        />
+      )}
 
       {/* Entra entre a fonte e a transicao: e efeito de TEXTO, desenhado na
           fonte que acabou de ser escolhida, e nao no quadro inteiro. */}

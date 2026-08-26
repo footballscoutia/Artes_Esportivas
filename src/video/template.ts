@@ -284,23 +284,38 @@ export const EsquemaCamadas = z.object({
   escudo: z.string().optional(),
 });
 
+/**
+ * TODO CAMPO TEM `default`, E ISSO NAO E ENFEITE.
+ *
+ * As opcoes de cada video ficam gravadas como jsonb, e quem as le faz
+ * `safeParse` com queda para OPCOES_PADRAO. Com campo obrigatorio, um campo
+ * NOVO invalida o objeto inteiro gravado meses atras — e a queda nao repoe so o
+ * campo que falta: joga fora a configuracao toda. A pessoa abre um video seu e
+ * encontra outra fonte, outra duracao, outros cortes.
+ *
+ * Aconteceu de verdade quando o `tratamento` entrou. Com `default`, o que falta
+ * e preenchido e o resto sobrevive — o esquema passa a se curar sozinho, e
+ * acrescentar campo deixa de ser uma operacao de risco.
+ */
 export const EsquemaOpcoes = z.object({
-  template: z.enum(["confronto", "rodape"]),
+  template: z.enum(["confronto", "rodape"]).default("confronto"),
   /* Guardado nas opcoes e nao so no pedido: o roteiro depende dele, e o
      componente recebe opcoes, nao o pedido. */
-  tipo: z.string(),
+  tipo: z.string().default("matchday"),
   /* Os limites nao sao enfeite: sao o que impede o editor de produzir um video
      de 0,2s ou um texto de 40x que estoura o quadro. */
-  duracao: z.number().min(4).max(20),
-  escalaTexto: z.number().min(0.6).max(2),
-  velocidade: z.number().min(0.5).max(2),
-  intensidade: z.number().min(0).max(2),
+  duracao: z.number().min(4).max(20).default(8),
+  escalaTexto: z.number().min(0.6).max(2).default(1),
+  velocidade: z.number().min(0.5).max(2).default(1),
+  intensidade: z.number().min(0).max(2).default(1),
   /* Quao RAPIDO o corte acontece. Multiplicador em vez de segundos porque a
      duracao real depende da duracao do video: um whip de 0,32s num video de 6s
      e o mesmo gesto que num de 15s, e cravar segundos quebraria essa relacao. */
-  velocidadeTransicao: z.number().min(0.4).max(2.5),
+  velocidadeTransicao: z.number().min(0.4).max(2.5).default(1),
   /* Como cada linha de texto APARECE. Ate aqui havia uma so, cravada. */
-  entradaTexto: z.enum(["deslize", "sobe", "escala", "desfoca", "varre", "cai", "letra", "onda"]),
+  entradaTexto: z
+    .enum(["deslize", "sobe", "escala", "desfoca", "varre", "cai", "letra", "onda"])
+    .default("deslize"),
   /**
    * O que NAO aparece. Lista do que sai, e nao do que fica.
    *
@@ -311,9 +326,11 @@ export const EsquemaOpcoes = z.object({
    * Mesma logica da arte parada, onde campo em branco derruba a linha inteira
    * do prompt em vez de virar aspas vazias que o modelo tenta preencher.
    */
-  ocultos: z.array(z.string()),
-  intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]),
-  introEfeito: z.enum(["cresce", "encolhe", "sobe", "gira", "impacto", "desfoca", "revela", "pisca"]),
+  ocultos: z.array(z.string()).default([]),
+  intro: z.enum(["nenhuma", "escudo", "escudo-logo", "logo"]).default("escudo-logo"),
+  introEfeito: z
+    .enum(["cresce", "encolhe", "sobe", "gira", "impacto", "desfoca", "revela", "pisca"])
+    .default("cresce"),
   /**
    * OS CORTES do vídeo: quantos, quando e com qual transição.
    *
@@ -331,30 +348,43 @@ export const EsquemaOpcoes = z.object({
     .optional(),
   /** Legado: o corte único das versões anteriores. */
   transicao: z.string().optional(),
-  fonte: z.enum(CHAVES_DE_FONTE),
+  fonte: z.enum(CHAVES_DE_FONTE).default("cartaz"),
   /**
    * O TRATAMENTO da letra — contorno, metal, recorte, sombra longa.
    *
    * A falta dele era a distancia real entre o texto do video e o das artes.
    * Nao era limite do codigo: era Anton branco chapado, sem nada.
+   *
+   * Vale para o BLOCO INTEIRO, e nao so para o titulo. Tratar uma linha e
+   * deixar as outras chapadas nao produz hierarquia, produz duas tipografias
+   * dentro do mesmo quadro. As linhas de apoio recebem a versao contida do
+   * mesmo tratamento — ver `Tratamento.apoio`.
    */
-  tratamento: z.enum([
-    "limpo",
-    "sombra",
-    "contorno",
-    "vazado",
-    "bloco",
-    "longa",
-    "metal",
-    "ouro",
-    "recorte",
-  ]),
+  tratamento: z
+    .enum(["limpo", "sombra", "contorno", "vazado", "bloco", "longa", "metal", "ouro", "recorte"])
+    .default("contorno"),
+  /**
+   * A LINHA DOS DADOS: dentro de uma placa escura, ou solta sobre a arte.
+   *
+   * A placa existia por um motivo real — data, hora e estadio sao a menor letra
+   * do quadro, e letra pequena sobre foto some. So que ela resolvia isso com um
+   * retangulo preto que ninguem pediu, e que le como tarja de censura.
+   *
+   * Agora o tratamento cuida da legibilidade: contorno numa letra de 24px faz o
+   * mesmo trabalho sem cobrir a arte. Por isso o padrao passou a ser SOLTA, e a
+   * placa virou escolha de quem monta — nao mais um pedaco fixo do desenho.
+   */
+  tarja: z.enum(["solta", "placa"]).default("solta"),
   /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
      arrastaria o Remotion para dentro deste arquivo de novo. O preco e o
      Studio mostrar um campo de texto em vez de um seletor — na tela do produto
      o seletor de cor e nativo e continua igual. */
-  corTexto: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-    corBarra: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  corTexto: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#ffffff"),
+  /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a
+     referencia — na arte do Criciuma ela e laranja viva atravessando a linha —,
+     e os fundos que o modelo gera sao escuros. Barra #0b0b0b sobre fundo escuro
+     existe no codigo e nao existe na tela. */
+  corBarra: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#ffffff"),
 });
 
 export const EsquemaMatchday = z.object({
@@ -413,6 +443,26 @@ const ROTEIRO_DE_ATLETA: Roteiro = [
   { papel: "confronto", campo: "clube" },
 ];
 
+/**
+ * As duas formas da linha dos dados. Ver o campo `tarja` do esquema.
+ */
+export const TARJAS: Record<string, { rotulo: string; nota: string }> = {
+  solta: { rotulo: "Solta", nota: "O texto direto sobre a arte" },
+  placa: { rotulo: "Com placa", nota: "Dentro de um retângulo escuro" },
+};
+
+/**
+ * Se o roteiro deste tipo tem uma linha de dados.
+ *
+ * So o matchday tem: gol, contratacao e estreia anunciam uma pessoa, e data,
+ * hora e estadio nao dizem respeito a nenhum deles. Perguntar sobre a forma de
+ * uma linha que nao vai existir e oferecer um controle que nao controla nada —
+ * a mesma razao pela qual o efeito da intro some quando nao ha intro.
+ */
+export function temLinhaDeDados(tipo: string) {
+  return (ROTEIROS[tipo] ?? ROTEIROS.matchday).some((l) => l.papel === "tarja");
+}
+
 export const ROTEIROS: Record<string, Roteiro> = {
   matchday: ROTEIRO_DE_JOGO,
   gol: ROTEIRO_DE_ATLETA,
@@ -424,25 +474,14 @@ export const ROTEIROS: Record<string, Roteiro> = {
   frase: ROTEIRO_DE_ATLETA,
 };
 
-export const OPCOES_PADRAO: Opcoes = {
-  template: "confronto",
-  tipo: "matchday",
-  duracao: 8,
-  escalaTexto: 1,
-  velocidade: 1,
-  intensidade: 1,
-  velocidadeTransicao: 1,
-  entradaTexto: "deslize",
-  ocultos: [],
-  intro: "escudo-logo",
-  introEfeito: "cresce",
+/**
+ * As opcoes de um video novo. Sai do PROPRIO esquema, e nao de uma lista a
+ * parte: com duas listas, um dia o padrao do esquema e o padrao do produto
+ * discordam, e a diferenca so aparece num video que ja foi publicado.
+ *
+ * O unico campo escrito aqui e `cortes`, porque ele nao tem padrao possivel no
+ * esquema — o instante do corte depende do arranjo, e quem le decide.
+ */
+export const OPCOES_PADRAO: Opcoes = EsquemaOpcoes.parse({
   cortes: [{ em: 4.3, transicao: TRANSICAO_PADRAO }],
-  fonte: "cartaz",
-  tratamento: "contorno",
-  corTexto: "#ffffff",
-  /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a
-     referencia — na arte do Criciuma ela e laranja viva atravessando a linha —,
-     e os fundos que o modelo gera sao escuros. Barra #0b0b0b sobre fundo escuro
-     existe no codigo e nao existe na tela. */
-  corBarra: "#ffffff",
-};
+});

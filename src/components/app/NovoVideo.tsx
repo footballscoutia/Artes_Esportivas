@@ -194,7 +194,15 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
               <button
                 key={t}
                 type="button"
-                onClick={() => setTipo(t)}
+                /* O tipo entra nas opcoes JA AQUI, e nao so no envio: o passo 2
+                   decide o que perguntar a partir dele — a linha dos dados so
+                   existe no matchday. Guardado apenas no estado local, o painel
+                   de montagem continuaria lendo "matchday" e ofereceria a forma
+                   de uma linha que nao vai existir no video. */
+                onClick={() => {
+                  setTipo(t);
+                  setOpcoes((o) => ({ ...o, tipo: t }));
+                }}
                 className={cn(
                   "rounded-card border px-3 py-2.5 text-left text-[13px] font-medium transition-colors",
                   tipo === t

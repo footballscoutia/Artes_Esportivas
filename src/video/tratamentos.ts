@@ -25,18 +25,33 @@ import type { CSSProperties } from "react";
 export type Tratamento = {
   rotulo: string;
   nota: string;
+  /**
+   * O que este tratamento vira nas linhas de APOIO — a etiqueta e a tarja.
+   *
+   * O tratamento vale para o bloco inteiro, mas nem todo acabamento sobrevive a
+   * 24px: a sombra longa de uma letra pequena é uma mancha, a arte recortada por
+   * dentro dela é ruído, e o vazado vira renda ilegível. Cada um cai no parente
+   * mais próximo que ainda funciona nesse tamanho — e a família se mantém: quem
+   * escolheu ouro continua vendo ouro na linha pequena.
+   *
+   * A troca mora numa TABELA, e é o chamador que diz quando a linha é de apoio.
+   * Fosse uma regra de tamanho escondida dentro da função, a prévia — que
+   * desenha texto pequeno para representar um título — mostraria a versão
+   * contida, e prévia que mente é pior que prévia nenhuma.
+   */
+  apoio: string;
 };
 
 export const TRATAMENTOS: Record<string, Tratamento> = {
-  limpo: { rotulo: "Limpo", nota: "Sem tratamento, só a cor" },
-  sombra: { rotulo: "Sombra", nota: "Descolado do fundo, com sombra suave" },
-  contorno: { rotulo: "Contorno", nota: "Traço escuro em volta da letra" },
-  vazado: { rotulo: "Vazado", nota: "Só o contorno, miolo transparente" },
-  bloco: { rotulo: "Bloco", nota: "Extrusão sólida, como letra de pedra" },
-  longa: { rotulo: "Sombra longa", nota: "A diagonal que atravessa o quadro" },
-  metal: { rotulo: "Metal", nota: "Degradê cromado com brilho no meio" },
-  ouro: { rotulo: "Ouro", nota: "Degradê dourado, para gol e título" },
-  recorte: { rotulo: "Recorte", nota: "A arte do fundo aparece dentro da letra" },
+  limpo: { rotulo: "Limpo", nota: "Sem tratamento, só a cor", apoio: "limpo" },
+  sombra: { rotulo: "Sombra", nota: "Descolado do fundo, com sombra suave", apoio: "sombra" },
+  contorno: { rotulo: "Contorno", nota: "Traço escuro em volta da letra", apoio: "contorno" },
+  vazado: { rotulo: "Vazado", nota: "Só o contorno, miolo transparente", apoio: "contorno" },
+  bloco: { rotulo: "Bloco", nota: "Extrusão sólida, como letra de pedra", apoio: "sombra" },
+  longa: { rotulo: "Sombra longa", nota: "A diagonal que atravessa o quadro", apoio: "sombra" },
+  metal: { rotulo: "Metal", nota: "Degradê cromado com brilho no meio", apoio: "metal" },
+  ouro: { rotulo: "Ouro", nota: "Degradê dourado, para gol e título", apoio: "ouro" },
+  recorte: { rotulo: "Recorte", nota: "A arte do fundo aparece dentro da letra", apoio: "contorno" },
 };
 
 export type Chave = keyof typeof TRATAMENTOS;
@@ -63,6 +78,7 @@ export function estiloDoTratamento(
     corpo,
     imagem,
     destaque,
+    apoio,
   }: {
     cor: string;
     corpo: number;
@@ -70,8 +86,14 @@ export function estiloDoTratamento(
     destaque?: string;
     /** A placa de fundo, para o tratamento "recorte" enxergar por dentro da letra. */
     imagem?: string;
+    /**
+     * Verdadeiro na etiqueta e na tarja — as linhas pequenas, que recebem a
+     * versão contida do tratamento em vez da versão cheia. Ver `Tratamento.apoio`.
+     */
+    apoio?: boolean;
   },
 ): CSSProperties {
+  if (apoio) nome = TRATAMENTOS[nome]?.apoio ?? nome;
   const oposto = contrasteDe(cor);
 
   /**
