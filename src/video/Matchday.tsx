@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { FiltroGlitch, ID_GLITCH } from "./FiltroGlitch";
 import { FONTE_DE_APOIO, FONTES } from "./fontes";
 import {
   INTROS,
@@ -101,9 +102,19 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
       ? opcoes.cortes
       : [{ em: tpl.corte, transicao: opcoes.transicao ?? TRANSICAO_PADRAO }];
 
-  const meiaJanela = (duracaoDaTransicao(opcoes.velocidadeTransicao) / 2) * f * fps;
+  /**
+   * O instante do corte esta em segundos REAIS da arte, e nao na linha do
+   * tempo de referencia de 8s.
+   *
+   * Multiplicar por `f` como no resto da coreografia parecia coerente e era
+   * um bug: o controle diz "aos 3,0s" e o corte acontecia aos 2,25s num video
+   * de 6s. A diferenca e que os tempos do TEMPLATE sao proporcoes de uma
+   * receita — encolhem junto com o video — e este veio de uma pessoa olhando
+   * uma regua que vai ate a duracao escolhida.
+   */
+  const meiaJanela = (duracaoDaTransicao(opcoes.velocidadeTransicao) / 2) * fps;
   const ativo = cortes
-    .map((c) => ({ ...c, quadro: c.em * f * fps }))
+    .map((c) => ({ ...c, quadro: c.em * fps }))
     .find((c) => Math.abs(quadro - c.quadro) < meiaJanela);
 
   const u = ativo ? (quadro - (ativo.quadro - meiaJanela)) / (meiaJanela * 2) : -1;
@@ -125,12 +136,12 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
    * acontecendo para o texto estar fora.
    */
   const visivel = cortes.reduce((menor, c) => {
-    const q = c.em * f * fps;
-    const sai = interpolate(quadro, [q - 0.3 * f * fps, q], [0, 1], {
+    const q = c.em * fps;
+    const sai = interpolate(quadro, [q - 0.3 * fps, q], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
-    const volta = interpolate(quadro, [q + 0.12 * f * fps, q + 0.5 * f * fps], [0, 1], {
+    const volta = interpolate(quadro, [q + 0.12 * fps, q + 0.5 * fps], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
@@ -140,32 +151,19 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#050505", overflow: "hidden" }}>
+      {/* O filtro pega tudo que esta dentro: fundo, atleta e texto glitcham
+          JUNTOS. Aplicado so ao fundo, o resto continuaria nitido por cima e
+          leria como imagem estranha atras de imagem normal, nao como falha. */}
+      {def.rgb > 0.5 && <FiltroGlitch dx={def.rgb} />}
+      <AbsoluteFill
+        style={{
+          filter: def.rgb > 0.5 ? `url(#${ID_GLITCH})` : undefined,
+        }}
+      >
       <AbsoluteFill style={{ transform: `scale(${zoomFundo}) ${deformar.transform}`, filter: deformar.filter }}>
         <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </AbsoluteFill>
 
-      {/**
-        * O GLITCH: duas copias do fundo deslocadas e tingidas, somadas por
-        * `screen`. E o mesmo truque de separacao de canais que a TV analogica
-        * fazia por defeito — e por isso le como falha de sinal, e nao como
-        * enfeite. So existe enquanto `rgb` for maior que zero.
-        */}
-      {def.rgb > 0.5 && (
-        <>
-          <AbsoluteFill style={{ transform: `scale(${zoomFundo}) translateX(${def.rgb}px)`, mixBlendMode: "screen", opacity: 0.55 }}>
-            <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover", filter: "url(#semVerde)" }} />
-          </AbsoluteFill>
-          <AbsoluteFill style={{ transform: `scale(${zoomFundo}) translateX(${-def.rgb}px)`, mixBlendMode: "screen", opacity: 0.55 }}>
-            <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover", filter: "url(#semVermelho)" }} />
-          </AbsoluteFill>
-          <svg width="0" height="0" style={{ position: "absolute" }}>
-            <defs>
-              <filter id="semVerde"><feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" /></filter>
-              <filter id="semVermelho"><feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" /></filter>
-            </defs>
-          </svg>
-        </>
-      )}
 
       <AbsoluteFill
         style={{
@@ -293,6 +291,8 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
         />
       )}
 
+      </AbsoluteFill>
+
       {clarao > 0.01 && (
         <AbsoluteFill
           style={{
@@ -302,6 +302,43 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
         />
       )}
       {escurece > 0.01 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: escurece * 0.9 }} />}
+
+      {/**
+        * FATIAS: faixas FINAS de interferencia, e nao bandas contiguas.
+        *
+        * A primeira versao desenhava o fundo em nove bandas cobrindo 100% da
+        * altura — ou seja, uma cortina opaca que apagava o atleta e o texto. O
+        * quadro renderizado mostrava so cenario durante o corte, e eu levei um
+        * render inteiro para ver.
+        *
+        * Glitch de verdade nao substitui a imagem: ele desloca tiras dela. Cada
+        * faixa cobre uma fracao pequena da altura, e entre elas o quadro
+        * continua intacto — que e o que faz a falha parecer falha, e nao troca
+        * de cena.
+        *
+        * O deslocamento sai de um `sin` da posicao e do quadro, e nao de um
+        * aleatorio: aleatorio mudaria a cada render e o mesmo video sairia
+        * diferente toda vez, o que torna conferir um defeito impossivel.
+        */}
+      {def.fatias > 0 &&
+        Array.from({ length: def.fatias }).map((_, i) => {
+          const passo = 100 / def.fatias;
+          const topo = i * passo + (Math.sin(i * 3.7 + quadro * 0.5) + 1) * passo * 0.3;
+          const espessura = 3.5 + Math.abs(Math.sin(i * 2.3)) * 3;
+          const desloca = Math.sin((i + quadro * 0.7) * 2.1) * 60 * opcoes.intensidade;
+          return (
+            <AbsoluteFill
+              key={i}
+              style={{
+                clipPath: `inset(${topo.toFixed(1)}% 0 ${(100 - topo - espessura).toFixed(1)}% 0)`,
+                transform: `translateX(${desloca.toFixed(1)}px)`,
+                opacity: 0.9,
+              }}
+            >
+              <Img src={camadas.fundo} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </AbsoluteFill>
+          );
+        })}
       {fecho > 0 && <AbsoluteFill style={{ backgroundColor: "#000", opacity: fecho }} />}
 
       {emIntro && (

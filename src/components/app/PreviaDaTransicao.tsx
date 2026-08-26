@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FONTES } from "@/video/fontes";
+import { FiltroGlitch } from "@/video/FiltroGlitch";
 import {
   ENTRADAS,
   deformacaoDaTransicao,
@@ -97,11 +98,22 @@ export function PreviaDaTransicao({
   const def = deformacaoDaTransicao(transicao, u, intensidade, t * 60);
   const estilo = estiloDaDeformacao(def);
 
+  /* O id do filtro precisa ser UNICO por previa: dez caixas na tela com o
+     mesmo `id` fariam todas usarem o deslocamento da ultima montada, e nove
+     delas mostrariam o glitch de outra. */
+  const idFiltro = `glitch-previa-${transicao.replace(/[^a-z]/gi, "")}`;
+
   return (
     <span className="relative mt-1.5 block h-[40px] overflow-hidden rounded-field bg-bg-2">
+      {def.rgb > 0.5 && <FiltroGlitch dx={def.rgb * 0.55} id={idFiltro} />}
       <span
         className="absolute inset-0 grid place-items-center"
-        style={{ transform: estilo.transform, filter: estilo.filter }}
+        style={{
+          transform: estilo.transform,
+          filter: [estilo.filter, def.rgb > 0.5 ? `url(#${idFiltro})` : null]
+            .filter(Boolean)
+            .join(" ") || undefined,
+        }}
       >
         <span
           className="truncate px-2"
@@ -122,7 +134,10 @@ export function PreviaDaTransicao({
       {def.clarao > 0.01 && (
         <span
           className="absolute inset-0"
-          style={{ background: "#fff", opacity: def.clarao * 0.55 }}
+          style={{
+            background: def.veuCor === "clube" ? "var(--accent)" : "#fff",
+            opacity: def.clarao * 0.55,
+          }}
         />
       )}
       {def.escurece > 0.01 && (
@@ -131,6 +146,40 @@ export function PreviaDaTransicao({
           style={{ background: "#000", opacity: def.escurece * 0.9 }}
         />
       )}
+
+      {/* As fatias tambem aparecem aqui: sem elas, "Fatias deslocadas" e
+          "Cores separadas" ficariam identicas na previa, e escolher entre
+          duas caixas iguais nao e escolher. */}
+      {def.fatias > 0 &&
+        Array.from({ length: def.fatias }).map((_, i) => {
+          const altura = 100 / def.fatias;
+          const desloca = Math.sin((i + t * 42) * 2.1) * 14;
+          return (
+            <span
+              key={i}
+              className="absolute inset-0 grid place-items-center"
+              style={{
+                clipPath: `inset(${i * altura}% 0 ${100 - (i + 1) * altura}% 0)`,
+                transform: `translateX(${desloca.toFixed(1)}px)`,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: f.familia,
+                  fontWeight: f.peso,
+                  fontSize: 20,
+                  letterSpacing: 20 * f.aperto,
+                  transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
+                  color: "var(--text)",
+                  lineHeight: 1.1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {texto}
+              </span>
+            </span>
+          );
+        })}
     </span>
   );
 }
