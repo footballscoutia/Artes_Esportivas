@@ -10,6 +10,7 @@ import {
   duracaoDaTransicao,
   estiloDaDeformacao,
   estiloDaEntrada,
+  estiloDoTratamento,
   progressoDaLetra,
   type Opcoes,
 } from "@/video/template";
@@ -305,6 +306,52 @@ export function PreviaDoIntro({
               <path d="M15 1 L29 6 V19 C29 27 22 33 15 35 C8 33 1 27 1 19 V6 Z" fill="currentColor" opacity="0.85" />
             </svg>
           )}
+        </span>
+      </span>
+    </span>
+  );
+}
+/**
+ * O tratamento da letra, parado.
+ *
+ * Sem animacao de proposito: tratamento nao e gesto, e acabamento. O que a
+ * pessoa precisa comparar e a LETRA — se o contorno engrossa, se o metal le,
+ * se o recorte deixa enxergar a arte por dentro. Movimento so atrapalharia a
+ * leitura de uma coisa que no video fica parada a maior parte do tempo.
+ */
+export function PreviaDoTratamento({
+  tratamento,
+  fonte,
+  cor,
+  texto,
+  imagem,
+  destaque,
+}: {
+  tratamento: string;
+  fonte: Opcoes["fonte"];
+  cor: string;
+  texto: string;
+  imagem?: string;
+  destaque?: string;
+}) {
+  const f = FONTES[fonte];
+  const corpo = 30;
+  return (
+    <span className="relative mt-1.5 block h-[46px] overflow-hidden rounded-field bg-black/60">
+      <span className="absolute inset-0 grid place-items-center">
+        <span
+          style={{
+            fontFamily: f.familia,
+            fontWeight: f.peso,
+            fontSize: corpo,
+            letterSpacing: corpo * f.aperto,
+            transform: f.inclinacao ? `skewX(${f.inclinacao}deg)` : undefined,
+            lineHeight: 1.1,
+            whiteSpace: "nowrap",
+            ...estiloDoTratamento(tratamento, { cor, corpo, imagem, destaque }),
+          }}
+        >
+          {texto}
         </span>
       </span>
     </span>

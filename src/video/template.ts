@@ -20,6 +20,9 @@ import { IDS_DE_TRANSICAO, TRANSICAO_PADRAO } from "./transicoes";
    precisarem saber de duas portas. */
 export * from "./transicoes";
 
+/* O tratamento da letra tambem tem arquivo proprio, pela mesma razao: cresceu. */
+export * from "./tratamentos";
+
 /**
  * As CHAVES de fonte vivem aqui, e os desenhos vivem em fontes.ts.
  *
@@ -329,6 +332,23 @@ export const EsquemaOpcoes = z.object({
   /** Legado: o corte único das versões anteriores. */
   transicao: z.string().optional(),
   fonte: z.enum(CHAVES_DE_FONTE),
+  /**
+   * O TRATAMENTO da letra — contorno, metal, recorte, sombra longa.
+   *
+   * A falta dele era a distancia real entre o texto do video e o das artes.
+   * Nao era limite do codigo: era Anton branco chapado, sem nada.
+   */
+  tratamento: z.enum([
+    "limpo",
+    "sombra",
+    "contorno",
+    "vazado",
+    "bloco",
+    "longa",
+    "metal",
+    "ouro",
+    "recorte",
+  ]),
   /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
      arrastaria o Remotion para dentro deste arquivo de novo. O preco e o
      Studio mostrar um campo de texto em vez de um seletor — na tela do produto
@@ -418,6 +438,7 @@ export const OPCOES_PADRAO: Opcoes = {
   introEfeito: "cresce",
   cortes: [{ em: 4.3, transicao: TRANSICAO_PADRAO }],
   fonte: "cartaz",
+  tratamento: "contorno",
   corTexto: "#ffffff",
   /* Branca, e nao quase-preta. A barra do confronto e o gesto que mais marca a
      referencia — na arte do Criciuma ela e laranja viva atravessando a linha —,

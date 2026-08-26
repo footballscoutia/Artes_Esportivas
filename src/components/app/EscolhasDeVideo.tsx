@@ -5,11 +5,13 @@ import { FONTES } from "@/video/fontes";
 import {
   PreviaDaEntrada,
   PreviaDoIntro,
+  PreviaDoTratamento,
   useRelogioDaPrevia,
 } from "@/components/app/PreviaDaTransicao";
 import {
   ENTRADAS,
   INTROS,
+  TRATAMENTOS,
   INTRO_EFEITOS,
   OCULTAVEIS,
   TEMPLATES,
@@ -103,6 +105,7 @@ export function EscolhasDeVideo({
   amostraDoTexto = "GOLAÇO",
   aoVerTransicao,
   escudoUrl,
+  imagemDeFundo,
   mostrarOcultaveis = true,
   aoRenderRelogio,
 }: {
@@ -115,6 +118,8 @@ export function EscolhasDeVideo({
   aoVerTransicao?: () => void;
   /** O escudo real, para a prévia da intro não usar um genérico. */
   escudoUrl?: string;
+  /** A placa, para o tratamento "recorte" mostrar a arte por dentro da letra. */
+  imagemDeFundo?: string;
   /**
    * Falso quando a tela já perguntou isso antes — é o caso do vídeo do zero,
    * onde os interruptores vêm ANTES dos campos de texto para a pessoa não
@@ -215,6 +220,27 @@ export function EscolhasDeVideo({
             </span>
           );
         }}
+      />
+
+      {/* Depois da fonte, antes da entrada: o tratamento e acabamento DA letra,
+          entao so faz sentido depois de a letra estar escolhida. */}
+      <Grupo
+        titulo="Tratamento da letra"
+        ajuda="contorno, metal, recorte"
+        itens={TRATAMENTOS}
+        atual={opcoes.tratamento}
+        aoEscolher={(v) => aoMudar("tratamento", v)}
+        colunas={colunas}
+        amostra={(chave) => (
+          <PreviaDoTratamento
+            tratamento={chave}
+            fonte={opcoes.fonte}
+            cor={opcoes.corTexto}
+            texto={amostraDoTexto}
+            imagem={imagemDeFundo}
+            destaque={opcoes.corBarra}
+          />
+        )}
       />
 
       {/* Entra entre a fonte e a transicao: e efeito de TEXTO, desenhado na

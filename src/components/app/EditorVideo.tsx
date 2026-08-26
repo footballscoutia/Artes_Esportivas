@@ -331,6 +331,7 @@ export function EditorVideo({ videoId, dados, camadas, opcoesIniciais, nomeArqui
             aoMudar={mexer}
             amostraDoTexto={dados.clube || dados.nome || "GOLAÇO"}
             escudoUrl={camadas.escudo}
+            imagemDeFundo={camadas.fundo}
             mostrarOcultaveis
           />
         </div>

@@ -7,6 +7,7 @@ import {
   ROTEIROS,
   ENTRADAS,
   TRANSICAO_PADRAO,
+  estiloDoTratamento,
   deformacaoDaTransicao,
   estiloDoIntro,
   duracaoDaTransicao,
@@ -247,6 +248,9 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                   corpo={132 * e}
                   fonte={opcoes.fonte}
                   entrada={opcoes.entradaTexto}
+                  tratamento={opcoes.tratamento}
+                  imagem={camadas.fundo}
+                  destaque={opcoes.corBarra}
                   p={p}
                 />
               );
@@ -566,7 +570,7 @@ function Etiqueta({
 }
 
 function Titulo({
-  texto, cor, corpo, p, fonte, entrada,
+  texto, cor, corpo, p, fonte, entrada, tratamento, imagem, destaque,
 }: {
   texto: string;
   cor: string;
@@ -574,6 +578,9 @@ function Titulo({
   p: number;
   fonte: Opcoes["fonte"];
   entrada: string;
+  tratamento: string;
+  imagem?: string;
+  destaque?: string;
 }) {
   if (p <= 0) return null;
   const f = FONTES[fonte];
@@ -588,13 +595,12 @@ function Titulo({
         fontWeight: f.peso,
         fontSize: corpo,
         lineHeight: 0.94,
+        ...estiloDoTratamento(tratamento, { cor, corpo, imagem, destaque }),
         /* O aperto vem da FONTE porque cada desenho de letra tem o seu: Anton
            ja nasce apertada e pede folga, Archivo Black e larga e pede aperto.
            Um valor unico para todas produziria uma boa e quatro erradas. */
         letterSpacing: corpo * f.aperto,
-        color: cor,
         whiteSpace: "nowrap",
-        textShadow: "0 6px 26px rgba(0,0,0,.55)",
       }}
     >
       <TextoComEntrada texto={texto.toUpperCase()} entrada={entrada} p={p} />
