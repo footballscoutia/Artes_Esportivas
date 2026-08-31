@@ -14,8 +14,8 @@ import {
   TRATAMENTOS,
   TARJAS,
   INTRO_EFEITOS,
-  OCULTAVEIS,
   TEMPLATES,
+  ocultaveisDoTipo,
   temLinhaDeDados,
   type Opcoes,
 } from "@/video/template";
@@ -262,19 +262,23 @@ export function EscolhasDeVideo({
           colunas={colunas}
           amostra={(chave) => (
             <span className="mt-1.5 flex h-[46px] items-center rounded-field bg-black/60 px-2">
-              <span
-                className={cn(
-                  "text-[10px] font-semibold tracking-[0.14em] text-white",
-                  chave === "placa" && "rounded-sm bg-black/85 px-1.5 py-1",
-                )}
-                style={
-                  chave === "placa"
-                    ? undefined
-                    : { WebkitTextStroke: "0.6px rgba(0,0,0,.85)", paintOrder: "stroke fill" }
-                }
-              >
-                QUI 30.07 · 20H30
-              </span>
+              {chave === "nenhuma" ? (
+                <span className="text-[11px] text-white/35">— sem esta linha —</span>
+              ) : (
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold tracking-[0.14em] text-white",
+                    chave === "placa" && "rounded-sm bg-black/85 px-1.5 py-1",
+                  )}
+                  style={
+                    chave === "placa"
+                      ? undefined
+                      : { WebkitTextStroke: "0.6px rgba(0,0,0,.85)", paintOrder: "stroke fill" }
+                  }
+                >
+                  QUI 30.07 · 20H30
+                </span>
+              )}
             </span>
           )}
         />
@@ -342,13 +346,19 @@ export function OQueAparece({
   opcoes: Opcoes;
   aoMudar: <K extends keyof Opcoes>(chave: K, valor: Opcoes[K]) => void;
 }) {
+  /* So os campos que este tipo desenha — ver `ocultaveisDoTipo`. Sem isto, um
+     video de gol oferecia desligar campeonato, adversario e estadio, que o
+     roteiro dele nem chega a escrever. */
+  const itens = ocultaveisDoTipo(opcoes.tipo, opcoes.tarja);
+  if (Object.keys(itens).length === 0) return null;
+
   return (
     <div>
       <p className="mb-2 text-[13px] font-medium">
         O que aparece <span className="text-muted-2 font-normal">desligue o que não vai ao vídeo</span>
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {Object.entries(OCULTAVEIS).map(([chave, rotulo]) => {
+        {Object.entries(itens).map(([chave, rotulo]) => {
           const visivel = !opcoes.ocultos.includes(chave);
           return (
             <button

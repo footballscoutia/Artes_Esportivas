@@ -18,7 +18,7 @@ import {
   type Tipo,
   type Uniforme,
 } from "@/lib/types";
-import { OPCOES_PADRAO, type Opcoes } from "@/video/template";
+import { OPCOES_PADRAO, ocultaveisDoTipo, type Opcoes } from "@/video/template";
 import { cn } from "@/lib/utils";
 
 /**
@@ -124,6 +124,17 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
   const clubeDoAtleta = clubes.find((c) => c.id === jogador?.clube_id) ?? null;
   const adversario = clubes.find((c) => c.id === adversarioId) ?? null;
   const ehConfronto = tipo === "matchday";
+  /**
+   * Se este campo tem lugar NESTE video, e se nao foi desligado.
+   *
+   * As duas perguntas juntas porque a resposta e a mesma para o campo de texto e
+   * para o interruptor: um video de gol nao desenha campeonato, adversario nem
+   * estadio: o roteiro dele nao tem essas linhas. Pedir para escrever o estadio
+   * de um gol e pedir um dado que nunca vai a lugar nenhum — e quem escreveu vai
+   * procurar no video onde ele foi parar.
+   */
+  const oferecidos = ocultaveisDoTipo(tipo, opcoes.tarja);
+  const mostra = (campo: string) => campo in oferecidos && !opcoes.ocultos.includes(campo);
   /* So os mantos do clube do atleta: oferecer os outros seria oferecer o erro
      mais caro possivel, porque o uniforme vai para a camada gerada. */
   const mantos = uniformes.filter((u) => u.clube_id === clubeDoAtleta?.id);
@@ -258,7 +269,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           )}
         </div>
 
-        {ehConfronto && !opcoes.ocultos.includes("adversario") && (
+        {mostra("adversario") && (
           <div>
             <p className="mb-3 text-[13px] font-medium">
               Adversário <span className="text-muted-2 font-normal">quem enfrenta</span>
@@ -384,12 +395,12 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
           <Campo rotulo="Nome no vídeo">
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Philippe Coutinho" />
           </Campo>
-          {!opcoes.ocultos.includes("clube") && (
+          {mostra("clube") && (
             <Campo rotulo="Clube">
               <Input value={clube} onChange={(e) => setClube(e.target.value)} placeholder="Vasco" />
             </Campo>
           )}
-          {!opcoes.ocultos.includes("campeonato") && (
+          {mostra("campeonato") && (
             <Campo rotulo="Campeonato">
               <Input
                 value={jogo.campeonato}
@@ -398,7 +409,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
               />
             </Campo>
           )}
-          {!opcoes.ocultos.includes("estadio") && (
+          {mostra("estadio") && (
             <Campo rotulo="Estádio">
               <Input
                 value={jogo.estadio}
@@ -407,7 +418,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
               />
             </Campo>
           )}
-          {!opcoes.ocultos.includes("data") && (
+          {mostra("data") && (
             <Campo rotulo="Data">
               <Input
                 type="date"
@@ -416,7 +427,7 @@ export function NovoVideo({ jogadores, clubes, uniformes, marcas }: Props) {
               />
             </Campo>
           )}
-          {!opcoes.ocultos.includes("hora") && (
+          {mostra("hora") && (
             <Campo rotulo="Horário">
               <Input
                 value={jogo.hora_jogo}

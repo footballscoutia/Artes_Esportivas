@@ -218,9 +218,15 @@ export const Matchday: React.FC<PropsMatchday> = ({ dados, camadas, opcoes }) =>
                vez de sumir inteira: esconder o estadio nao pode levar junto a
                data. As outras linhas sao um campo so e somem de vez. */
             const escondido = (c: string) => opcoes.ocultos.includes(c);
+            /* "nenhuma" apaga a LINHA inteira, e nao campo por campo: e o
+               interruptor unico da linha dos dados. O texto sai vazio e o
+               `return null` logo abaixo cuida do resto — nao ha um segundo
+               caminho de saida para manter em dia. */
             const texto =
               linha.papel === "tarja"
-                ? [
+                ? opcoes.tarja === "nenhuma"
+                  ? ""
+                  : [
                     escondido("data") ? "" : dados.data,
                     escondido("hora") ? "" : dados.hora,
                     escondido("estadio") ? "" : dados.estadio,

@@ -364,17 +364,21 @@ export const EsquemaOpcoes = z.object({
     .enum(["limpo", "sombra", "contorno", "vazado", "bloco", "longa", "metal", "ouro", "recorte"])
     .default("contorno"),
   /**
-   * A LINHA DOS DADOS: dentro de uma placa escura, ou solta sobre a arte.
+   * A LINHA DOS DADOS: solta sobre a arte, dentro de uma placa, ou fora.
    *
-   * A placa existia por um motivo real — data, hora e estadio sao a menor letra
+   * UM controle decide as tres coisas — se ela existe e que forma tem —, e nao
+   * dois. Antes, tirar a linha era desligar data, hora e estadio um a um em
+   * outro lugar da tela: tres cliques num controle que fala de CAMPOS para
+   * conseguir apagar uma LINHA. Ninguem descobre isso sozinho, e foi assim que
+   * ela virou "aquela tarja que sempre aparece".
+   *
+   * A placa existia por um motivo real: data, hora e estadio sao a menor letra
    * do quadro, e letra pequena sobre foto some. So que ela resolvia isso com um
-   * retangulo preto que ninguem pediu, e que le como tarja de censura.
-   *
-   * Agora o tratamento cuida da legibilidade: contorno numa letra de 24px faz o
-   * mesmo trabalho sem cobrir a arte. Por isso o padrao passou a ser SOLTA, e a
-   * placa virou escolha de quem monta — nao mais um pedaco fixo do desenho.
+   * retangulo escuro que ninguem pediu, e que le como tarja de censura. Agora o
+   * tratamento cuida da legibilidade — contorno numa letra de 24px faz o mesmo
+   * trabalho sem cobrir a arte —, entao o padrao e SOLTA.
    */
-  tarja: z.enum(["solta", "placa"]).default("solta"),
+  tarja: z.enum(["solta", "placa", "nenhuma"]).default("solta"),
   /* Hex simples em vez de zColor(): aquele vem do @remotion/zod-types e
      arrastaria o Remotion para dentro deste arquivo de novo. O preco e o
      Studio mostrar um campo de texto em vez de um seletor — na tela do produto
@@ -449,6 +453,7 @@ const ROTEIRO_DE_ATLETA: Roteiro = [
 export const TARJAS: Record<string, { rotulo: string; nota: string }> = {
   solta: { rotulo: "Solta", nota: "O texto direto sobre a arte" },
   placa: { rotulo: "Com placa", nota: "Dentro de um retângulo escuro" },
+  nenhuma: { rotulo: "Não mostrar", nota: "O vídeo sai sem data nem local" },
 };
 
 /**
@@ -461,6 +466,29 @@ export const TARJAS: Record<string, { rotulo: string; nota: string }> = {
  */
 export function temLinhaDeDados(tipo: string) {
   return (ROTEIROS[tipo] ?? ROTEIROS.matchday).some((l) => l.papel === "tarja");
+}
+
+/**
+ * Os interruptores que fazem sentido PARA ESTE VIDEO.
+ *
+ * A lista fixa oferecia campeonato, adversario, data, hora e estadio em todo
+ * tipo — inclusive num video de gol, cujo roteiro nao tem nenhum deles. Sao
+ * seis botoes dos quais cinco nao mudam nada, e um botao que nao muda nada e
+ * pior que botao nenhum: ensina que o painel nao e confiavel.
+ *
+ * Fica so o que o roteiro deste tipo realmente desenha. E se a linha dos dados
+ * foi desligada, data, hora e estadio saem junto: quem apagou a linha nao tem o
+ * que decidir sobre o que ia dentro dela.
+ */
+export function ocultaveisDoTipo(tipo: string, tarja: "solta" | "placa" | "nenhuma") {
+  const roteiro = ROTEIROS[tipo] ?? ROTEIROS.matchday;
+  const campos = new Set<string>(roteiro.filter((l) => l.papel !== "tarja").map((l) => l.campo));
+  if (roteiro.some((l) => l.papel === "tarja") && tarja !== "nenhuma") {
+    campos.add("data");
+    campos.add("hora");
+    campos.add("estadio");
+  }
+  return Object.fromEntries(Object.entries(OCULTAVEIS).filter(([c]) => campos.has(c)));
 }
 
 export const ROTEIROS: Record<string, Roteiro> = {
